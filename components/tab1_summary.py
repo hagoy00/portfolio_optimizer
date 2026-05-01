@@ -66,7 +66,13 @@ def render_tab1(tab, prices, model):
     w_series = weights.sort_values(ascending=False)
 
     with tab.expander("View Allocation Chart", expanded=True):
-        tab.bar_chart(w_series)
+    if len(w_series) == 0:
+        tab.info("No weights available to display.")
+    else:
+        chart_df = w_series.to_frame(name="Weight")
+        chart_df.index.name = "Ticker"
+        tab.bar_chart(chart_df)
+
 
     tab.markdown("---")
 

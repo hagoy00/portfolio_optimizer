@@ -26,7 +26,12 @@ def render_tab1(tab, prices, model):
 
     # --- Concentration ---
     #top_weight = max(weights.values()) if len(weights) > 0 else 0
-    top_weight = max(weights.values) if len(weights) > 0 else 0
+    #top_weight = max(weights.values) if len(weights) > 0 else 0
+    # Convert weights to a pandas Series no matter what
+    weights = pd.Series(weights)
+
+    top_weight = weights.max() if len(weights) > 0 else 0
+
 
     diversification = 1 - top_weight
 

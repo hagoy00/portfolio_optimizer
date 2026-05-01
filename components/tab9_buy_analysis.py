@@ -231,4 +231,5 @@ tab.dataframe(
             tab.markdown(f"- {text}")
 
     except Exception as e:
+        #tab.error(f"Error rendering buy analysis: {e}")
         tab.error(f"Error rendering buy analysis: {e}")

@@ -2,7 +2,8 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 
-def render_tab1(tab, model):
+# FIXED SIGNATURE — must accept (tab, prices, model)
+def render_tab1(tab, prices, model):
     tab.markdown("## Portfolio Manager Dashboard")
 
     if model is None:
@@ -22,7 +23,7 @@ def render_tab1(tab, model):
     max_dd = dd.min().min() if dd is not None else None
 
     # --- Concentration ---
-    top_weight = max(weights.values())
+    top_weight = max(weights.values()) if len(weights) > 0 else 0
     diversification = 1 - top_weight
 
     # ---------------------------------------------------
@@ -31,13 +32,11 @@ def render_tab1(tab, model):
     tab.markdown("### Core Portfolio Metrics")
 
     col1, col2, col3 = tab.columns(3)
-
     col1.metric("Expected Return", f"{exp_ret:.2%}")
     col2.metric("Volatility", f"{vol:.2%}")
     col3.metric("Sharpe Ratio", f"{sharpe:.2f}")
 
     col4, col5, col6 = tab.columns(3)
-
     col4.metric("Max Drawdown", f"{max_dd:.2%}" if max_dd else "N/A")
     col5.metric("Largest Position", f"{top_weight:.2%}")
     col6.metric("Diversification Score", f"{diversification:.2%}")

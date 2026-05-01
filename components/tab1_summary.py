@@ -3,12 +3,13 @@ import pandas as pd
 import numpy as np
 
 def render_tab1(tab, model):
-    tab.subheader("Portfolio Manager Dashboard")
+    tab.markdown("## Portfolio Manager Dashboard")
 
     if model is None:
         tab.info("Run optimization to generate portfolio metrics.")
         return
 
+    # Extract model components
     perf = model.get("performance", {})
     dd = model.get("drawdown", None)
     weights = model.get("weights", {})
@@ -24,52 +25,64 @@ def render_tab1(tab, model):
     top_weight = max(weights.values())
     diversification = 1 - top_weight
 
-    # --- Summary Table ---
-    summary = pd.DataFrame({
-        "Metric": [
-            "Expected Annual Return",
-            "Annualized Volatility",
-            "Sharpe Ratio",
-            "Max Drawdown",
-            "Largest Position Weight",
-            "Diversification Score"
-        ],
-        "Value": [
-            f"{exp_ret:.2%}",
-            f"{vol:.2%}",
-            f"{sharpe:.2f}",
-            f"{max_dd:.2%}" if max_dd else "N/A",
-            f"{top_weight:.2%}",
-            f"{diversification:.2%}"
-        ]
-    })
+    # ---------------------------------------------------
+    # CLEAN TWO-COLUMN METRIC LAYOUT
+    # ---------------------------------------------------
+    tab.markdown("### Core Portfolio Metrics")
 
-    tab.markdown("### 📊 Core Portfolio Metrics")
-    tab.dataframe(summary, hide_index=True)
+    col1, col2, col3 = tab.columns(3)
 
-    # --- Allocation Snapshot ---
-    tab.markdown("### 🧩 Allocation Snapshot")
+    col1.metric("Expected Return", f"{exp_ret:.2%}")
+    col2.metric("Volatility", f"{vol:.2%}")
+    col3.metric("Sharpe Ratio", f"{sharpe:.2f}")
+
+    col4, col5, col6 = tab.columns(3)
+
+    col4.metric("Max Drawdown", f"{max_dd:.2%}" if max_dd else "N/A")
+    col5.metric("Largest Position", f"{top_weight:.2%}")
+    col6.metric("Diversification Score", f"{diversification:.2%}")
+
+    tab.markdown("---")
+
+    # ---------------------------------------------------
+    # ALLOCATION SNAPSHOT
+    # ---------------------------------------------------
+    tab.markdown("### Allocation Snapshot")
 
     w_series = pd.Series(weights).sort_values(ascending=False)
-    tab.bar_chart(w_series)
 
-    # --- Sector Exposure ---
+    with tab.expander("View Allocation Chart", expanded=True):
+        tab.bar_chart(w_series)
+
+    tab.markdown("---")
+
+    # ---------------------------------------------------
+    # SECTOR EXPOSURE
+    # ---------------------------------------------------
     if sector_weights:
-        tab.markdown("### 🏢 Sector Exposure")
-        tab.bar_chart(pd.Series(sector_weights))
+        tab.markdown("### Sector Exposure")
 
-    # --- PM Commentary ---
-    tab.markdown("### 🧠 PM Commentary")
+        with tab.expander("View Sector Breakdown", expanded=False):
+            tab.bar_chart(pd.Series(sector_weights))
+
+        tab.markdown("---")
+
+    # ---------------------------------------------------
+    # PM COMMENTARY
+    # ---------------------------------------------------
+    tab.markdown("### Portfolio Manager Commentary")
 
     commentary = f"""
-The portfolio exhibits a **Sharpe ratio of {sharpe:.2f}**, supported by an expected return of 
+The portfolio demonstrates a **Sharpe ratio of {sharpe:.2f}**, supported by an expected return of 
 **{exp_ret:.2%}** and volatility of **{vol:.2%}**. Drawdown behavior remains controlled with a 
 maximum drawdown of **{max_dd:.2%}**, indicating stable downside risk.
 
-Positioning is moderately diversified with the largest weight at **{top_weight:.2%}**, producing 
-a diversification score of **{diversification:.2%}**. Sector exposure is balanced, with allocations 
-tilted toward areas showing favorable risk‑adjusted characteristics.
+Positioning shows moderate concentration with the largest weight at **{top_weight:.2%}**, 
+resulting in a diversification score of **{diversification:.2%}**. Sector exposure is balanced 
+and aligned with favorable risk‑adjusted characteristics.
 
 Overall, the portfolio is positioned for efficient growth with controlled risk.
 """
-    tab.markdown(commentary)
+
+    with tab.expander("Read Commentary", expanded=True):
+        tab.markdown(commentary)

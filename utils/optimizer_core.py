@@ -1,7 +1,65 @@
+import numpy as np
+import pandas as pd
+
 print(">>> LOADED optimizer_core.py FROM:", __file__)
-print(">>> LOADED optimizer_core.py FROM:", __file__)
+
+# ---------------------------------------------------
+# Compute Returns
+# ---------------------------------------------------
+def compute_returns(prices):
+    return prices.pct_change().dropna()
+
+# ---------------------------------------------------
+# Compute Drawdown
+# ---------------------------------------------------
+def compute_drawdown(series):
+    cum = (1 + series).cumprod()
+    peak = cum.cummax()
+    dd = (cum - peak) / peak
+    return dd
+
+# ---------------------------------------------------
+# Risk Parity Weights
+# ---------------------------------------------------
+def risk_parity_weights(cov):
+    inv_vol = 1 / np.sqrt(np.diag(cov))
+    w = inv_vol / inv_vol.sum()
+    return w
+
+# ---------------------------------------------------
+# Max Sharpe Weights
+# ---------------------------------------------------
+def max_sharpe_weights(returns, cov):
+    mean_ret = returns.mean()
+    inv_cov = np.linalg.pinv(cov)
+    w = inv_cov @ mean_ret
+    w = np.maximum(w, 0)
+    w = w / w.sum()
+    return w
+
+# ---------------------------------------------------
+# Monte Carlo Simulation
+# ---------------------------------------------------
+def monte_carlo_simulation(prices, weights, n_sims=200, horizon=252):
+    returns = compute_returns(prices)
+    mu = returns.mean().values
+    cov = returns.cov().values
+
+    sims = []
+    for _ in range(n_sims):
+        path = [1]
+        for _ in range(horizon):
+            daily = np.random.multivariate_normal(mu, cov)
+            path.append(path[-1] * (1 + np.dot(weights, daily)))
+        sims.append(path)
+
+    return pd.DataFrame(sims).T
+
+# ---------------------------------------------------
+# Main Optimizer
+# ---------------------------------------------------
 def run_optimizer(prices):
-    print(">>> RUN OPTIMIZER CALLED")   # Debug print
+    print(">>> RUN OPTIMIZER CALLED")
 
     try:
         # -----------------------------
@@ -69,5 +127,49 @@ def run_optimizer(prices):
         }
 
     except Exception as e:
-        print(">>> OPTIMIZER ERROR:", e)   # Debug print
+        print(">>> OPTIMIZER ERROR:", e)
+        return None
+
+# ---------------------------------------------------
+# Rebalancing Backtest
+# ---------------------------------------------------
+def rebalancing_backtest(prices, weights, freq="ME"):
+    """
+    Simple rebalancing backtest.
+    prices: DataFrame of asset prices
+    weights: Series or array of target weights
+    freq: "ME" (month-end), "W" (weekly), "QE" (quarter-end)
+    """
+
+    try:
+        # Ensure weights are a Series aligned to columns
+        if not isinstance(weights, pd.Series):
+            weights = pd.Series(weights, index=prices.columns)
+
+        # Compute returns
+        rets = prices.pct_change().dropna()
+
+        # Rebalancing dates
+        rb_dates = rets.resample(freq).last().index
+
+        # Portfolio value series
+        port_val = pd.Series(index=rets.index, dtype=float)
+        value = 1.0  # start at 1
+
+        current_weights = weights.copy()
+
+        for date in rets.index:
+            # Rebalance on scheduled dates
+            if date in rb_dates:
+                current_weights = weights.copy()
+
+            # Daily portfolio return
+            daily_ret = (rets.loc[date] * current_weights).sum()
+            value *= (1 + daily_ret)
+            port_val.loc[date] = value
+
+        return port_val.dropna()
+
+    except Exception as e:
+        print("REBALANCING ERROR:", e)
         return None

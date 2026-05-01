@@ -44,4 +44,26 @@ def render_tab3(tab, prices, model):
 
         # --- Column 1: Weight Summary ---
         with col1:
-           
+            tab.markdown("#### Weight Summary")
+            tab.dataframe(
+                df[["Weight"]].style.format({"Weight": "{:.2%}"})
+            )
+
+        # --- Column 2: Weights + Shares Table ---
+        with col2:
+            tab.markdown("#### Weights & Shares Table")
+            tab.dataframe(
+                df.style.format({
+                    "Weight": "{:.2%}"
+                })
+            )
+
+        # ---------------------------------------------------
+        # OPTIONAL: Add total weight check
+        # ---------------------------------------------------
+        total_weight = w.sum()
+        tab.markdown("---")
+        tab.metric("Total Weight", f"{total_weight:.2%}")
+
+    except Exception as e:
+        tab.error(f"Error rendering weights: {e}")

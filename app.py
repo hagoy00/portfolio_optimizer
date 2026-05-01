@@ -27,6 +27,7 @@ st.title("Portfolio Optimizer Dashboard")
 # ---------------------------------------------------
 # SIDEBAR — Ticker Input
 # ---------------------------------------------------
+
 st.sidebar.header("Portfolio Settings")
 
 tickers_input = st.sidebar.text_input(
@@ -37,7 +38,18 @@ tickers_input = st.sidebar.text_input(
 start_date = st.sidebar.date_input("Start Date", pd.to_datetime("2015-01-01"))
 end_date = st.sidebar.date_input("End Date", pd.to_datetime("today"))
 
+# ✅ ADD THIS HERE
+investment_amount = st.sidebar.slider(
+    "How much would you like to invest ($)?",
+    min_value=1000,
+    max_value=500000,
+    value=100000,
+    step=1000,
+    format="%d"
+)
+
 run_button = st.sidebar.button("Run Optimization")
+
 
 # ---------------------------------------------------
 # LOAD DATA

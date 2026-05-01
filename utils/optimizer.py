@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+print(">>> USING LATEST optimizer.py")
 
 # ---------------------------------------------------
 # Compute Returns

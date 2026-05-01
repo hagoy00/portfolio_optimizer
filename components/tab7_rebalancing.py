@@ -64,4 +64,5 @@ def render_tab7(tab, prices, model):
     # ---------------------------------------------------
     # RAW DATA
     # ---------------------------------------------------
-    with tab.expander("View Raw
+    with tab.expander("View Raw Data", expanded=False):
+        tab.dataframe(rb)

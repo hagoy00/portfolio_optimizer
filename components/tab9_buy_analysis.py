@@ -169,7 +169,7 @@ def render_tab9(tab, full_prices):
                 "PE": "{:.1f}",
                 "PB": "{:.1f}",
                 "PS": "{:.1f}",
-            }).applymap(color_signal, subset=["Signal"])
+            }).map(color_signal, subset=["Signal"])  # <-- key change
         )
 
         tab.markdown("---")

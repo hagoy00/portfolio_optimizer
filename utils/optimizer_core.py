@@ -62,9 +62,6 @@ def run_optimizer(prices):
     print(">>> RUN OPTIMIZER CALLED")
 
     try:
-        # -----------------------------
-        # BASIC VALIDATION
-        # -----------------------------
         if prices is None or prices.empty:
             raise ValueError("Price data is empty")
 
@@ -76,43 +73,22 @@ def run_optimizer(prices):
         if cov.isna().any().any():
             raise ValueError("Covariance matrix contains NaN")
 
-        # -----------------------------
-        # MAX SHARPE WEIGHTS
-        # -----------------------------
         w = max_sharpe_weights(returns, cov)
         if np.sum(w) == 0:
             raise ValueError("Optimizer produced zero weights")
 
-        # -----------------------------
-        # RISK PARITY
-        # -----------------------------
         rp = risk_parity_weights(cov)
 
-        # -----------------------------
-        # PERFORMANCE METRICS
-        # -----------------------------
         port_ret = np.dot(w, returns.mean()) * 252
         port_vol = np.sqrt(w @ cov.values @ w) * np.sqrt(252)
         sharpe = port_ret / port_vol if port_vol > 0 else 0
 
-        # -----------------------------
-        # DRAWDOWN
-        # -----------------------------
         dd = compute_drawdown(returns @ w)
 
-        # -----------------------------
-        # MONTE CARLO
-        # -----------------------------
         mc = monte_carlo_simulation(prices, w)
 
-        # -----------------------------
-        # SECTOR WEIGHTS (placeholder)
-        # -----------------------------
         sector_weights = {t: 1/len(w) for t in prices.columns}
 
-        # -----------------------------
-        # RETURN MODEL
-        # -----------------------------
         return {
             "weights": pd.Series(w, index=prices.columns),
             "risk_parity": pd.Series(rp, index=prices.columns),
@@ -134,36 +110,23 @@ def run_optimizer(prices):
 # Rebalancing Backtest
 # ---------------------------------------------------
 def rebalancing_backtest(prices, weights, freq="ME"):
-    """
-    Simple rebalancing backtest.
-    prices: DataFrame of asset prices
-    weights: Series or array of target weights
-    freq: "ME" (month-end), "W" (weekly), "QE" (quarter-end)
-    """
-
     try:
-        # Ensure weights are a Series aligned to columns
         if not isinstance(weights, pd.Series):
             weights = pd.Series(weights, index=prices.columns)
 
-        # Compute returns
         rets = prices.pct_change().dropna()
 
-        # Rebalancing dates
         rb_dates = rets.resample(freq).last().index
 
-        # Portfolio value series
         port_val = pd.Series(index=rets.index, dtype=float)
-        value = 1.0  # start at 1
+        value = 1.0
 
         current_weights = weights.copy()
 
         for date in rets.index:
-            # Rebalance on scheduled dates
             if date in rb_dates:
                 current_weights = weights.copy()
 
-            # Daily portfolio return
             daily_ret = (rets.loc[date] * current_weights).sum()
             value *= (1 + daily_ret)
             port_val.loc[date] = value

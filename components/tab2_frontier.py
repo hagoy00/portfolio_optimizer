@@ -42,4 +42,16 @@ def render_tab2(tab, prices, model):
     # SELECTED PORTFOLIO METRICS
     # ---------------------------------------------------
     if perf:
-        tab.markdown("### Selected Portfolio (Max Shar
+        tab.markdown("### Selected Portfolio (Max Sharpe)")
+
+        col1, col2, col3 = tab.columns(3)
+        col1.metric("Expected Return", f"{perf['return']:.2%}")
+        col2.metric("Volatility", f"{perf['volatility']:.2%}")
+        col3.metric("Sharpe Ratio", f"{perf['sharpe']:.2f}")
+
+    # ---------------------------------------------------
+    # WEIGHTS TABLE
+    # ---------------------------------------------------
+    if weights is not None:
+        tab.markdown("### Optimized Weights")
+        tab.dataframe(weights.rename("Weight"))

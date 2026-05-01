@@ -7,7 +7,7 @@ def render_tab5(tab, prices, model):
     Safe even when model is None.
     """
 
-    tab.subheader("Drawdown Analysis")
+    tab.markdown("## Drawdown Analysis")
 
     if model is None:
         tab.info(
@@ -17,15 +17,45 @@ def render_tab5(tab, prices, model):
         return
 
     try:
-        # Expected future structure:
-        # model["drawdown"] = pd.Series(...)
         dd = model.get("drawdown", None)
 
-        if dd is None:
+        # ---------------------------------------------------
+        # GUARD CLAUSE — missing drawdown data
+        # ---------------------------------------------------
+        if dd is None or isinstance(dd, pd.DataFrame) and dd.empty:
             tab.warning("Model exists but drawdown data is missing.")
             return
 
-        tab.line_chart(dd)
+        # ---------------------------------------------------
+        # CLEAN LAYOUT
+        # ---------------------------------------------------
+        tab.markdown("### Portfolio Drawdown Curve")
+
+        with tab.expander("View Drawdown Chart", expanded=True):
+            tab.line_chart(dd)
+
+        tab.markdown("---")
+
+        # ---------------------------------------------------
+        # OPTIONAL: DRAWdown STATISTICS
+        # ---------------------------------------------------
+        tab.markdown("### Drawdown Statistics")
+
+        max_dd = dd.min().min() if isinstance(dd, pd.DataFrame) else dd.min()
+        recovery_days = dd[dd == 0].shape[0]  # simplistic placeholder
+
+        col1, col2 = tab.columns(2)
+
+        col1.metric("Maximum Drawdown", f"{max_dd:.2%}")
+        col2.metric("Recovery Days", f"{recovery_days}")
+
+        tab.markdown("---")
+
+        # ---------------------------------------------------
+        # EXPANDER: RAW DATA
+        # ---------------------------------------------------
+        with tab.expander("View Raw Drawdown Data", expanded=False):
+            tab.dataframe(dd, hide_index=False)
 
     except Exception as e:
         tab.error(f"Error rendering drawdown analysis: {e}")

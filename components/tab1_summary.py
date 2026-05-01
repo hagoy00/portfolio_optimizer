@@ -19,7 +19,7 @@ def render_tab1(tab, prices, model):
             return
 
         if model is None or "weights" not in model:
-            st.error("Model is missing weights. Cannot compute portfolio summary.")
+        st.error("Model is missing weights. Cannot compute portfolio summary.")
             return
 
         weights = model.get("weights")

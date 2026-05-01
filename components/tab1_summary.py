@@ -4,7 +4,6 @@ import numpy as np
 
 print(">>> USING LATEST tab1_summary.py")
 
-# FIXED SIGNATURE — must accept (tab, prices, model)
 def render_tab1(tab, prices, model):
     tab.markdown("## Portfolio Manager Dashboard")
 
@@ -24,11 +23,14 @@ def render_tab1(tab, prices, model):
     sharpe = perf.get("sharpe", 0)
     max_dd = dd.min().min() if dd is not None else None
 
-    # --- Concentration ---
-    # SAFELY normalize weights
+    # --- Safe weights normalization ---
     print(">>> DEBUG TAB1 weights:", type(weights), weights)
 
-    if weights is None or isinstance(weights, (float, int, np.floating)) or len(weights) == 0:
+    if weights is None:
+        weights = pd.Series(dtype=float)
+    elif isinstance(weights, (float, int, np.floating)):
+        weights = pd.Series(dtype=float)
+    elif isinstance(weights, (list, tuple, np.ndarray)):
         weights = pd.Series(dtype=float)
     else:
         try:
@@ -41,7 +43,7 @@ def render_tab1(tab, prices, model):
     diversification = 1 - top_weight
 
     # ---------------------------------------------------
-    # CLEAN TWO-COLUMN METRIC LAYOUT
+    # METRICS PANEL
     # ---------------------------------------------------
     tab.markdown("### Core Portfolio Metrics")
 
@@ -50,11 +52,10 @@ def render_tab1(tab, prices, model):
     col2.metric("Volatility", f"{vol:.2%}")
     col3.metric("Sharpe Ratio", f"{sharpe:.2f}")
 
-    col4, col5 = tab.columns(2)
+    col4, col5, col6 = tab.columns(3)
     col4.metric("Max Drawdown", f"{max_dd:.2%}" if max_dd is not None else "N/A")
     col5.metric("Largest Position", f"{top_weight:.2%}")
-
-    tab.metric("Diversification Score", f"{diversification:.2%}")
+    col6.metric("Diversification Score", f"{diversification:.2%}")
 
     tab.markdown("---")
 
@@ -66,13 +67,12 @@ def render_tab1(tab, prices, model):
     w_series = weights.sort_values(ascending=False)
 
     with tab.expander("View Allocation Chart", expanded=True):
-    if len(w_series) == 0:
-        tab.info("No weights available to display.")
-    else:
-        chart_df = w_series.to_frame(name="Weight")
-        chart_df.index.name = "Ticker"
-        tab.bar_chart(chart_df)
-
+        if len(w_series) == 0:
+            tab.info("No weights available to display.")
+        else:
+            chart_df = w_series.to_frame(name="Weight")
+            chart_df.index.name = "Ticker"
+            tab.bar_chart(chart_df)
 
     tab.markdown("---")
 
@@ -83,7 +83,9 @@ def render_tab1(tab, prices, model):
         tab.markdown("### Sector Exposure")
 
         with tab.expander("View Sector Breakdown", expanded=False):
-            tab.bar_chart(pd.Series(sector_weights))
+            sector_df = pd.Series(sector_weights, name="Weight")
+            sector_df.index.name = "Sector"
+            tab.bar_chart(sector_df.to_frame())
 
         tab.markdown("---")
 

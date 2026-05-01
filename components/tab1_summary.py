@@ -25,14 +25,9 @@ def render_tab1(tab, prices, model):
     max_dd = dd.min().min() if dd is not None else None
 
     # --- Concentration ---
-    #top_weight = max(weights.values()) if len(weights) > 0 else 0
-    #top_weight = max(weights.values) if len(weights) > 0 else 0
-    # Convert weights to a pandas Series no matter what
+    # Normalize weights to a Series so logic is stable
     weights = pd.Series(weights)
-
     top_weight = weights.max() if len(weights) > 0 else 0
-
-
     diversification = 1 - top_weight
 
     # ---------------------------------------------------
@@ -46,7 +41,7 @@ def render_tab1(tab, prices, model):
     col3.metric("Sharpe Ratio", f"{sharpe:.2f}")
 
     col4, col5, col6 = tab.columns(3)
-    col4.metric("Max Drawdown", f"{max_dd:.2%}" if max_dd else "N/A")
+    col4.metric("Max Drawdown", f"{max_dd:.2%}" if max_dd is not None else "N/A")
     col5.metric("Largest Position", f"{top_weight:.2%}")
     col6.metric("Diversification Score", f"{diversification:.2%}")
 
@@ -57,7 +52,7 @@ def render_tab1(tab, prices, model):
     # ---------------------------------------------------
     tab.markdown("### Allocation Snapshot")
 
-    w_series = pd.Series(weights).sort_values(ascending=False)
+    w_series = weights.sort_values(ascending=False)
 
     with tab.expander("View Allocation Chart", expanded=True):
         tab.bar_chart(w_series)

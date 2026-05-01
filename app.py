@@ -65,9 +65,20 @@ if run_button:
 
     prices = load_price_data(tickers, start_date, end_date)
 
-    if prices is None or prices.empty:
-        st.error("Failed to load price data.")
+    if prices is None:
+    st.error("Failed to load price data (None returned).")
+    st.stop()
+
+# Check if at least one ticker has valid Adj Close data
+try:
+    adj = prices.xs("Adj Close", level=1, axis=1)
+    if adj.dropna(how="all").empty:
+        st.error("Failed to load price data (no Adj Close values).")
         st.stop()
+except Exception:
+    st.error("Failed to load price data (Adj Close missing).")
+    st.stop()
+
 
     model = run_optimizer(prices)
     if model is None:

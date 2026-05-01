@@ -1,3 +1,4 @@
+print(">>> LOADED optimizer_core.py FROM:", __file__)
 def run_optimizer(prices):
     print(">>> RUN OPTIMIZER CALLED")   # Debug print
 

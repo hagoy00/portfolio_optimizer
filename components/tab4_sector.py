@@ -2,32 +2,53 @@ import streamlit as st
 import pandas as pd
 
 def render_tab4(tab, prices, model):
-    tab.markdown("## Sector Exposure")
+    tab.header("Sector Exposure")
 
+    # ---------------------------------------------------
+    # GUARD CLAUSES
+    # ---------------------------------------------------
     if model is None:
-        tab.info("Run optimization to generate sector exposure.")
+        tab.info("Run optimization to see sector exposure.")
         return
 
-    sector_weights = model.get("sector_weights", {})
+    sector_weights = model.get("sector_weights", None)
 
-    if not sector_weights:
-        tab.warning("Sector weights unavailable.")
+    if sector_weights is None:
+        tab.warning("Sector weights not available.")
         return
 
-    sw = pd.Series(sector_weights).sort_values(ascending=False)
+    if isinstance(sector_weights, pd.Series):
+        sw = sector_weights.dropna()
+    else:
+        tab.error("Sector weights must be a pandas Series.")
+        return
 
-    with tab.expander("View Sector Breakdown", expanded=True):
-        tab.bar_chart(sw)
+    if sw.empty:
+        tab.warning("Sector weights are empty.")
+        return
 
-    tab.markdown("---")
+    # ---------------------------------------------------
+    # CONVERT TO DATAFRAME FOR STREAMLIT
+    # ---------------------------------------------------
+    df_sw = (
+        sw.reset_index()
+          .rename(columns={"index": "Sector", 0: "Weight"})
+    )
 
-    tab.markdown("### Commentary")
+    # Ensure correct column names
+    if "Sector" not in df_sw.columns or "Weight" not in df_sw.columns:
+        tab.error("Sector weight data is malformed.")
+        return
 
-    commentary = f"""
-The portfolio shows diversified exposure across sectors, with the largest allocation in 
-**{sw.index[0]}** at **{sw.iloc[0]:.2%}**. This distribution supports balanced risk and 
-reduces concentration in any single economic segment.
-"""
+    # ---------------------------------------------------
+    # DISPLAY
+    # ---------------------------------------------------
+    tab.subheader("Sector Allocation")
 
-    with tab.expander("Read Commentary", expanded=True):
-        tab.markdown(commentary)
+    tab.bar_chart(df_sw, x="Sector", y="Weight")
+
+    tab.dataframe(
+        df_sw.style.format({
+            "Weight": "{:.2%}"
+        })
+    )

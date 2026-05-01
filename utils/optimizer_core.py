@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+print(">>> USING optimizer_core.py FROM:", __file__)
 
 # ---------------------------------------------------
 # HELPER: Compute portfolio performance

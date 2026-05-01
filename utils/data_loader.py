@@ -2,14 +2,6 @@ import pandas as pd
 import yfinance as yf
 
 def load_price_data(tickers, start_date, end_date):
-    """
-    Robust price loader that:
-    - Downloads OHLCV for all tickers
-    - Keeps partial data
-    - Ensures Close & Adj Close exist
-    - Returns a clean MultiIndex DataFrame
-    """
-
     if not tickers:
         return None
 
@@ -55,10 +47,7 @@ def load_price_data(tickers, start_date, end_date):
         if not cleaned:
             return None
 
-        # Rebuild MultiIndex DataFrame
         final = pd.concat(cleaned, axis=1)
-
-        # Drop rows where all tickers are NaN
         final = final.dropna(how="all")
 
         return final

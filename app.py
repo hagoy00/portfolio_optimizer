@@ -58,4 +58,5 @@ if run_button:
         if model is None:
             st.error("Optimization failed.")
         else:
-            sector_weights =
+            sector_weights = model.get("sector_weights", None)
+

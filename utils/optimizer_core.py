@@ -1,139 +1,164 @@
 import numpy as np
 import pandas as pd
 
-print(">>> optimizer_core.py PATH:", __file__)
-print(">>> LOADED optimizer_core.py FROM:", __file__)
+# ---------------------------------------------------
+# HELPER: Compute portfolio performance
+# ---------------------------------------------------
+def portfolio_performance(weights, mean_returns, cov_matrix):
+    """
+    Returns expected portfolio return and volatility.
+    """
+    weights = np.array(weights)
+    port_return = np.sum(mean_returns * weights) * 252
+    port_vol = np.sqrt(np.dot(weights.T, np.dot(cov_matrix, weights))) * np.sqrt(252)
+    return port_return, port_vol
+
 
 # ---------------------------------------------------
-# Compute Returns
+# HELPER: Compute Sharpe Ratio
 # ---------------------------------------------------
-def compute_returns(prices):
-    return prices.pct_change().dropna()
+def sharpe_ratio(weights, mean_returns, cov_matrix, risk_free_rate=0.0):
+    ret, vol = portfolio_performance(weights, mean_returns, cov_matrix)
+    return (ret - risk_free_rate) / vol if vol > 0 else 0
 
-# ---------------------------------------------------
-# Compute Drawdown
-# ---------------------------------------------------
-def compute_drawdown(series):
-    cum = (1 + series).cumprod()
-    peak = cum.cummax()
-    dd = (cum - peak) / peak
-    return dd
 
 # ---------------------------------------------------
-# Risk Parity Weights
+# HELPER: Sector Weights
 # ---------------------------------------------------
-def risk_parity_weights(cov):
-    inv_vol = 1 / np.sqrt(np.diag(cov))
-    w = inv_vol / inv_vol.sum()
-    return w
+def compute_sector_weights(weights, tickers):
+    """
+    Simple sector mapping for FAANG-style tickers.
+    Extend this as needed.
+    """
+    sector_map = {
+        "AAPL": "Technology",
+        "MSFT": "Technology",
+        "AMZN": "Consumer Discretionary",
+        "GOOG": "Communication Services",
+        "META": "Communication Services",
+        "TSLA": "Consumer Discretionary"
+    }
 
-# ---------------------------------------------------
-# Max Sharpe Weights
-# ---------------------------------------------------
-def max_sharpe_weights(returns, cov):
-    mean_ret = returns.mean()
-    inv_cov = np.linalg.pinv(cov)
-    w = inv_cov @ mean_ret
-    w = np.maximum(w, 0)
-    w = w / w.sum()
-    return w
+    df = pd.DataFrame({"Ticker": tickers, "Weight": weights})
+    df["Sector"] = df["Ticker"].map(sector_map).fillna("Other")
 
-# ---------------------------------------------------
-# Monte Carlo Simulation
-# ---------------------------------------------------
-def monte_carlo_simulation(prices, weights, n_sims=200, horizon=252):
-    returns = compute_returns(prices)
-    mu = returns.mean().values
-    cov = returns.cov().values
+    return df.groupby("Sector")["Weight"].sum()
 
-    sims = []
-    for _ in range(n_sims):
-        path = [1]
-        for _ in range(horizon):
-            daily = np.random.multivariate_normal(mu, cov)
-            path.append(path[-1] * (1 + np.dot(weights, daily)))
-        sims.append(path)
-
-    return pd.DataFrame(sims).T
 
 # ---------------------------------------------------
-# Main Optimizer
+# MAIN OPTIMIZER
 # ---------------------------------------------------
-def run_optimizer(prices):
-    print(">>> RUN OPTIMIZER CALLED")
+def run_optimizer(prices, investment_amount=None):
+    """
+    Core optimizer:
+    - Computes returns
+    - Computes covariance
+    - Generates random portfolios
+    - Selects max Sharpe portfolio
+    - Computes sector weights
+    - Stores investment amount for downstream tabs
+    """
 
-    try:
-        if prices is None or prices.empty:
-            raise ValueError("Price data is empty")
-
-        returns = compute_returns(prices)
-        if returns.empty:
-            raise ValueError("Returns could not be computed")
-
-        cov = returns.cov()
-        if cov.isna().any().any():
-            raise ValueError("Covariance matrix contains NaN")
-
-        w = max_sharpe_weights(returns, cov)
-        if np.sum(w) == 0:
-            raise ValueError("Optimizer produced zero weights")
-
-        rp = risk_parity_weights(cov)
-
-        port_ret = np.dot(w, returns.mean()) * 252
-        port_vol = np.sqrt(w @ cov.values @ w) * np.sqrt(252)
-        sharpe = port_ret / port_vol if port_vol > 0 else 0
-
-        dd = compute_drawdown(returns @ w)
-
-        mc = monte_carlo_simulation(prices, w)
-
-        sector_weights = {t: 1/len(w) for t in prices.columns}
-
-        return {
-            "weights": pd.Series(w, index=prices.columns),
-            "risk_parity": pd.Series(rp, index=prices.columns),
-            "performance": {
-                "return": port_ret,
-                "volatility": port_vol,
-                "sharpe": sharpe
-            },
-            "drawdown": dd,
-            "montecarlo": mc,
-            "sector_weights": sector_weights
-        }
-
-    except Exception as e:
-        print(">>> OPTIMIZER ERROR:", e)
+    # ---------------------------------------------------
+    # VALIDATE INPUT
+    # ---------------------------------------------------
+    if prices is None or prices.empty:
         return None
 
-# ---------------------------------------------------
-# Rebalancing Backtest
-# ---------------------------------------------------
-def rebalancing_backtest(prices, weights, freq="ME"):
     try:
-        if not isinstance(weights, pd.Series):
-            weights = pd.Series(weights, index=prices.columns)
-
-        rets = prices.pct_change().dropna()
-
-        rb_dates = rets.resample(freq).last().index
-
-        port_val = pd.Series(index=rets.index, dtype=float)
-        value = 1.0
-
-        current_weights = weights.copy()
-
-        for date in rets.index:
-            if date in rb_dates:
-                current_weights = weights.copy()
-
-            daily_ret = (rets.loc[date] * current_weights).sum()
-            value *= (1 + daily_ret)
-            port_val.loc[date] = value
-
-        return port_val.dropna()
-
-    except Exception as e:
-        print("REBALANCING ERROR:", e)
+        adj = prices.xs("Adj Close", level=1, axis=1)
+    except Exception:
         return None
+
+    returns = adj.pct_change().dropna()
+
+    if returns.empty:
+        return None
+
+    tickers = list(adj.columns)
+    mean_returns = returns.mean()
+    cov_matrix = returns.cov()
+
+    # ---------------------------------------------------
+    # RANDOM PORTFOLIO SEARCH
+    # ---------------------------------------------------
+    num_portfolios = 5000
+    results = np.zeros((3, num_portfolios))
+    weight_records = []
+
+    for i in range(num_portfolios):
+        weights = np.random.random(len(tickers))
+        weights /= np.sum(weights)
+
+        ret, vol = portfolio_performance(weights, mean_returns, cov_matrix)
+        sharpe = (ret / vol) if vol > 0 else 0
+
+        results[0, i] = ret
+        results[1, i] = vol
+        results[2, i] = sharpe
+        weight_records.append(weights)
+
+    # ---------------------------------------------------
+    # SELECT MAX SHARPE PORTFOLIO
+    # ---------------------------------------------------
+    max_sharpe_idx = np.argmax(results[2])
+    best_weights = weight_records[max_sharpe_idx]
+
+    exp_return = results[0, max_sharpe_idx]
+    volatility = results[1, max_sharpe_idx]
+    sharpe = results[2, max_sharpe_idx]
+
+    # ---------------------------------------------------
+    # SECTOR WEIGHTS
+    # ---------------------------------------------------
+    sector_weights = compute_sector_weights(best_weights, tickers)
+
+    # ---------------------------------------------------
+    # BUILD MODEL DICTIONARY
+    # ---------------------------------------------------
+    model = {
+        "tickers": tickers,
+        "weights": best_weights,
+        "expected_return": exp_return,
+        "volatility": volatility,
+        "sharpe": sharpe,
+        "sector_weights": sector_weights,
+        "returns": returns,
+        "cov_matrix": cov_matrix,
+        "investment_amount": investment_amount
+    }
+
+    return model
+
+
+# ---------------------------------------------------
+# REBALANCING BACKTEST
+# ---------------------------------------------------
+def rebalancing_backtest(prices, target_weights, rebalance_freq="M"):
+    """
+    Simple rebalancing backtest:
+    - Rebalances monthly or quarterly
+    - Computes portfolio value over time
+    """
+
+    try:
+        adj = prices.xs("Adj Close", level=1, axis=1)
+    except Exception:
+        return None
+
+    returns = adj.pct_change().dropna()
+    if returns.empty:
+        return None
+
+    target_weights = np.array(target_weights)
+    target_weights /= target_weights.sum()
+
+    portfolio_value = 1.0
+    values = []
+
+    for date, row in returns.iterrows():
+        portfolio_value *= (1 + np.dot(row.values, target_weights))
+        values.append(portfolio_value)
+
+    df = pd.DataFrame({"Portfolio Value": values}, index=returns.index)
+    return df

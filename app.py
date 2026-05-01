@@ -1,5 +1,7 @@
 import streamlit as st
 import pandas as pd
+import yfinance as yf
+
 from utils.data_loader import load_price_data
 from utils.optimizer_core import run_optimizer
 
@@ -23,7 +25,8 @@ st.set_page_config(
 )
 
 st.title("Portfolio Optimizer Dashboard")
-import yfinance as yf
+
+# TEMP TEST
 st.write("TEST AAPL:", yf.download("AAPL", start="2024-01-01", end="2024-02-01"))
 
 # ---------------------------------------------------
@@ -40,7 +43,6 @@ tickers_input = st.sidebar.text_input(
 start_date = st.sidebar.date_input("Start Date", pd.to_datetime("2015-01-01"))
 end_date = st.sidebar.date_input("End Date", pd.to_datetime("today"))
 
-# ✅ ADD THIS HERE
 investment_amount = st.sidebar.slider(
     "How much would you like to invest ($)?",
     min_value=1000,
@@ -52,7 +54,6 @@ investment_amount = st.sidebar.slider(
 
 run_button = st.sidebar.button("Run Optimization")
 
-
 # ---------------------------------------------------
 # LOAD DATA
 # ---------------------------------------------------
@@ -61,26 +62,32 @@ model = None
 sector_weights = None
 
 if run_button:
+
     tickers = [t.strip().upper() for t in tickers_input.split(",") if t.strip()]
 
     prices = load_price_data(tickers, start_date, end_date)
 
+    # -------------------------------
+    # VALIDATE PRICE DATA
+    # -------------------------------
     if prices is None:
-    st.error("Failed to load price data (None returned).")
-    st.stop()
-
-# Check if at least one ticker has valid Adj Close data
-try:
-    adj = prices.xs("Adj Close", level=1, axis=1)
-    if adj.dropna(how="all").empty:
-        st.error("Failed to load price data (no Adj Close values).")
+        st.error("Failed to load price data (None returned).")
         st.stop()
-except Exception:
-    st.error("Failed to load price data (Adj Close missing).")
-    st.stop()
 
+    try:
+        adj = prices.xs("Adj Close", level=1, axis=1)
+        if adj.dropna(how="all").empty:
+            st.error("Failed to load price data (no Adj Close values).")
+            st.stop()
+    except Exception:
+        st.error("Failed to load price data (Adj Close missing).")
+        st.stop()
 
-    model = run_optimizer(prices)
+    # -------------------------------
+    # RUN OPTIMIZER
+    # -------------------------------
+    model = run_optimizer(prices, investment_amount=investment_amount)
+
     if model is None:
         st.error("Optimization failed.")
         st.stop()
@@ -102,7 +109,7 @@ tabs = st.tabs([
     "Buy Analysis"
 ])
 
-if model is not None and prices is not None and not prices.empty:
+if model is not None and prices is not None:
     render_tab1(tabs[0], prices, model)
     render_tab2(tabs[1], prices, model)
     render_tab3(tabs[2], prices, model)
@@ -114,4 +121,3 @@ if model is not None and prices is not None and not prices.empty:
     render_tab9(tabs[8], prices)
 else:
     tabs[0].info("Set your settings in the sidebar and click **Run Optimization** to see results.")
-

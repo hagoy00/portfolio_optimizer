@@ -97,3 +97,47 @@ def run_optimizer(prices):
     except Exception as e:
         print("OPTIMIZER ERROR:", e)
         return None
+
+# ---------------------------------------------------
+# Rebalancing Backtest
+# ---------------------------------------------------
+def rebalancing_backtest(prices, weights, freq="ME"):
+    """
+    Simple rebalancing backtest.
+    prices: DataFrame of asset prices
+    weights: Series or array of target weights
+    freq: "ME" (month-end), "W" (weekly), "QE" (quarter-end)
+    """
+
+    try:
+        # Ensure weights are a Series aligned to columns
+        if not isinstance(weights, pd.Series):
+            weights = pd.Series(weights, index=prices.columns)
+
+        # Compute returns
+        rets = prices.pct_change().dropna()
+
+        # Rebalancing dates
+        rb_dates = rets.resample(freq).last().index
+
+        # Portfolio value series
+        port_val = pd.Series(index=rets.index, dtype=float)
+        value = 1.0  # start at 1
+
+        current_weights = weights.copy()
+
+        for date in rets.index:
+            # Rebalance on scheduled dates
+            if date in rb_dates:
+                current_weights = weights.copy()
+
+            # Daily portfolio return
+            daily_ret = (rets.loc[date] * current_weights).sum()
+            value *= (1 + daily_ret)
+            port_val.loc[date] = value
+
+        return port_val.dropna()
+
+    except Exception as e:
+        print("REBALANCING ERROR:", e)
+        return None

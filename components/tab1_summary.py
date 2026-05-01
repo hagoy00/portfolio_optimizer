@@ -25,7 +25,9 @@ def render_tab1(tab, prices, model):
     max_dd = dd.min().min() if dd is not None else None
 
     # --- Concentration ---
-    top_weight = max(weights.values()) if len(weights) > 0 else 0
+    #top_weight = max(weights.values()) if len(weights) > 0 else 0
+    top_weight = max(weights.values) if len(weights) > 0 else 0
+
     diversification = 1 - top_weight
 
     # ---------------------------------------------------

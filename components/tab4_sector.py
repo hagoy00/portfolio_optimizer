@@ -1,60 +1,33 @@
 import streamlit as st
 import pandas as pd
 
-def render_tab4(tab, sector_weights):
-    """
-    Sector Exposure tab.
-    Safe even when sector_weights is None.
-    """
-
+def render_tab4(tab, prices, model):
     tab.markdown("## Sector Exposure")
 
-    # ---------------------------------------------------
-    # GUARD CLAUSE — no sector data
-    # ---------------------------------------------------
-    if sector_weights is None or len(sector_weights) == 0:
-        tab.info(
-            "Sector exposure will appear here once the optimization model "
-            "and sector mapping are available."
-        )
+    if model is None:
+        tab.info("Run optimization to generate sector exposure.")
         return
 
-    try:
-        # Convert to DataFrame
-        df = pd.DataFrame.from_dict(
-            sector_weights, orient="index", columns=["Weight"]
-        ).sort_values("Weight", ascending=False)
+    sector_weights = model.get("sector_weights", {})
 
-        # ---------------------------------------------------
-        # CLEAN LAYOUT
-        # ---------------------------------------------------
-        tab.markdown("### Sector Allocation Breakdown")
+    if not sector_weights:
+        tab.warning("Sector weights unavailable.")
+        return
 
-        col1, col2 = tab.columns([2, 3])
+    sw = pd.Series(sector_weights).sort_values(ascending=False)
 
-        # --- Column 1: Sector Table ---
-        with col1:
-            tab.markdown("#### Sector Weights")
-            tab.dataframe(
-                df.style.format({"Weight": "{:.2%}"}),
-                hide_index=False
-            )
+    with tab.expander("View Sector Breakdown", expanded=True):
+        tab.bar_chart(sw)
 
-        # --- Column 2: Sector Chart ---
-        with col2:
-            tab.markdown("#### Sector Chart")
-            tab.bar_chart(df)
+    tab.markdown("---")
 
-        tab.markdown("---")
+    tab.markdown("### Commentary")
 
-        # ---------------------------------------------------
-        # EXPANDER: RAW DATA
-        # ---------------------------------------------------
-        with tab.expander("View Raw Sector Data", expanded=False):
-            tab.dataframe(
-                df.style.format({"Weight": "{:.2%}"}),
-                hide_index=False
-            )
+    commentary = f"""
+The portfolio shows diversified exposure across sectors, with the largest allocation in 
+**{sw.index[0]}** at **{sw.iloc[0]:.2%}**. This distribution supports balanced risk and 
+reduces concentration in any single economic segment.
+"""
 
-    except Exception as e:
-        tab.error(f"Error rendering sector exposure: {e}")
+    with tab.expander("Read Commentary", expanded=True):
+        tab.markdown(commentary)

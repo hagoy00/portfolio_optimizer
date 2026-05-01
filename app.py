@@ -23,6 +23,8 @@ st.set_page_config(
 )
 
 st.title("Portfolio Optimizer Dashboard")
+import yfinance as yf
+st.write("TEST AAPL:", yf.download("AAPL", start="2024-01-01", end="2024-02-01"))
 
 # ---------------------------------------------------
 # SIDEBAR — Ticker Input

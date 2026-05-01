@@ -60,32 +60,30 @@ def render_tab1(tab, prices, model):
     tab.markdown("---")
 
     # ---------------------------------------------------
-    # ALLOCATION SNAPSHOT
+    # ALLOCATION SNAPSHOT (TABLE ONLY – NO CHART)
     # ---------------------------------------------------
     tab.markdown("### Allocation Snapshot")
 
-    w_series = weights.sort_values(ascending=False)
-
-    with tab.expander("View Allocation Chart", expanded=True):
-        if len(w_series) == 0:
-            tab.info("No weights available to display.")
-        else:
-            chart_df = w_series.to_frame(name="Weight")
-            chart_df.index.name = "Ticker"
-            tab.bar_chart(chart_df)
+    if len(weights) == 0:
+        tab.info("No weights available to display.")
+    else:
+        w_series = weights.sort_values(ascending=False)
+        alloc_df = w_series.to_frame(name="Weight")
+        alloc_df.index.name = "Ticker"
+        tab.dataframe(alloc_df.style.format({"Weight": "{:.2%}"}))
 
     tab.markdown("---")
 
     # ---------------------------------------------------
-    # SECTOR EXPOSURE
+    # SECTOR EXPOSURE (TABLE ONLY – NO CHART)
     # ---------------------------------------------------
     if sector_weights:
         tab.markdown("### Sector Exposure")
 
-        with tab.expander("View Sector Breakdown", expanded=False):
-            sector_df = pd.Series(sector_weights, name="Weight")
-            sector_df.index.name = "Sector"
-            tab.bar_chart(sector_df.to_frame())
+        sector_series = pd.Series(sector_weights, name="Weight")
+        sector_series.index.name = "Sector"
+        sector_df = sector_series.to_frame()
+        tab.dataframe(sector_df.style.format({"Weight": "{:.2%}"}))
 
         tab.markdown("---")
 

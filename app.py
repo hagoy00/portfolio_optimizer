@@ -1,7 +1,8 @@
 import streamlit as st
 import pandas as pd
 from utils.data_loader import load_price_data
-from utils.optimizer import run_optimizer
+#from utils.optimizer import run_optimizer
+from utils.optimizer_core import run_optimizer
 
 # Import tab components
 from components.tab1_summary import render_tab1

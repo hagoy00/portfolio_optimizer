@@ -3,11 +3,11 @@ import yfinance as yf
 
 def load_price_data(tickers, start_date, end_date):
     """
-    Downloads OHLCV data for multiple tickers using yfinance.
-    Always returns a clean MultiIndex DataFrame:
-        columns = (Ticker, Field)
-    Ensures both 'Close' and 'Adj Close' exist.
-    Removes tickers with incomplete data.
+    Robust price loader that:
+    - Downloads OHLCV for all tickers
+    - Keeps partial data
+    - Ensures Close & Adj Close exist
+    - Returns a clean MultiIndex DataFrame
     """
 
     if not tickers:
@@ -26,46 +26,42 @@ def load_price_data(tickers, start_date, end_date):
         if data is None or data.empty:
             return None
 
-        # If only one ticker → wrap into MultiIndex
+        # Wrap single ticker into MultiIndex
         if isinstance(data.columns, pd.Index):
             data = pd.concat({tickers[0]: data}, axis=1)
 
-        # Keep only tickers that actually downloaded
-        valid = [t for t in tickers if t in data.columns.levels[0]]
-        if not valid:
-            return None
+        cleaned = {}
 
-        data = data[valid]
-
-        cleaned = []
-
-        for t in valid:
-            fields = data[t].columns
-
-            # Skip tickers with no usable price data
-            if ("Close" not in fields) and ("Adj Close" not in fields):
+        for t in tickers:
+            if t not in data.columns.levels[0]:
                 continue
 
-            # If Close missing → use Adj Close
-            if "Close" not in fields and "Adj Close" in fields:
-                data[(t, "Close")] = data[(t, "Adj Close")]
+            df = data[t].copy()
 
-            # If Adj Close missing → use Close
-            if "Adj Close" not in fields and "Close" in fields:
-                data[(t, "Adj Close")] = data[(t, "Close")]
+            # Ensure Close exists
+            if "Close" not in df.columns and "Adj Close" in df.columns:
+                df["Close"] = df["Adj Close"]
 
-            cleaned.append(t)
+            # Ensure Adj Close exists
+            if "Adj Close" not in df.columns and "Close" in df.columns:
+                df["Adj Close"] = df["Close"]
 
-        # Keep only cleaned tickers
+            # Skip tickers with no usable data
+            if "Close" not in df.columns or df["Close"].dropna().empty:
+                continue
+
+            cleaned[t] = df
+
         if not cleaned:
             return None
 
-        data = data[cleaned]
+        # Rebuild MultiIndex DataFrame
+        final = pd.concat(cleaned, axis=1)
 
-        # Drop rows where all tickers have NaN
-        data = data.dropna(how="all")
+        # Drop rows where all tickers are NaN
+        final = final.dropna(how="all")
 
-        return data
+        return final
 
     except Exception:
         return None

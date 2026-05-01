@@ -89,12 +89,16 @@ tabs = st.tabs([
     "Buy Analysis"
 ])
 
-render_tab1(tabs[0], prices, model)
-render_tab2(tabs[1], prices, model)
-render_tab3(tabs[2], prices, model)
-render_tab4(tabs[3], prices, model)
-render_tab5(tabs[4], prices, model)
-render_tab6(tabs[5], prices, model)
-render_tab7(tabs[6], prices, model)
-render_tab8(tabs[7], model, sector_weights)
-render_tab9(tabs[8], prices)
+if model is not None and prices is not None and not prices.empty:
+    render_tab1(tabs[0], prices, model)
+    render_tab2(tabs[1], prices, model)
+    render_tab3(tabs[2], prices, model)
+    render_tab4(tabs[3], prices, model)
+    render_tab5(tabs[4], prices, model)
+    render_tab6(tabs[5], prices, model)
+    render_tab7(tabs[6], prices, model)
+    render_tab8(tabs[7], model, sector_weights)
+    render_tab9(tabs[8], prices)
+else:
+    tabs[0].info("Set your settings in the sidebar and click **Run Optimization** to see results.")
+

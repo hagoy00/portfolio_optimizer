@@ -2,107 +2,101 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 
-print(">>> USING LATEST tab1_summary.py")
+# ---------------------------------------------------------
+# TAB 1 — PORTFOLIO SUMMARY
+# ---------------------------------------------------------
 
 def render_tab1(tab, prices, model):
-    tab.markdown("## Portfolio Manager Dashboard")
+    with tab:
 
-    if model is None:
-        tab.info("Run optimization to generate portfolio metrics.")
-        return
+        st.header("Portfolio Manager Dashboard")
 
-    # Extract model components
-    perf = model.get("performance", {})
-    dd = model.get("drawdown", None)
-    weights = model.get("weights", {})
-    sector_weights = model.get("sector_weights", {})
+        # -----------------------------
+        # GUARD CLAUSES
+        # -----------------------------
+        if prices is None or prices.empty:
+            st.error("Price data is missing. Cannot compute portfolio summary.")
+            return
 
-    # --- Core Metrics ---
-    exp_ret = perf.get("return", 0)
-    vol = perf.get("volatility", 0)
-    sharpe = perf.get("sharpe", 0)
-    max_dd = dd.min().min() if dd is not None else None
+        if model is None or "weights" not in model:
+            st.error("Model is missing weights. Cannot compute portfolio summary.")
+            return
 
-    # --- Safe weights normalization ---
-    print(">>> DEBUG TAB1 weights:", type(weights), weights)
+        weights = model["weights"]
 
-    if weights is None:
-        weights = pd.Series(dtype=float)
-    elif isinstance(weights, (float, int, np.floating)):
-        weights = pd.Series(dtype=float)
-    elif isinstance(weights, (list, tuple, np.ndarray)):
-        weights = pd.Series(dtype=float)
-    else:
-        try:
-            weights = pd.Series(weights)
-        except Exception:
-            print(">>> ERROR: Invalid weights:", type(weights), weights)
-            weights = pd.Series(dtype=float)
+        if isinstance(weights, pd.Series):
+            weights = weights.dropna()
+        else:
+            st.error("Weights must be a pandas Series.")
+            return
 
-    top_weight = weights.max() if len(weights) > 0 else 0
-    diversification = 1 - top_weight
+        if weights.empty:
+            st.error("Weights are empty. Cannot compute portfolio summary.")
+            return
 
-    # ---------------------------------------------------
-    # METRICS PANEL
-    # ---------------------------------------------------
-    tab.markdown("### Core Portfolio Metrics")
+        # -----------------------------
+        # CORE METRICS
+        # -----------------------------
+        returns = prices.pct_change().dropna()
 
-    col1, col2, col3 = tab.columns(3)
-    col1.metric("Expected Return", f"{exp_ret:.2%}")
-    col2.metric("Volatility", f"{vol:.2%}")
-    col3.metric("Sharpe Ratio", f"{sharpe:.2f}")
+        # Expected return
+        exp_return = np.sum(weights * returns.mean() * 252)
 
-    col4, col5, col6 = tab.columns(3)
-    col4.metric("Max Drawdown", f"{max_dd:.2%}" if max_dd is not None else "N/A")
-    col5.metric("Largest Position", f"{top_weight:.2%}")
-    col6.metric("Diversification Score", f"{diversification:.2%}")
+        # Volatility
+        vol = np.sqrt(np.dot(weights.T, np.dot(returns.cov() * 252, weights)))
 
-    tab.markdown("---")
+        # Sharpe ratio
+        sharpe = exp_return / vol if vol > 0 else 0
 
-    # ---------------------------------------------------
-    # ALLOCATION SNAPSHOT (TABLE ONLY – NO CHART)
-    # ---------------------------------------------------
-    tab.markdown("### Allocation Snapshot")
+        # Max drawdown
+        cumulative = (1 + returns.dot(weights)).cumprod()
+        running_max = cumulative.cummax()
+        drawdown = (cumulative - running_max) / running_max
+        max_dd = drawdown.min()
 
-    if len(weights) == 0:
-        tab.info("No weights available to display.")
-    else:
-        w_series = weights.sort_values(ascending=False)
-        alloc_df = w_series.to_frame(name="Weight")
-        alloc_df.index.name = "Ticker"
-        tab.dataframe(alloc_df.style.format({"Weight": "{:.2%}"}))
+        # Largest position
+        largest_pos = weights.max()
 
-    tab.markdown("---")
+        # Diversification score (simple inverse concentration)
+        diversification = 1 - largest_pos
 
-    # ---------------------------------------------------
-    # SECTOR EXPOSURE (TABLE ONLY – NO CHART)
-    # ---------------------------------------------------
-    if sector_weights:
-        tab.markdown("### Sector Exposure")
+        # -----------------------------
+        # METRICS DISPLAY
+        # -----------------------------
+        col1, col2, col3 = st.columns(3)
+        col4, col5, col6 = st.columns(3)
 
-        sector_series = pd.Series(sector_weights, name="Weight")
-        sector_series.index.name = "Sector"
-        sector_df = sector_series.to_frame()
-        tab.dataframe(sector_df.style.format({"Weight": "{:.2%}"}))
+        col1.metric("Expected Return", f"{exp_return:.2%}")
+        col2.metric("Volatility", f"{vol:.2%}")
+        col3.metric("Sharpe Ratio", f"{sharpe:.2f}")
 
-        tab.markdown("---")
+        col4.metric("Max Drawdown", f"{max_dd:.2%}")
+        col5.metric("Largest Position", f"{largest_pos:.2%}")
+        col6.metric("Diversification Score", f"{diversification:.2%}")
 
-    # ---------------------------------------------------
-    # PM COMMENTARY
-    # ---------------------------------------------------
-    tab.markdown("### Portfolio Manager Commentary")
+        st.divider()
 
-    commentary = f"""
-The portfolio demonstrates a **Sharpe ratio of {sharpe:.2f}**, supported by an expected return of 
-**{exp_ret:.2%}** and volatility of **{vol:.2%}**. Drawdown behavior remains controlled with a 
-maximum drawdown of **{max_dd:.2%}**, indicating stable downside risk.
+        # -----------------------------
+        # ALLOCATION SNAPSHOT
+        # -----------------------------
+        st.subheader("Allocation Snapshot")
 
-Positioning shows moderate concentration with the largest weight at **{top_weight:.2%}**, 
-resulting in a diversification score of **{diversification:.2%}**. Sector exposure is balanced 
-and aligned with favorable risk‑adjusted characteristics.
+        if st.button("View Allocation Chart"):
 
-Overall, the portfolio is positioned for efficient growth with controlled risk.
-"""
+            if weights is None or len(weights) == 0:
+                st.warning("No weights available to plot.")
+            else:
+                df_alloc = (
+                    weights.reset_index()
+                           .rename(columns={"index": "Ticker", 0: "Weight"})
+                )
 
-    with tab.expander("Read Commentary", expanded=True):
-        tab.markdown(commentary)
+                # Ensure correct column names
+                if "Ticker" not in df_alloc.columns or "Weight" not in df_alloc.columns:
+                    st.error("Allocation data is malformed.")
+                else:
+                    st.bar_chart(df_alloc, x="Ticker", y="Weight")
+
+        st.divider()
+
+        st.caption("Tab 1 — Summary Overview")

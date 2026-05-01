@@ -60,6 +60,10 @@ if run_button:
             st.error("Optimization failed.")
         else:
             sector_weights = model.get("sector_weights", None)
+            if prices is None or prices.empty:
+    st.error("No price data loaded. Check tickers or date range.")
+    st.stop()
+
 
 # ---------------------------------------------------
 # TABS

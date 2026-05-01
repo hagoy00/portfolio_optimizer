@@ -1,75 +1,41 @@
 import streamlit as st
 import pandas as pd
-
-print(">>> LOADED tab7_rebalancing.py FROM:", __file__)
-print(">>> tab7_rebalancing.py PATH:", __file__)
-
 from utils.optimizer_core import rebalancing_backtest
-
-# inside render_tab7 or equivalent:
-result = rebalancing_backtest(prices, model["weights"], freq=freq)
 
 def render_tab7(tab, prices, model):
     tab.markdown("## Rebalancing Backtest")
 
-    if model is None:
-        tab.info("Run optimization to see rebalancing results.")
+    if prices is None or model is None:
+        tab.info("Run optimization first.")
         return
 
-    # ---------------------------------------------------
-    # FREQUENCY SELECTION
-    # ---------------------------------------------------
-    tab.markdown("### Rebalancing Settings")
+    weights = model.get("weights")
+    if weights is None:
+        tab.error("Weights missing from model.")
+        return
 
+    # Frequency selector
     freq = tab.selectbox(
         "Rebalancing Frequency",
-        ["ME", "W", "Q"],
+        ["M", "Q", "A"],
         index=0,
-        help="ME = Month-End, W = Weekly, Q = Quarterly"
+        help="M = Monthly, Q = Quarterly, A = Annual"
     )
 
-    # Convert Q → QE (Pandas requirement)
-    freq_map = {"Q": "QE", "ME": "ME", "W": "W"}
-    freq = freq_map[freq]
-
-    # ---------------------------------------------------
-    # RUN BACKTEST
-    # ---------------------------------------------------
+    # Run backtest
     try:
-        rb = rebalancing_backtest(prices, model["weights"], freq=freq)
+        result = rebalancing_backtest(
+            prices,
+            weights,
+            freq=freq  # works with our tolerant function
+        )
     except Exception as e:
         tab.error(f"Rebalancing failed: {e}")
         return
 
-    if rb is None or rb.empty:
-        tab.warning("Rebalancing results unavailable.")
+    if result is None or result.empty:
+        tab.warning("Rebalancing returned no data.")
         return
 
-    # ---------------------------------------------------
-    # CHART
-    # ---------------------------------------------------
     tab.markdown("### Portfolio Value Over Time")
-
-    with tab.expander("View Rebalancing Chart", expanded=True):
-        tab.line_chart(rb)
-
-    tab.markdown("---")
-
-    # ---------------------------------------------------
-    # METRICS PANEL
-    # ---------------------------------------------------
-    tab.markdown("### Backtest Summary")
-
-    final_value = rb.iloc[-1]
-
-    col1, col2 = tab.columns(2)
-    col1.metric("Final Portfolio Value", f"{final_value:.3f}")
-    col2.metric("Rebalancing Frequency", freq)
-
-    tab.markdown("---")
-
-    # ---------------------------------------------------
-    # RAW DATA
-    # ---------------------------------------------------
-    with tab.expander("View Raw Data", expanded=False):
-        tab.dataframe(rb)
+    tab.line_chart(result["Portfolio Value"])

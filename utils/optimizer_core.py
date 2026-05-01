@@ -53,8 +53,7 @@ def compute_sector_weights(weights, tickers):
 def run_optimizer(prices, investment_amount=None):
     """
     Core optimizer:
-    - Computes returns
-    - Computes covariance
+    - Computes returns & covariance
     - Generates random portfolios
     - Selects max Sharpe portfolio
     - Computes sector weights
@@ -62,9 +61,6 @@ def run_optimizer(prices, investment_amount=None):
     - Stores investment amount for downstream tabs
     """
 
-    # ---------------------------------------------------
-    # VALIDATE INPUT
-    # ---------------------------------------------------
     if prices is None or prices.empty:
         return None
 
@@ -74,7 +70,6 @@ def run_optimizer(prices, investment_amount=None):
         return None
 
     returns = adj.pct_change().dropna()
-
     if returns.empty:
         return None
 
@@ -82,9 +77,9 @@ def run_optimizer(prices, investment_amount=None):
     mean_returns = returns.mean()
     cov_matrix = returns.cov()
 
-    # ---------------------------------------------------
+    # -------------------------------
     # RANDOM PORTFOLIO SEARCH
-    # ---------------------------------------------------
+    # -------------------------------
     num_portfolios = 5000
     results = np.zeros((3, num_portfolios))
     weight_records = []
@@ -101,9 +96,6 @@ def run_optimizer(prices, investment_amount=None):
         results[2, i] = sharpe
         weight_records.append(weights)
 
-    # ---------------------------------------------------
-    # SELECT MAX SHARPE PORTFOLIO
-    # ---------------------------------------------------
     max_sharpe_idx = np.argmax(results[2])
     best_weights = weight_records[max_sharpe_idx]
 
@@ -111,24 +103,23 @@ def run_optimizer(prices, investment_amount=None):
     volatility = results[1, max_sharpe_idx]
     sharpe = results[2, max_sharpe_idx]
 
-    # ---------------------------------------------------
+    # -------------------------------
     # SECTOR WEIGHTS
-    # ---------------------------------------------------
+    # -------------------------------
     sector_weights = compute_sector_weights(best_weights, tickers)
 
-    # ---------------------------------------------------
-    # DRAWDOWN (simple equity curve from equal-weighted returns)
-    # ---------------------------------------------------
-    # Use portfolio returns from best_weights
+    # -------------------------------
+    # DRAWDOWN
+    # -------------------------------
     port_daily_ret = (returns * best_weights).sum(axis=1)
     equity_curve = (1 + port_daily_ret).cumprod()
     drawdown = equity_curve / equity_curve.cummax() - 1.0
 
-    # ---------------------------------------------------
-    # MONTE CARLO (very simple bootstrap of daily returns)
-    # ---------------------------------------------------
+    # -------------------------------
+    # MONTE CARLO (simple bootstrap)
+    # -------------------------------
     num_paths = 200
-    horizon = 252  # 1 year
+    horizon = 252
     mc_paths = []
 
     for _ in range(num_paths):
@@ -138,13 +129,12 @@ def run_optimizer(prices, investment_amount=None):
 
     mc_df = pd.DataFrame(mc_paths).T  # index = step, columns = path
 
-    # ---------------------------------------------------
-    # BUILD MODEL DICTIONARY
-    # ---------------------------------------------------
+    # -------------------------------
+    # BUILD MODEL
+    # -------------------------------
     model = {
         "tickers": tickers,
-        # weights as Series so tabs expecting Series don't complain
-        "weights": pd.Series(best_weights, index=tickers),
+        "weights": pd.Series(best_weights, index=tickers),  # Series for tabs
         "expected_return": exp_return,
         "volatility": volatility,
         "sharpe": sharpe,
@@ -186,16 +176,14 @@ def rebalancing_backtest(prices, target_weights, freq="M"):
         w = np.array(target_weights)
     w = w / w.sum()
 
-    # Resample for rebalancing dates
     rebal_dates = returns.resample(freq).first().index
 
     portfolio_value = 1.0
     values = []
     index_dates = []
-
     current_weights = w.copy()
 
-    for i, date in enumerate(returns.index):
+    for date in returns.index:
         if date in rebal_dates:
             current_weights = w.copy()
 

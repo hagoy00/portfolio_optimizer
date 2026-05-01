@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 
+print(">>> USING LATEST tab1_summary.py")
+
 # FIXED SIGNATURE — must accept (tab, prices, model)
 def render_tab1(tab, prices, model):
     tab.markdown("## Portfolio Manager Dashboard")

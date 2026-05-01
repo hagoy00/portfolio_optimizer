@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
-from utils.optimizer import rebalancing_backtest
+#from utils.optimizer import rebalancing_backtest
+from utils.optimizer_core import rebalancing_backtest
 
 def render_tab7(tab, prices, model):
     tab.markdown("## Rebalancing Backtest")

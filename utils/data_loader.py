@@ -1,91 +1,48 @@
 import pandas as pd
+import yfinance as yf
 
-def clean_ticker_input(raw):
+# ---------------------------------------------------
+# CLEAN PRICE DOWNLOAD FUNCTION
+# ---------------------------------------------------
+def load_price_data(tickers, start_date, end_date):
     """
-    Cleans user input like:
-    'AAPL, TSLA , MSFT'
-    'BRK.B, VOO'
-    'AAPL TSLA MSFT'
-    """
-    raw = raw.replace(" ", "")
-    parts = raw.split(",")
-    parts = [p for p in parts if p]
-
-    cleaned = []
-    for p in parts:
-        # Fix cases like "AAPL.MSFT"
-        if "." in p and p.count(".") > 1:
-            cleaned.extend(p.split("."))
-        else:
-            cleaned.append(p)
-
-    return cleaned
-
-
-def load_full_prices_from_raw(raw, tickers):
-    """
-    Converts raw yf.download output (flat or grouped) into a proper MultiIndex:
-        (ticker, field)
-    Ensures Close and Adj Close exist.
+    Downloads OHLCV data for multiple tickers using yfinance.
+    Returns a clean multi-index DataFrame:
+        columns = (Ticker, Field)
+        fields = ["Open", "High", "Low", "Close", "Adj Close", "Volume"]
     """
 
-    if raw is None or raw.empty:
+    if not tickers:
         return None
 
-    # Case 1: Yahoo returned grouped MultiIndex (normal behavior)
-    if isinstance(raw.columns, pd.MultiIndex):
-        data = raw.copy()
+    try:
+        data = yf.download(
+            tickers,
+            start=start_date,
+            end=end_date,
+            auto_adjust=False,
+            progress=False,
+            group_by="ticker"
+        )
 
-    else:
-        # Case 2: Yahoo returned FLAT columns (your 2026 case)
-        # Example: AAPL_Open, AAPL_Close, TSLA_Open, TSLA_Close
-        new_cols = []
-        for col in raw.columns:
-            parts = col.split("_")
-            if len(parts) == 2:
-                ticker, field = parts
-                new_cols.append((ticker, field))
-            else:
-                # fallback: put everything under the first ticker
-                new_cols.append((tickers[0], col))
+        if data is None or data.empty:
+            return None
 
-        data = raw.copy()
-        data.columns = pd.MultiIndex.from_tuples(new_cols)
+        # ---------------------------------------------------
+        # STANDARDIZE FORMAT
+        # ---------------------------------------------------
+        # If only one ticker, yfinance returns a single-level column index
+        if isinstance(data.columns, pd.MultiIndex) is False:
+            # Convert to multi-index: (Ticker, Field)
+            data = pd.concat({tickers[0]: data}, axis=1)
 
-    # Keep only tickers that actually downloaded
-    valid = [t for t in tickers if t in data.columns.levels[0]]
-    if not valid:
+        # Sort columns for consistency
+        data = data.sort_index(axis=1)
+
+        # Drop rows where all tickers have NaN
+        data = data.dropna(how="all")
+
+        return data
+
+    except Exception:
         return None
-
-    data = data[valid]
-
-    # Ensure Close and Adj Close exist
-    for t in valid:
-        fields = data[t].columns
-
-        if "Close" not in fields and "Adj Close" in fields:
-            data[(t, "Close")] = data[(t, "Adj Close")]
-
-        if "Adj Close" not in fields and "Close" in fields:
-            data[(t, "Adj Close")] = data[(t, "Close")]
-
-    return data.dropna(how="all")
-
-
-
-def extract_adj_close(full_prices):
-    """
-    Returns a flat DataFrame of adjusted close prices.
-    If 'Adj Close' is missing (as in some 2026 Yahoo data),
-    fall back to 'Close'.
-    """
-    level1 = full_prices.columns.get_level_values(1)
-
-    if "Adj Close" in level1:
-        return full_prices.xs("Adj Close", level=1, axis=1).dropna(how="all")
-
-    # Fallback for 2026+ Yahoo data
-    if "Close" in level1:
-        return full_prices.xs("Close", level=1, axis=1).dropna(how="all")
-
-    raise KeyError("Neither 'Adj Close' nor 'Close' found in price data.")

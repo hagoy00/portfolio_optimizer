@@ -78,9 +78,10 @@ tabs = st.tabs([
 render_tab1(tabs[0], prices, model)
 render_tab2(tabs[1], prices, model)
 render_tab3(tabs[2], prices, model)
-render_tab4(tabs[3], sector_weights)
+render_tab4(tabs[3], prices, model)          # FIXED
 render_tab5(tabs[4], prices, model)
 render_tab6(tabs[5], prices, model)
 render_tab7(tabs[6], prices, model)
 render_tab8(tabs[7], model, sector_weights)
-render_tab9(tabs[8], prices)
+render_tab9(tabs[8], prices)                 # OK
+

@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+
 print(">>> USING optimizer_core.py FROM:", __file__)
 
 # ---------------------------------------------------
@@ -7,7 +8,7 @@ print(">>> USING optimizer_core.py FROM:", __file__)
 # ---------------------------------------------------
 def portfolio_performance(weights, mean_returns, cov_matrix):
     """
-    Returns expected portfolio return and volatility.
+    Returns expected portfolio return and volatility (annualized).
     """
     weights = np.array(weights)
     port_return = np.sum(mean_returns * weights) * 252
@@ -29,7 +30,7 @@ def sharpe_ratio(weights, mean_returns, cov_matrix, risk_free_rate=0.0):
 def compute_sector_weights(weights, tickers):
     """
     Simple sector mapping for FAANG-style tickers.
-    Extend this as needed.
+    Extend this mapping as needed.
     """
     sector_map = {
         "AAPL": "Technology",
@@ -57,6 +58,7 @@ def run_optimizer(prices, investment_amount=None):
     - Generates random portfolios
     - Selects max Sharpe portfolio
     - Computes sector weights
+    - Computes drawdown & simple Monte Carlo
     - Stores investment amount for downstream tabs
     """
 
@@ -115,18 +117,44 @@ def run_optimizer(prices, investment_amount=None):
     sector_weights = compute_sector_weights(best_weights, tickers)
 
     # ---------------------------------------------------
+    # DRAWDOWN (simple equity curve from equal-weighted returns)
+    # ---------------------------------------------------
+    # Use portfolio returns from best_weights
+    port_daily_ret = (returns * best_weights).sum(axis=1)
+    equity_curve = (1 + port_daily_ret).cumprod()
+    drawdown = equity_curve / equity_curve.cummax() - 1.0
+
+    # ---------------------------------------------------
+    # MONTE CARLO (very simple bootstrap of daily returns)
+    # ---------------------------------------------------
+    num_paths = 200
+    horizon = 252  # 1 year
+    mc_paths = []
+
+    for _ in range(num_paths):
+        sampled = port_daily_ret.sample(horizon, replace=True).reset_index(drop=True)
+        path_curve = (1 + sampled).cumprod()
+        mc_paths.append(path_curve)
+
+    mc_df = pd.DataFrame(mc_paths).T  # index = step, columns = path
+
+    # ---------------------------------------------------
     # BUILD MODEL DICTIONARY
     # ---------------------------------------------------
     model = {
         "tickers": tickers,
-        "weights": best_weights,
+        # weights as Series so tabs expecting Series don't complain
+        "weights": pd.Series(best_weights, index=tickers),
         "expected_return": exp_return,
         "volatility": volatility,
         "sharpe": sharpe,
         "sector_weights": sector_weights,
         "returns": returns,
         "cov_matrix": cov_matrix,
-        "investment_amount": investment_amount
+        "investment_amount": investment_amount,
+        "equity_curve": equity_curve,
+        "drawdown": drawdown,
+        "monte_carlo": mc_df,
     }
 
     return model
@@ -135,10 +163,10 @@ def run_optimizer(prices, investment_amount=None):
 # ---------------------------------------------------
 # REBALANCING BACKTEST
 # ---------------------------------------------------
-def rebalancing_backtest(prices, target_weights, rebalance_freq="M"):
+def rebalancing_backtest(prices, target_weights, freq="M"):
     """
     Simple rebalancing backtest:
-    - Rebalances monthly or quarterly
+    - Rebalances at given frequency (M, Q, etc.)
     - Computes portfolio value over time
     """
 
@@ -151,15 +179,31 @@ def rebalancing_backtest(prices, target_weights, rebalance_freq="M"):
     if returns.empty:
         return None
 
-    target_weights = np.array(target_weights)
-    target_weights /= target_weights.sum()
+    # Ensure weights is numpy array with correct length
+    if isinstance(target_weights, pd.Series):
+        w = target_weights.values
+    else:
+        w = np.array(target_weights)
+    w = w / w.sum()
+
+    # Resample for rebalancing dates
+    rebal_dates = returns.resample(freq).first().index
 
     portfolio_value = 1.0
     values = []
+    index_dates = []
 
-    for date, row in returns.iterrows():
-        portfolio_value *= (1 + np.dot(row.values, target_weights))
+    current_weights = w.copy()
+
+    for i, date in enumerate(returns.index):
+        if date in rebal_dates:
+            current_weights = w.copy()
+
+        r = returns.loc[date].values
+        portfolio_value *= (1 + np.dot(r, current_weights))
+
         values.append(portfolio_value)
+        index_dates.append(date)
 
-    df = pd.DataFrame({"Portfolio Value": values}, index=returns.index)
+    df = pd.DataFrame({"Portfolio Value": values}, index=index_dates)
     return df

@@ -1,7 +1,8 @@
 streamlit
-yfinance==1.3.0
 pandas
 numpy
-matplotlib
+yfinance
+scipy
+scikit-learn
 plotly
-PyPortfolioOpt
+matplotlib

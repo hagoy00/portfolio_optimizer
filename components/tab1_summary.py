@@ -25,8 +25,18 @@ def render_tab1(tab, prices, model):
     max_dd = dd.min().min() if dd is not None else None
 
     # --- Concentration ---
-    # Normalize weights to a Series so logic is stable
-    weights = pd.Series(weights)
+    # SAFELY normalize weights
+    print(">>> DEBUG TAB1 weights:", type(weights), weights)
+
+    if weights is None or isinstance(weights, (float, int, np.floating)) or len(weights) == 0:
+        weights = pd.Series(dtype=float)
+    else:
+        try:
+            weights = pd.Series(weights)
+        except Exception:
+            print(">>> ERROR: Invalid weights:", type(weights), weights)
+            weights = pd.Series(dtype=float)
+
     top_weight = weights.max() if len(weights) > 0 else 0
     diversification = 1 - top_weight
 
@@ -40,10 +50,11 @@ def render_tab1(tab, prices, model):
     col2.metric("Volatility", f"{vol:.2%}")
     col3.metric("Sharpe Ratio", f"{sharpe:.2f}")
 
-    col4, col5, col6 = tab.columns(3)
+    col4, col5 = tab.columns(2)
     col4.metric("Max Drawdown", f"{max_dd:.2%}" if max_dd is not None else "N/A")
     col5.metric("Largest Position", f"{top_weight:.2%}")
-    col6.metric("Diversification Score", f"{diversification:.2%}")
+
+    tab.metric("Diversification Score", f"{diversification:.2%}")
 
     tab.markdown("---")
 

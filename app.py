@@ -1,6 +1,10 @@
 import streamlit as st
 import pandas as pd
 import yfinance as yf
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import utils.optimizer_core as oc
+st.write("Optimizer loaded from:", oc.__file__)
 
 from utils.data_loader import load_price_data
 from utils.optimizer_core import run_optimizer

@@ -6,6 +6,9 @@ print(">>> tab7_rebalancing.py PATH:", __file__)
 
 from utils.optimizer_core import rebalancing_backtest
 
+# inside render_tab7 or equivalent:
+result = rebalancing_backtest(prices, model["weights"], freq=freq)
+
 def render_tab7(tab, prices, model):
     tab.markdown("## Rebalancing Backtest")
 

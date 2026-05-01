@@ -157,19 +157,22 @@ def render_tab9(tab, full_prices):
         # MAIN TABLE
         # ---------------------------------------------------
         tab.markdown("### Buy / Hold / Sell Table")
-tab.dataframe(
-    df.style.format({
-        "Price": "{:.2f}",
-        "RSI": "{:.1f}",
-        "MACD": "{:.4f}",
-        "Signal Line": "{:.4f}",
-        "200-Day Trend": "{:.2%}",
-        "20-Day Momentum": "{:.2%}",
-        "PE": "{:.1f}",
-        "PB": "{:.1f}",
-        "PS": "{:.1f}",
-    }).map(color_signal, subset=["Signal"])  # <-- must be .map
-)
+
+        styled = (
+            df.style.format({
+                "Price": "{:.2f}",
+                "RSI": "{:.1f}",
+                "MACD": "{:.4f}",
+                "Signal Line": "{:.4f}",
+                "200-Day Trend": "{:.2%}",
+                "20-Day Momentum": "{:.2%}",
+                "PE": "{:.1f}",
+                "PB": "{:.1f}",
+                "PS": "{:.1f}",
+            }).map(color_signal, subset=["Signal"])
+        )
+
+        tab.dataframe(styled)
 
         tab.markdown("---")
 
@@ -231,5 +234,4 @@ tab.dataframe(
             tab.markdown(f"- {text}")
 
     except Exception as e:
-        #tab.error(f"Error rendering buy analysis: {e}")
         tab.error(f"Error rendering buy analysis: {e}")

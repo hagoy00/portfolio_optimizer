@@ -3,6 +3,16 @@ import pandas as pd
 import numpy as np
 import yfinance as yf
 
+
+def color_signal(val):
+    if val == "BUY":
+        color = "green"
+    elif val == "HOLD":
+        color = "orange"
+    else:
+        color = "red"
+    return f"color: {color}; font-weight: bold;"
+
 def compute_RSI(series, period=14):
     delta = series.diff()
     gain = delta.clip(lower=0)
@@ -144,21 +154,21 @@ def render_tab9(tab, full_prices):
         tab.markdown("### Buy / Hold / Sell Table")
 
         tab.dataframe(
-            df.style.format({
-                "Price": "{:.2f}",
-                "RSI": "{:.1f}",
-                "MACD": "{:.4f}",
-                "Signal Line": "{:.4f}",
-                "200-Day Trend": "{:.2%}",
-                "20-Day Momentum": "{:.2%}",
-                "PE": "{:.1f}",
-                "PB": "{:.1f}",
-                "PS": "{:.1f}",
-            }),
-            hide_index=False
-        )
-
-        tab.markdown("---")
+    df.style.format({
+        "Price": "{:.2f}",
+        "RSI": "{:.1f}",
+        "MACD": "{:.4f}",
+        "Signal Line": "{:.4f}",
+        "200-Day Trend": "{:.2%}",
+        "20-Day Momentum": "{:.2%}",
+        "PE": "{:.1f}",
+        "PB": "{:.1f}",
+        "PS": "{:.1f}",
+    }).applymap(color_signal, subset=["Signal"]),
+    hide_index=False
+)
+        color = "green" if sig == "BUY" else "orange" if sig == "HOLD" else "red"
+    tab.markdown(f"<span style='color:{color}; font-weight:bold;'>• {text}</span>", unsafe_allow_html=True)
 
         # ---------------------------------------------------
         # COMMENTARY SECTION
@@ -166,6 +176,39 @@ def render_tab9(tab, full_prices):
         tab.markdown("### Commentary")
 
         with tab.expander("AI Commentary for Each Ticker", expanded=True):
+            tab.markdown("### Technical Charts")
+
+for ticker, row in df.iterrows():
+    series = close[ticker].dropna()
+
+    with tab.expander(f"{ticker} — Charts", expanded=False):
+
+        # Price Chart
+        tab.markdown("#### Price History")
+        tab.line_chart(series)
+
+        # RSI
+        tab.markdown("#### RSI (14)")
+        rsi_series = compute_RSI(series)
+        tab.line_chart(rsi_series)
+
+        # MACD
+        tab.markdown("#### MACD")
+        macd, signal = compute_MACD(series)
+        macd_df = pd.DataFrame({"MACD": macd, "Signal": signal})
+        tab.line_chart(macd_df)
+
+        # Bollinger Bands
+        tab.markdown("#### Bollinger Bands (20)")
+        ma20, upper, lower = compute_bollinger(series)
+        bb_df = pd.DataFrame({
+            "Price": series,
+            "MA20": ma20,
+            "Upper Band": upper,
+            "Lower Band": lower
+        })
+        tab.line_chart(bb_df)
+
             for ticker, row in df.iterrows():
                 sig = row["Signal"]
                 analyst = row["Analyst Recommendation"]

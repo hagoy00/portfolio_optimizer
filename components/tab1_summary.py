@@ -22,13 +22,19 @@ def render_tab1(tab, prices, model):
             st.error("Model is missing weights. Cannot compute portfolio summary.")
             return
 
-        weights = model["weights"]
+        weights = model.get("weights")
 
-        if isinstance(weights, pd.Series):
-            weights = weights.dropna()
-        else:
-            st.error("Weights must be a pandas Series.")
-            return
+# Force-correct the type no matter what
+if isinstance(weights, pd.Series):
+    pass
+elif isinstance(weights, dict):
+    weights = pd.Series(weights)
+elif hasattr(weights, "__len__") and len(weights) == len(model["tickers"]):
+    weights = pd.Series(weights, index=model["tickers"])
+else:
+    st.error("Weights missing or invalid.")
+    return
+
 
         if weights.empty:
             st.error("Weights are empty. Cannot compute portfolio summary.")

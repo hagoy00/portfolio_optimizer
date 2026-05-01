@@ -1,57 +1,59 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 
 def render_tab2(tab, prices, model):
-    """
-    Efficient Frontier tab.
-    Uses model["frontier"] DataFrame with columns: return, volatility, sharpe.
-    """
-
     tab.markdown("## Efficient Frontier")
 
     if model is None:
-        tab.info("Run optimization to see the efficient frontier.")
+        tab.info("Run optimization first.")
         return
 
-    frontier = model.get("frontier", None)
-    perf = model.get("performance", {})
-    weights = model.get("weights", None)
+    returns = model.get("returns")
+    cov = model.get("cov_matrix")
+    tickers = model.get("tickers")
 
-    # ---------------------------------------------------
-    # GUARD CLAUSE — missing frontier
-    # ---------------------------------------------------
-    if frontier is None or (isinstance(frontier, pd.DataFrame) and frontier.empty):
-        tab.warning("Model exists but frontier data is missing or empty.")
+    if returns is None or cov is None:
+        tab.error("Missing returns or covariance matrix.")
         return
 
     # ---------------------------------------------------
-    # FRONTIER CHART
+    # Compute Efficient Frontier
     # ---------------------------------------------------
-    tab.markdown("### Frontier Visualization")
+    num_points = 50
+    frontier_returns = []
+    frontier_vols = []
 
-    with tab.expander("View Efficient Frontier Chart", expanded=True):
-        tab.scatter_chart(
-            frontier,
-            x="volatility",
-            y="return"
-        )
+    mean_returns = returns.mean()
 
-    tab.markdown("---")
+    for target_return in np.linspace(mean_returns.min(), mean_returns.max(), num_points):
+        # Solve for weights that achieve target return
+        # Using a simple heuristic: random search
+        best_vol = None
 
-    # ---------------------------------------------------
-    # SELECTED PORTFOLIO METRICS
-    # ---------------------------------------------------
-    if perf:
-        tab.markdown("### Selected Portfolio (Max Sharpe)")
+        for _ in range(2000):
+            w = np.random.random(len(tickers))
+            w /= w.sum()
 
-        col1, col2, col3 = tab.columns(3)
-        col1.metric("Expected Return", f"{perf['return']:.2%}")
-        col2.metric("Volatility", f"{perf['volatility']:.2%}")
-        col3.metric("Sharpe Ratio", f"{perf['sharpe']:.2f}")
+            port_ret = np.sum(w * mean_returns) * 252
+            if abs(port_ret - target_return * 252) < 0.002:  # tolerance
+                port_vol = np.sqrt(np.dot(w.T, np.dot(cov, w))) * np.sqrt(252)
 
-    # ---------------------------------------------------
-    # WEIGHTS TABLE
-    # ---------------------------------------------------
-    if weights is not None:
-        tab.markdown("### Optimized Weights")
-        tab.dataframe(weights.rename("Weight"))
+                if best_vol is None or port_vol < best_vol:
+                    best_vol = port_vol
+
+        if best_vol is not None:
+            frontier_returns.append(target_return * 252)
+            frontier_vols.append(best_vol)
+
+    if not frontier_returns:
+        tab.warning("Could not compute efficient frontier.")
+        return
+
+    df = pd.DataFrame({
+        "Return": frontier_returns,
+        "Volatility": frontier_vols
+    })
+
+    tab.markdown("### Efficient Frontier Curve")
+    tab.line_chart(df.set_index("Volatility"))

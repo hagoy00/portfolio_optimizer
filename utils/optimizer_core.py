@@ -153,12 +153,18 @@ def run_optimizer(prices, investment_amount=None):
 # ---------------------------------------------------
 # REBALANCING BACKTEST
 # ---------------------------------------------------
-def rebalancing_backtest(prices, target_weights, freq="M"):
+def rebalancing_backtest(prices, target_weights, freq=None, rebalance_freq=None, **kwargs):
     """
     Simple rebalancing backtest:
-    - Rebalances at given frequency (M, Q, etc.)
+    - Accepts freq OR rebalance_freq (or neither)
     - Computes portfolio value over time
     """
+
+    # accept any of: freq=, rebalance_freq=, nothing
+    if freq is None and rebalance_freq is None:
+        freq = "M"
+    elif freq is None:
+        freq = rebalance_freq
 
     try:
         adj = prices.xs("Adj Close", level=1, axis=1)

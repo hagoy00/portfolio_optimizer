@@ -3,16 +3,19 @@ import pandas as pd
 import numpy as np
 import yfinance as yf
 
-
+# ---------------------------------------------------
+# Helper: Color coding for BUY/HOLD/SELL
+# ---------------------------------------------------
 def color_signal(val):
     if val == "BUY":
-        color = "green"
+        return "color: green; font-weight: bold;"
     elif val == "HOLD":
-        color = "orange"
-    else:
-        color = "red"
-    return f"color: {color}; font-weight: bold;"
+        return "color: orange; font-weight: bold;"
+    return "color: red; font-weight: bold;"
 
+# ---------------------------------------------------
+# Technical Indicators
+# ---------------------------------------------------
 def compute_RSI(series, period=14):
     delta = series.diff()
     gain = delta.clip(lower=0)
@@ -36,6 +39,9 @@ def compute_bollinger(series, window=20):
     lower = ma - 2 * std
     return ma, upper, lower
 
+# ---------------------------------------------------
+# Valuation + Analyst Data
+# ---------------------------------------------------
 def fetch_valuation_and_analyst(ticker):
     try:
         tk = yf.Ticker(ticker)
@@ -56,6 +62,9 @@ def fetch_valuation_and_analyst(ticker):
             "Analyst Recommendation": None,
         }
 
+# ---------------------------------------------------
+# Main Tab Renderer
+# ---------------------------------------------------
 def render_tab9(tab, full_prices):
     tab.markdown("## Buy Analysis")
 
@@ -67,10 +76,15 @@ def render_tab9(tab, full_prices):
         close = full_prices.xs("Close", level=1, axis=1)
         results = []
 
+        # ---------------------------------------------------
+        # PER-TICKER ANALYSIS
+        # ---------------------------------------------------
         for ticker in close.columns:
             series = close[ticker].dropna()
             if len(series) < 220:
                 continue
+
+            price = series.iloc[-1]
 
             # Technicals
             rsi = compute_RSI(series).iloc[-1]
@@ -78,8 +92,6 @@ def render_tab9(tab, full_prices):
             macd_last = macd.iloc[-1]
             signal_last = signal.iloc[-1]
             ma20, upper, lower = compute_bollinger(series)
-            price = series.iloc[-1]
-
             trend_200 = (price / series.rolling(200).mean().iloc[-1]) - 1
             momentum_20 = (price / series.iloc[-20]) - 1
 
@@ -95,11 +107,9 @@ def render_tab9(tab, full_prices):
             if price > ma20.iloc[-1]: score += 1
             if trend_200 > 0: score += 1
             if momentum_20 > 0: score += 1
-
             if not np.isnan(pe) and pe < 25: score += 1
             if not np.isnan(pb) and pb < 5: score += 1
             if not np.isnan(ps) and ps < 10: score += 1
-
             if analyst in ("STRONG_BUY", "BUY"): score += 1
             if analyst in ("SELL", "STRONG_SELL", "UNDERPERFORM"): score -= 1
 
@@ -133,18 +143,13 @@ def render_tab9(tab, full_prices):
         df = pd.DataFrame(results).set_index("Ticker")
 
         # ---------------------------------------------------
-        # SIGNAL SUMMARY PANEL
+        # SIGNAL SUMMARY
         # ---------------------------------------------------
         tab.markdown("### Signal Summary")
-
-        buy_count = (df["Signal"] == "BUY").sum()
-        hold_count = (df["Signal"] == "HOLD").sum()
-        sell_count = (df["Signal"] == "SELL").sum()
-
         col1, col2, col3 = tab.columns(3)
-        col1.metric("BUY Signals", buy_count)
-        col2.metric("HOLD Signals", hold_count)
-        col3.metric("SELL Signals", sell_count)
+        col1.metric("BUY", (df["Signal"] == "BUY").sum())
+        col2.metric("HOLD", (df["Signal"] == "HOLD").sum())
+        col3.metric("SELL", (df["Signal"] == "SELL").sum())
 
         tab.markdown("---")
 
@@ -154,83 +159,77 @@ def render_tab9(tab, full_prices):
         tab.markdown("### Buy / Hold / Sell Table")
 
         tab.dataframe(
-    df.style.format({
-        "Price": "{:.2f}",
-        "RSI": "{:.1f}",
-        "MACD": "{:.4f}",
-        "Signal Line": "{:.4f}",
-        "200-Day Trend": "{:.2%}",
-        "20-Day Momentum": "{:.2%}",
-        "PE": "{:.1f}",
-        "PB": "{:.1f}",
-        "PS": "{:.1f}",
-    }).applymap(color_signal, subset=["Signal"]),
-    hide_index=False
-)
-        color = "green" if sig == "BUY" else "orange" if sig == "HOLD" else "red"
-    tab.markdown(f"<span style='color:{color}; font-weight:bold;'>• {text}</span>", unsafe_allow_html=True)
+            df.style.format({
+                "Price": "{:.2f}",
+                "RSI": "{:.1f}",
+                "MACD": "{:.4f}",
+                "Signal Line": "{:.4f}",
+                "200-Day Trend": "{:.2%}",
+                "20-Day Momentum": "{:.2%}",
+                "PE": "{:.1f}",
+                "PB": "{:.1f}",
+                "PS": "{:.1f}",
+            }).applymap(color_signal, subset=["Signal"])
+        )
+
+        tab.markdown("---")
 
         # ---------------------------------------------------
-        # COMMENTARY SECTION
+        # TECHNICAL CHARTS
+        # ---------------------------------------------------
+        tab.markdown("### Technical Charts")
+
+        for ticker in df.index:
+            series = close[ticker].dropna()
+
+            with tab.expander(f"{ticker} — Charts", expanded=False):
+
+                tab.markdown("#### Price History")
+                tab.line_chart(series)
+
+                tab.markdown("#### RSI (14)")
+                tab.line_chart(compute_RSI(series))
+
+                tab.markdown("#### MACD")
+                macd, signal = compute_MACD(series)
+                tab.line_chart(pd.DataFrame({"MACD": macd, "Signal": signal}))
+
+                tab.markdown("#### Bollinger Bands (20)")
+                ma20, upper, lower = compute_bollinger(series)
+                tab.line_chart(pd.DataFrame({
+                    "Price": series,
+                    "MA20": ma20,
+                    "Upper Band": upper,
+                    "Lower Band": lower
+                }))
+
+        # ---------------------------------------------------
+        # COMMENTARY
         # ---------------------------------------------------
         tab.markdown("### Commentary")
 
-        with tab.expander("AI Commentary for Each Ticker", expanded=True):
-            tab.markdown("### Technical Charts")
+        for ticker, row in df.iterrows():
+            sig = row["Signal"]
+            analyst = row["Analyst Recommendation"]
 
-for ticker, row in df.iterrows():
-    series = close[ticker].dropna()
+            text = f"**{ticker}: {sig}** — "
 
-    with tab.expander(f"{ticker} — Charts", expanded=False):
+            if sig == "BUY":
+                text += "Strong technical and valuation profile. "
+            elif sig == "HOLD":
+                text += "Mixed technicals or valuation; balanced risk/reward. "
+            else:
+                text += "Weak technicals or stretched valuation; caution warranted. "
 
-        # Price Chart
-        tab.markdown("#### Price History")
-        tab.line_chart(series)
+            if isinstance(analyst, str):
+                text += f"Analyst stance: **{analyst.title().replace('_', ' ')}**. "
 
-        # RSI
-        tab.markdown("#### RSI (14)")
-        rsi_series = compute_RSI(series)
-        tab.line_chart(rsi_series)
+            if row["200-Day Trend"] > 0:
+                text += "Price is above long-term trend."
+            else:
+                text += "Price is below long-term trend."
 
-        # MACD
-        tab.markdown("#### MACD")
-        macd, signal = compute_MACD(series)
-        macd_df = pd.DataFrame({"MACD": macd, "Signal": signal})
-        tab.line_chart(macd_df)
-
-        # Bollinger Bands
-        tab.markdown("#### Bollinger Bands (20)")
-        ma20, upper, lower = compute_bollinger(series)
-        bb_df = pd.DataFrame({
-            "Price": series,
-            "MA20": ma20,
-            "Upper Band": upper,
-            "Lower Band": lower
-        })
-        tab.line_chart(bb_df)
-
-            for ticker, row in df.iterrows():
-                sig = row["Signal"]
-                analyst = row["Analyst Recommendation"]
-
-                text = f"**{ticker}: {sig}** — "
-
-                if sig == "BUY":
-                    text += "Strong technical and valuation profile. "
-                elif sig == "HOLD":
-                    text += "Mixed technicals or valuation; balanced risk/reward. "
-                else:
-                    text += "Weak technicals or stretched valuation; caution warranted. "
-
-                if isinstance(analyst, str):
-                    text += f"Analyst stance: **{analyst.title().replace('_', ' ')}**. "
-
-                if row["200-Day Trend"] > 0:
-                    text += "Price is above long-term trend."
-                else:
-                    text += "Price is below long-term trend."
-
-                tab.markdown(f"- {text}")
+            tab.markdown(f"- {text}")
 
     except Exception as e:
         tab.error(f"Error rendering buy analysis: {e}")

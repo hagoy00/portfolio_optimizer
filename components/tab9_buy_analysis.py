@@ -47,7 +47,7 @@ def fetch_valuation_and_analyst(ticker):
         }
 
 def render_tab9(tab, full_prices):
-    tab.subheader("Is This Stock a Good Buy?")
+    tab.markdown("## Buy Analysis")
 
     if full_prices is None or full_prices.empty:
         tab.info("Load data first to analyze buy signals.")
@@ -106,8 +106,8 @@ def render_tab9(tab, full_prices):
                 "RSI": rsi,
                 "MACD": macd_last,
                 "Signal Line": signal_last,
-                "200‑Day Trend": trend_200,
-                "20‑Day Momentum": momentum_20,
+                "200-Day Trend": trend_200,
+                "20-Day Momentum": momentum_20,
                 "PE": pe,
                 "PB": pb,
                 "PS": ps,
@@ -122,44 +122,72 @@ def render_tab9(tab, full_prices):
 
         df = pd.DataFrame(results).set_index("Ticker")
 
-        tab.markdown("### 📈 Buy / Hold / Sell Signals")
+        # ---------------------------------------------------
+        # SIGNAL SUMMARY PANEL
+        # ---------------------------------------------------
+        tab.markdown("### Signal Summary")
+
+        buy_count = (df["Signal"] == "BUY").sum()
+        hold_count = (df["Signal"] == "HOLD").sum()
+        sell_count = (df["Signal"] == "SELL").sum()
+
+        col1, col2, col3 = tab.columns(3)
+        col1.metric("BUY Signals", buy_count)
+        col2.metric("HOLD Signals", hold_count)
+        col3.metric("SELL Signals", sell_count)
+
+        tab.markdown("---")
+
+        # ---------------------------------------------------
+        # MAIN TABLE
+        # ---------------------------------------------------
+        tab.markdown("### Buy / Hold / Sell Table")
+
         tab.dataframe(
             df.style.format({
                 "Price": "{:.2f}",
                 "RSI": "{:.1f}",
                 "MACD": "{:.4f}",
                 "Signal Line": "{:.4f}",
-                "200‑Day Trend": "{:.2%}",
-                "20‑Day Momentum": "{:.2%}",
+                "200-Day Trend": "{:.2%}",
+                "20-Day Momentum": "{:.2%}",
                 "PE": "{:.1f}",
                 "PB": "{:.1f}",
                 "PS": "{:.1f}",
-            })
+            }),
+            hide_index=False
         )
 
-        tab.markdown("### 🧠 AI Buy Commentary")
-        for ticker, row in df.iterrows():
-            sig = row["Signal"]
-            analyst = row["Analyst Recommendation"]
+        tab.markdown("---")
 
-            text = f"**{ticker}: {sig}** — "
+        # ---------------------------------------------------
+        # COMMENTARY SECTION
+        # ---------------------------------------------------
+        tab.markdown("### Commentary")
 
-            if sig == "BUY":
-                text += "Strong technical and valuation profile. "
-            elif sig == "HOLD":
-                text += "Mixed technicals or valuation; balanced risk/reward. "
-            else:
-                text += "Weak technicals or stretched valuation; caution warranted. "
+        with tab.expander("AI Commentary for Each Ticker", expanded=True):
+            for ticker, row in df.iterrows():
+                sig = row["Signal"]
+                analyst = row["Analyst Recommendation"]
 
-            if isinstance(analyst, str):
-                text += f"Analyst stance: **{analyst.title().replace('_', ' ')}**. "
+                text = f"**{ticker}: {sig}** — "
 
-            if row["200‑Day Trend"] > 0:
-                text += "Price is above long‑term trend."
-            else:
-                text += "Price is below long‑term trend."
+                if sig == "BUY":
+                    text += "Strong technical and valuation profile. "
+                elif sig == "HOLD":
+                    text += "Mixed technicals or valuation; balanced risk/reward. "
+                else:
+                    text += "Weak technicals or stretched valuation; caution warranted. "
 
-            tab.markdown(f"- {text}")
+                if isinstance(analyst, str):
+                    text += f"Analyst stance: **{analyst.title().replace('_', ' ')}**. "
+
+                if row["200-Day Trend"] > 0:
+                    text += "Price is above long-term trend."
+                else:
+                    text += "Price is below long-term trend."
+
+                tab.markdown(f"- {text}")
 
     except Exception as e:
         tab.error(f"Error rendering buy analysis: {e}")

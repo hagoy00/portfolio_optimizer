@@ -98,4 +98,6 @@ if run_opt:
     try:
         socket.gethostbyname("query1.finance.yahoo.com")
     except:
-        st.error("DNS failure
+        st.error("DNS failure: unable to reach the data source")
+
+

@@ -7,7 +7,7 @@ def render_tab3(tab, prices, model):
     Shows portfolio weights and share counts.
     """
 
-    tab.subheader("Portfolio Weights & Shares")
+    tab.markdown("## Portfolio Weights & Shares")
 
     if model is None:
         tab.info("Run optimization to see portfolio weights.")
@@ -17,12 +17,17 @@ def render_tab3(tab, prices, model):
         weights = model.get("weights", None)
         shares = model.get("shares", None)
 
+        # ---------------------------------------------------
+        # GUARD CLAUSE — missing weights
+        # ---------------------------------------------------
         if weights is None:
             tab.warning("Model exists but weight data is missing.")
             return
 
-        w = pd.Series(weights, name="Weight")
+        # Convert weights to Series
+        w = pd.Series(weights, name="Weight").sort_values(ascending=False)
 
+        # Convert shares to Series (aligned with weights)
         if shares is not None:
             s = pd.Series(shares, name="Shares").reindex(w.index)
         else:
@@ -30,12 +35,13 @@ def render_tab3(tab, prices, model):
 
         df = pd.concat([w, s], axis=1)
 
-        tab.markdown("### Weights and Shares")
-        tab.dataframe(
-            df.style.format({
-                "Weight": "{:.2%}"
-            })
-        )
+        # ---------------------------------------------------
+        # CLEAN LAYOUT
+        # ---------------------------------------------------
+        tab.markdown("### Allocation Overview")
 
-    except Exception as e:
-        tab.error(f"Error rendering weights: {e}")
+        col1, col2 = tab.columns([2, 3])
+
+        # --- Column 1: Weight Summary ---
+        with col1:
+           

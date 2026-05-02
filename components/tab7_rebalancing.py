@@ -14,20 +14,28 @@ def render_tab7(tab, prices, model):
         tab.error("Weights missing from model.")
         return
 
-    # Frequency selector
-    freq = tab.selectbox(
+    # User-friendly frequency selector
+    freq_label = tab.selectbox(
         "Rebalancing Frequency",
-        ["M", "Q", "A"],
-        index=0,
-        help="M = Monthly, Q = Quarterly, A = Annual"
+        ["Monthly", "Quarterly", "Annual"],
+        index=0
     )
+
+    # Convert UI → Pandas-valid frequency codes
+    freq_map = {
+        "Monthly": "ME",
+        "Quarterly": "QE",
+        "Annual": "YE"
+    }
+
+    freq = freq_map[freq_label]
 
     # Run backtest
     try:
         result = rebalancing_backtest(
             prices,
             weights,
-            freq=freq  # works with our tolerant function
+            freq=freq
         )
     except Exception as e:
         tab.error(f"Rebalancing failed: {e}")

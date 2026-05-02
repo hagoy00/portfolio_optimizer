@@ -73,16 +73,28 @@ if st.button("Run Optimization"):
     )
 
     #full_prices = load_full_prices_from_raw(raw, tickers)
-    
-    full_prices = load_full_prices_from_raw(tickers, start_date, end_date)
+    #full_prices = load_full_prices_from_raw(tickers, start_date, end_date)
     # DEBUG — show MultiIndex structure
+    #if full_prices is None or full_prices.empty:
+    #   st.error("No valid price data found.")
+    #    st.stop()
+full_prices = load_full_prices_from_raw(tickers, start_date, end_date)
+
+# DEBUG: inspect what we really got back
+st.write("DEBUG full_prices type:", type(full_prices))
+if full_prices is not None:
+    st.write("DEBUG full_prices shape:", full_prices.shape)
     st.write("DEBUG full_prices columns:", full_prices.columns)
-    if full_prices is None or full_prices.empty:
-        st.error("No valid price data found.")
-        st.stop()
+
+prices = extract_adj_close(full_prices)
+
+st.write("DEBUG prices type:", type(prices))
+if prices is not None:
+    st.write("DEBUG prices shape:", prices.shape)
+    st.write("DEBUG prices head:", prices.head())
 
     st.write("DEBUG full_prices columns:", full_prices.columns)
-    prices = extract_adj_close(full_prices)
+    #prices = extract_adj_close(full_prices)
 
     # ---------------------------------------------------
     # NEW: USE optimizer_core.run_optimizer()

@@ -14,10 +14,6 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from utils.optimizer_core import run_optimizer
 from utils.data_loader import load_price_data
 
-# Debug: confirm correct optimizer file is loaded
-import utils.optimizer_core as oc
-st.write("Optimizer loaded from:", oc.__file__)
-
 # Import tab components
 from components.tab1_summary import render_tab1
 from components.tab2_frontier import render_tab2

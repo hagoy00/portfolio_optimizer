@@ -38,7 +38,7 @@ st.set_page_config(
 st.markdown(
     """
     <div style="padding: 20px 0 10px 0; border-bottom: 1px solid #444;">
-        <h1 style="margin-bottom: 0; color: #2E86C1;">📊 Portfolio Optimizer Dashboard</h1>
+        <h1 style="margin-bottom: 0; color: #2E86C1;">Portfolio Optimizer Dashboard</h1>
         <p style="color: #888; font-size: 16px;">
             A professional multi‑factor portfolio analysis suite with optimization, risk modeling, and AI insights.
         </p>

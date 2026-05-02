@@ -1,34 +1,10 @@
 import pandas as pd
 import yfinance as yf
 
-# ---------------------------------------------------
-# CLEAN TICKER INPUT
-# ---------------------------------------------------
-def clean_ticker_input(ticker_string):
-    """
-    Converts a comma/space separated string into a clean list of tickers.
-    Example: "AAPL, MSFT TSLA" → ["AAPL", "MSFT", "TSLA"]
-    """
-    if not ticker_string:
-        return []
-
-    tickers = (
-        ticker_string.replace(",", " ")
-        .upper()
-        .split()
-    )
-
-    return list(dict.fromkeys(tickers))  # remove duplicates, preserve order
-
-
-# ---------------------------------------------------
-# RAW PRICE DOWNLOAD
-# ---------------------------------------------------
 def load_full_prices_from_raw(tickers, start, end):
     """
-    Downloads raw OHLCV data for multiple tickers.
-    Always returns MultiIndex: (ticker, field)
-    Ensures both Close and Adj Close exist.
+    Downloads OHLCV data for multiple tickers and returns a MultiIndex DataFrame:
+    (ticker, field)
     """
 
     if not tickers:
@@ -51,13 +27,12 @@ def load_full_prices_from_raw(tickers, start, end):
     if isinstance(data.columns, pd.Index):
         data = pd.concat({tickers[0]: data}, axis=1)
 
-    valid = [t for t in tickers if t in data.columns.levels[0]]
-    if not valid:
-        return None
+    cleaned = {}
 
-    cleaned = []
+    for t in tickers:
+        if t not in data.columns.levels[0]:
+            continue
 
-    for t in valid:
         df = data[t].copy()
 
         # Ensure Close exists
@@ -71,27 +46,12 @@ def load_full_prices_from_raw(tickers, start, end):
         if df["Close"].dropna().empty:
             continue
 
-        cleaned.append(t)
+        cleaned[t] = df
 
     if not cleaned:
         return None
 
-    return data[cleaned].dropna(how="all")
+    final = pd.concat(cleaned, axis=1)
+    final = final.dropna(how="all")
 
-
-# ---------------------------------------------------
-# EXTRACT ADJ CLOSE
-# ---------------------------------------------------
-def extract_adj_close(full_prices):
-    """
-    Extracts only the Adj Close column from the MultiIndex OHLCV data.
-    Returns a DataFrame: index = dates, columns = tickers.
-    """
-    if full_prices is None:
-        return None
-
-    try:
-        adj = full_prices.xs("Adj Close", level=1, axis=1)
-        return adj.dropna(how="all")
-    except Exception:
-        return None
+    return final

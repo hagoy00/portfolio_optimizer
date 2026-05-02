@@ -1,8 +1,34 @@
 import pandas as pd
 import yfinance as yf
 
+# ---------------------------------------------------
+# CLEAN TICKER INPUT
+# ---------------------------------------------------
+def clean_ticker_input(ticker_string):
+    """
+    Converts a comma/space separated string into a clean list of tickers.
+    Example: "AAPL, MSFT TSLA" → ["AAPL", "MSFT", "TSLA"]
+    """
+    if not ticker_string:
+        return []
+
+    tickers = (
+        ticker_string.replace(",", " ")
+        .upper()
+        .split()
+    )
+
+    return list(dict.fromkeys(tickers))  # remove duplicates, preserve order
+
+
+# ---------------------------------------------------
+# RAW PRICE DOWNLOAD
+# ---------------------------------------------------
 def load_full_prices_from_raw(tickers, start, end):
-    
+    """
+    Downloads OHLCV data for multiple tickers and returns a MultiIndex DataFrame:
+    (ticker, field)
+    """
 
     if not tickers:
         return None
@@ -52,3 +78,21 @@ def load_full_prices_from_raw(tickers, start, end):
     final = final.dropna(how="all")
 
     return final
+
+
+# ---------------------------------------------------
+# EXTRACT ADJ CLOSE
+# ---------------------------------------------------
+def extract_adj_close(full_prices):
+    """
+    Extracts only the Adj Close column from the MultiIndex OHLCV data.
+    Returns a DataFrame: index = dates, columns = tickers.
+    """
+    if full_prices is None:
+        return None
+
+    try:
+        adj = full_prices.xs("Adj Close", level=1, axis=1)
+        return adj.dropna(how="all")
+    except Exception:
+        return None

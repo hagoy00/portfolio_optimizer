@@ -1,197 +1,132 @@
 import streamlit as st
-import pandas as pd
-import yfinance as yf
 import datetime
+import sys
+import socket
+import ssl
+import yfinance as yf
 
-import optimizer_core as optimizer_core
-import tab1_summary as tab1_summary
-import tab2_frontier as tab2_frontier
-import tab3_weights as tab3_weights
-import tab4_sector as tab4_sector
-import tab5_drawdown as tab5_drawdown
-import tab6_montecarlo as tab6_montecarlo
-import tab7_rebalancing as tab7_rebalancing
-import tab8_ai_commentary as tab8_ai_commentary
-import tab9_buy_analysis as tab9_buy_analysis
-
-# ---------------------------------------------------
-# PAGE CONFIG
-# ---------------------------------------------------
-st.set_page_config(
-    page_title="Portfolio Optimizer Dashboard",
-    layout="wide",
+from utils.data_loader import (
+    clean_ticker_input,
+    load_full_prices_from_raw,
+    extract_adj_close
 )
 
-# ---------------------------------------------------
-# REMOVE STREAMLIT DEFAULT HEADER/FOOTER
-# ---------------------------------------------------
-hide_streamlit_style = """
-    <style>
-    header {visibility: hidden;}
-    footer {visibility: hidden;}
-    </style>
-"""
-st.markdown(hide_streamlit_style, unsafe_allow_html=True)
-
-# ---------------------------------------------------
-# STICKY HEADER CSS
-# ---------------------------------------------------
-st.markdown("""
-<style>
-.sticky-header {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    padding: 18px 30px 12px 30px;
-    background-color: #1C1F26;
-    z-index: 9999;
-    border-bottom: 1px solid #444;
-}
-.gradient-line {
-    height: 3px;
-    background: linear-gradient(to right, #2E86C1, #6BB9F0);
-    margin-top: 6px;
-}
-.main-content {
-    margin-top: 120px;
-}
-</style>
-""", unsafe_allow_html=True)
-
-# ---------------------------------------------------
-# STICKY HEADER HTML
-# ---------------------------------------------------
-st.markdown(f"""
-<div class="sticky-header">
-    <h1 style="margin-bottom: 0; color: #2E86C1;">Portfolio Optimizer Dashboard</h1>
-    <p style="color: #AAAAAA; font-size: 14px; margin-top: 4px;">
-        Last updated: {datetime.datetime.now().strftime("%B %d, %Y • %I:%M %p")}
-    </p>
-    <div class="gradient-line"></div>
-</div>
-
-<div class="main-content">
-""", unsafe_allow_html=True)
-
-# ---------------------------------------------------
-# SIDEBAR — GLOBAL CONTROLS
-# ---------------------------------------------------
-st.sidebar.header("Portfolio Settings")
-
-tickers_input = st.sidebar.text_input(
-    "Tickers (comma-separated)",
-    value="AAPL, MSFT, AMZN",
-    placeholder="Enter tickers like: AAPL, MSFT, AMZN",
-    help="Enter the tickers you want to include in the portfolio."
+# NEW — use optimizer_core instead of utils.optimizer
+from utils.optimizer_core import (
+    run_optimizer,
+    rebalancing_backtest
 )
 
-start_date = st.sidebar.date_input("Start Date", pd.to_datetime("2015-01-01"))
-end_date = st.sidebar.date_input("End Date", pd.to_datetime("today"))
+from components.tab1_summary import render_tab1
+from components.tab2_frontier import render_tab2
+from components.tab3_weights import render_tab3
+from components.tab4_sector import render_tab4
+from components.tab5_drawdown import render_tab5
+from components.tab6_montecarlo import render_tab6
+from components.tab7_rebalancing import render_tab7
+from components.tab8_ai_commentary import render_tab8
+from components.tab9_buy_analysis import render_tab9
 
-risk_free_rate = st.sidebar.number_input(
-    "Risk-free rate (annual, %)",
-    min_value=0.0,
-    max_value=10.0,
-    value=4.0,
-    step=0.25
+# ---------------------------------------------------
+# DEBUG INFO
+# ---------------------------------------------------
+st.write("DEBUG optimizer loaded:", sys.executable)
+
+st.title("Portfolio Optimizer Dashboard")
+
+# ---------------------------------------------------
+# INPUTS
+# ---------------------------------------------------
+default_start = datetime.date(2020, 1, 1)
+default_end = datetime.date.today()
+
+tickers_raw = st.text_input(
+    "Tickers (comma separated)",
+    "AAPL, TSLA, NVDA, AMZN, GOOG, WFC"
 )
-
-rebalance_freq = st.sidebar.selectbox(
-    "Rebalancing frequency",
-    ["Monthly", "Quarterly", "Yearly"]
-)
-
-# You can store shared state here if tabs need it
-st.session_state["tickers_input"] = tickers_input
-st.session_state["start_date"] = start_date
-st.session_state["end_date"] = end_date
-st.session_state["risk_free_rate"] = risk_free_rate
-st.session_state["rebalance_freq"] = rebalance_freq
+start_date = st.date_input("Start Date", default_start)
+end_date = st.date_input("End Date", default_end)
 
 # ---------------------------------------------------
-# TABS
+# RUN OPTIMIZATION
 # ---------------------------------------------------
-tab_titles = [
-    "Summary",
-    "Efficient Frontier",
-    "Weights",
-    "Sector",
-    "Drawdown",
-    "Monte Carlo",
-    "Rebalancing",
-    "AI Commentary",
-    "Buy Analysis",
-]
+if st.button("Run Optimization"):
 
-(
-    tab1,
-    tab2,
-    tab3,
-    tab4,
-    tab5,
-    tab6,
-    tab7,
-    tab8,
-    tab9,
-) = st.tabs(tab_titles)
+    tickers = clean_ticker_input(tickers_raw)
 
-# ---------------------------------------------------
-# TAB 1 — SUMMARY
-# ---------------------------------------------------
-with tab1:
-    # Assumes tab1_summary.py exposes a function like: render()
-    tab1_summary.render()
+    # Network test
+    try:
+        socket.gethostbyname("query1.finance.yahoo.com")
+    except:
+        st.error("DNS failure")
+        st.stop()
 
-# ---------------------------------------------------
-# TAB 2 — EFFICIENT FRONTIER
-# ---------------------------------------------------
-with tab2:
-    tab2_frontier.render()
+    # Download data
+    raw = yf.download(
+        tickers,
+        start=start_date,
+        end=end_date,
+        group_by="ticker",
+        auto_adjust=False,
+        progress=False,
+        threads=True
+    )
 
-# ---------------------------------------------------
-# TAB 3 — WEIGHTS
-# ---------------------------------------------------
-with tab3:
-    tab3_weights.render()
+    full_prices = load_full_prices_from_raw(raw, tickers)
+    if full_prices is None or full_prices.empty:
+        st.error("No valid price data found.")
+        st.stop()
 
-# ---------------------------------------------------
-# TAB 4 — SECTOR
-# ---------------------------------------------------
-with tab4:
-    tab4_sector.render()
+    prices = extract_adj_close(full_prices)
+
+    # ---------------------------------------------------
+    # NEW: USE optimizer_core.run_optimizer()
+    # ---------------------------------------------------
+    model = run_optimizer(prices, investment_amount=25000)
+
+    if model is None:
+        st.error("Optimizer failed — check price data.")
+        st.stop()
+
+    # Save model + data
+    st.session_state["model"] = model
+    st.session_state["prices"] = prices
+    st.session_state["full_prices"] = full_prices
+
+    st.success("Optimization complete.")
 
 # ---------------------------------------------------
-# TAB 5 — DRAWDOWN
+# RENDER TABS
 # ---------------------------------------------------
-with tab5:
-    tab5_drawdown.render()
+if "model" in st.session_state:
 
-# ---------------------------------------------------
-# TAB 6 — MONTE CARLO
-# ---------------------------------------------------
-with tab6:
-    tab6_montecarlo.render()
+    model = st.session_state["model"]
+    prices = st.session_state["prices"]
+    full_prices = st.session_state["full_prices"]
 
-# ---------------------------------------------------
-# TAB 7 — REBALANCING
-# ---------------------------------------------------
-with tab7:
-    tab7_rebalancing.render()
+    tabs = st.tabs([
+        "Summary",
+        "Efficient Frontier",
+        "Weights & Shares",
+        "Sector Exposure",
+        "Drawdown Analysis",
+        "Monte Carlo Simulation",
+        "Rebalancing Backtest",
+        "AI Commentary",
+        "Is This Stock a Good Buy?"
+    ])
 
-# ---------------------------------------------------
-# TAB 8 — AI COMMENTARY
-# ---------------------------------------------------
-with tab8:
-    tab8_ai_commentary.render()
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = tabs
 
-# ---------------------------------------------------
-# TAB 9 — BUY ANALYSIS
-# ---------------------------------------------------
-with tab9:
-    tab9_buy_analysis.render()
+    render_tab1(tab1, model)
+    render_tab2(tab2, prices, model)
+    render_tab3(tab3, prices, model)
+    render_tab4(tab4, model["sector_weights"])
+    render_tab5(tab5, prices, model)
+    render_tab6(tab6, model["monte_carlo"])
+    render_tab7(tab7, prices, model)
+    render_tab8(tab8, model, model["sector_weights"])
+    render_tab9(tab9, full_prices)
 
-# ---------------------------------------------------
-# CLOSE MAIN CONTENT WRAPPER
-# ---------------------------------------------------
-st.markdown("</div>", unsafe_allow_html=True)
+else:
+    st.info("Enter tickers and click Run Optimization.")

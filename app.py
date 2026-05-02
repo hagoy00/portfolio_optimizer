@@ -73,11 +73,13 @@ if st.button("Run Optimization"):
     )
 
     #full_prices = load_full_prices_from_raw(raw, tickers)
+    
     full_prices = load_full_prices_from_raw(tickers, start_date, end_date)
     if full_prices is None or full_prices.empty:
         st.error("No valid price data found.")
         st.stop()
 
+    st.write("DEBUG full_prices columns:", full_prices.columns)
     prices = extract_adj_close(full_prices)
 
     # ---------------------------------------------------

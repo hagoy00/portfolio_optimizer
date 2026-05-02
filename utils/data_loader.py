@@ -2,10 +2,7 @@ import pandas as pd
 import yfinance as yf
 
 def load_full_prices_from_raw(tickers, start, end):
-    """
-    Downloads OHLCV data for multiple tickers and returns a MultiIndex DataFrame:
-    (ticker, field)
-    """
+    
 
     if not tickers:
         return None

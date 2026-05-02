@@ -1,7 +1,5 @@
 import streamlit as st
-import datetime
-import sys
-import socket
+import pandas as pd
 import ssl
 import yfinance as yf
 
@@ -11,139 +9,119 @@ from utils.data_loader import (
     extract_adj_close
 )
 
-# NEW — use optimizer_core instead of utils.optimizer
-from utils.optimizer_core import (
-    run_optimizer,
-    rebalancing_backtest
+from utils.optimizer_core import run_optimizer
+from components.summary_tab import render_summary_tab
+from components.frontier_tab import render_frontier_tab
+from components.weights_tab import render_weights_tab
+from components.sector_tab import render_sector_tab
+from components.drawdown_tab import render_drawdown_tab
+from components.montecarlo_tab import render_montecarlo_tab
+from components.rebalancing_tab import render_rebalancing_tab
+from components.ai_commentary_tab import render_ai_commentary_tab
+from components.buy_analysis_tab import render_buy_analysis_tab
+
+
+# ---------------------------------------------------------
+# STREAMLIT PAGE CONFIG
+# ---------------------------------------------------------
+st.set_page_config(
+    page_title="Portfolio Optimizer",
+    layout="wide"
 )
-
-from components.tab1_summary import render_tab1
-from components.tab2_frontier import render_tab2
-from components.tab3_weights import render_tab3
-from components.tab4_sector import render_tab4
-from components.tab5_drawdown import render_tab5
-from components.tab6_montecarlo import render_tab6
-from components.tab7_rebalancing import render_tab7
-from components.tab8_ai_commentary import render_tab8
-from components.tab9_buy_analysis import render_tab9
-
-# ---------------------------------------------------
-# DEBUG INFO
-# ---------------------------------------------------
-st.write("DEBUG optimizer loaded:", sys.executable)
 
 st.title("Portfolio Optimizer Dashboard")
 
-# ---------------------------------------------------
-# INPUTS
-# ---------------------------------------------------
-default_start = datetime.date(2020, 1, 1)
-default_end = datetime.date.today()
 
-tickers_raw = st.text_input(
-    "Tickers (comma separated)",
-    "AAPL, TSLA, NVDA, AMZN, GOOG, WFC"
-)
-start_date = st.date_input("Start Date", default_start)
-end_date = st.date_input("End Date", default_end)
+# ---------------------------------------------------------
+# USER INPUTS
+# ---------------------------------------------------------
+tickers_raw = st.text_input("Tickers (comma separated)")
+start_date = st.date_input("Start Date")
+end_date = st.date_input("End Date")
 
-# ---------------------------------------------------
-# RUN OPTIMIZATION
-# ---------------------------------------------------
-if st.button("Run Optimization"):
+tickers = clean_ticker_input(tickers_raw)
 
-    tickers = clean_ticker_input(tickers_raw)
 
-    # Network test
-    try:
-        socket.gethostbyname("query1.finance.yahoo.com")
-    except:
-        st.error("DNS failure")
-        st.stop()
-
-    # Download data
-    raw = yf.download(
-        tickers,
-        start=start_date,
-        end=end_date,
-        group_by="ticker",
-        auto_adjust=False,
-        progress=False,
-        threads=True
-    )
-
-    #full_prices = load_full_prices_from_raw(raw, tickers)
-    #full_prices = load_full_prices_from_raw(tickers, start_date, end_date)
-    # DEBUG — show MultiIndex structure
-    #if full_prices is None or full_prices.empty:
-    #   st.error("No valid price data found.")
-    #    st.stop()
+# ---------------------------------------------------------
+# LOAD RAW PRICES
+# ---------------------------------------------------------
 full_prices = load_full_prices_from_raw(tickers, start_date, end_date)
 
-# DEBUG: inspect what we really got back
+# DEBUG BLOCK — DO NOT REMOVE UNTIL WE CONFIRM PIPELINE
 st.write("DEBUG full_prices type:", type(full_prices))
 if full_prices is not None:
     st.write("DEBUG full_prices shape:", full_prices.shape)
     st.write("DEBUG full_prices columns:", full_prices.columns)
 
+
+# ---------------------------------------------------------
+# EXTRACT ADJ CLOSE
+# ---------------------------------------------------------
 prices = extract_adj_close(full_prices)
 
+# DEBUG BLOCK — DO NOT REMOVE UNTIL WE CONFIRM PIPELINE
 st.write("DEBUG prices type:", type(prices))
 if prices is not None:
     st.write("DEBUG prices shape:", prices.shape)
     st.write("DEBUG prices head:", prices.head())
 
-    st.write("DEBUG full_prices columns:", full_prices.columns)
-    #prices = extract_adj_close(full_prices)
 
-    # ---------------------------------------------------
-    # NEW: USE optimizer_core.run_optimizer()
-    # ---------------------------------------------------
-    model = run_optimizer(prices, investment_amount=25000)
+# ---------------------------------------------------------
+# GUARD CLAUSE — STOP IF NO VALID PRICE DATA
+# ---------------------------------------------------------
+if prices is None or prices.empty:
+    st.error("Optimizer failed — check price data.")
+    st.stop()
 
-    if model is None:
-        st.error("Optimizer failed — check price data.")
-        st.stop()
 
-    # Save model + data
-    st.session_state["model"] = model
-    st.session_state["prices"] = prices
-    st.session_state["full_prices"] = full_prices
+# ---------------------------------------------------------
+# RUN OPTIMIZER
+# ---------------------------------------------------------
+model = run_optimizer(prices)
 
-    st.success("Optimization complete.")
+if model is None:
+    st.error("Optimizer failed — model returned None.")
+    st.stop()
 
-# ---------------------------------------------------
-# RENDER TABS
-# ---------------------------------------------------
-if "model" in st.session_state:
 
-    model = st.session_state["model"]
-    prices = st.session_state["prices"]
-    full_prices = st.session_state["full_prices"]
+# ---------------------------------------------------------
+# TABS
+# ---------------------------------------------------------
+tabs = st.tabs([
+    "Summary",
+    "Efficient Frontier",
+    "Weights",
+    "Sector Exposure",
+    "Drawdown",
+    "Monte Carlo",
+    "Rebalancing",
+    "AI Commentary",
+    "Buy Analysis"
+])
 
-    tabs = st.tabs([
-        "Summary",
-        "Efficient Frontier",
-        "Weights & Shares",
-        "Sector Exposure",
-        "Drawdown Analysis",
-        "Monte Carlo Simulation",
-        "Rebalancing Backtest",
-        "AI Commentary",
-        "Is This Stock a Good Buy?"
-    ])
+with tabs[0]:
+    render_summary_tab(model)
 
-    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = tabs
+with tabs[1]:
+    render_frontier_tab(prices, model)
 
-    render_tab1(tab1, model)
-    render_tab2(tab2, prices, model)
-    render_tab3(tab3, prices, model)
-    render_tab4(tab4, model["sector_weights"])
-    render_tab5(tab5, prices, model)
-    render_tab6(tab6, model["monte_carlo"])
-    render_tab7(tab7, prices, model)
-    render_tab8(tab8, model, model["sector_weights"])
-    render_tab9(tab9, full_prices)
+with tabs[2]:
+    render_weights_tab(model)
 
-else:
-    st.info("Enter tickers and click Run Optimization.")
+with tabs[3]:
+    render_sector_tab(model)
+
+with tabs[4]:
+    render_drawdown_tab(prices, model)
+
+with tabs[5]:
+    render_montecarlo_tab(model)
+
+with tabs[6]:
+    render_rebalancing_tab(prices, model)
+
+with tabs[7]:
+    render_ai_commentary_tab(model)
+
+with tabs[8]:
+    render_buy_analysis_tab(full_prices)

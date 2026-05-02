@@ -1,5 +1,6 @@
 import pandas as pd
 import yfinance as yf
+import re
 
 def clean_ticker_input(ticker_string):
     if not ticker_string:
@@ -41,33 +42,36 @@ def load_full_prices_from_raw(tickers, start, end):
 
         df = data[t].copy()
 
-        # ---------------------------------------------------
-        # FLATTEN MULTIINDEX COLUMNS
-        # ---------------------------------------------------
+        # Flatten MultiIndex
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = ["_".join([str(c) for c in col]).lower() for col in df.columns]
         else:
             df.columns = df.columns.str.lower()
 
-        # Normalize names
-        rename_map = {
-            "close": "close",
-            "adjclose": "adjclose",
-            "close*": "close",
-            "prices_close": "close",
-            "prices_adjclose": "adjclose",
-        }
-        df = df.rename(columns=rename_map)
+        # ---------------------------------------------------
+        # DYNAMIC COLUMN DETECTION
+        # ---------------------------------------------------
+        close_col = None
+        adjclose_col = None
 
-        # Ensure close exists
-        if "close" not in df.columns and "adjclose" in df.columns:
-            df["close"] = df["adjclose"]
+        for col in df.columns:
+            if re.search(r"adj.*close", col):
+                adjclose_col = col
+            elif re.search(r"close", col):
+                close_col = col
 
-        # Ensure adjclose exists
-        if "adjclose" not in df.columns and "close" in df.columns:
-            df["adjclose"] = df["close"]
+        # If only adjclose exists → create close
+        if close_col is None and adjclose_col is not None:
+            df["close"] = df[adjclose_col]
+            close_col = "close"
 
-        if df["close"].dropna().empty:
+        # If only close exists → create adjclose
+        if adjclose_col is None and close_col is not None:
+            df["adjclose"] = df[close_col]
+            adjclose_col = "adjclose"
+
+        # If neither exists → skip ticker
+        if close_col is None:
             continue
 
         cleaned[t] = df
@@ -75,7 +79,6 @@ def load_full_prices_from_raw(tickers, start, end):
     if not cleaned:
         return None
 
-    # Rebuild MultiIndex with normalized names
     final = pd.concat(cleaned, axis=1)
     final = final.dropna(how="all")
 
@@ -86,9 +89,12 @@ def extract_adj_close(full_prices):
     if full_prices is None:
         return None
 
-    # inner level is now lowercase: "adjclose"
+    # Find adjclose dynamically
     try:
-        adj = full_prices.xs("adjclose", level=1, axis=1)
+        adj_cols = [c for c in full_prices.columns.levels[1] if "adjclose" in c]
+        if not adj_cols:
+            return None
+        adj = full_prices.xs(adj_cols[0], level=1, axis=1)
         return adj.dropna(how="all")
     except Exception:
         return None

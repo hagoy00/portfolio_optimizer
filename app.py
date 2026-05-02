@@ -56,13 +56,9 @@ st.sidebar.header("Portfolio Settings")
 
 tickers_input = st.sidebar.text_input(
     "Tickers (comma-separated)",
-    tickers_input = st.sidebar.text_input(
-    "Tickers (comma-separated)",
     value="",
     placeholder="Enter tickers like: AAPL, MSFT, AMZN",
     help="Enter the tickers you want to include in the portfolio."
-)
-
 )
 
 start_date = st.sidebar.date_input("Start Date", pd.to_datetime("2015-01-01"))

@@ -41,21 +41,21 @@ def load_full_prices_from_raw(tickers, start, end):
 
         df = data[t].copy()
 
-        # Normalize column names
-        df.columns = (
-            df.columns
-            .str.lower()
-            .str.replace(" ", "")
-            .str.replace("_", "")
-        )
+        # ---------------------------------------------------
+        # FLATTEN MULTIINDEX COLUMNS
+        # ---------------------------------------------------
+        if isinstance(df.columns, pd.MultiIndex):
+            df.columns = ["_".join([str(c) for c in col]).lower() for col in df.columns]
+        else:
+            df.columns = df.columns.str.lower()
 
-        # Map all possible variants to standard names
+        # Normalize names
         rename_map = {
             "close": "close",
             "adjclose": "adjclose",
-            "adj_close": "adjclose",
             "close*": "close",
-            "closingprice": "close",
+            "prices_close": "close",
+            "prices_adjclose": "adjclose",
         }
         df = df.rename(columns=rename_map)
 

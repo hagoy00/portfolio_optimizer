@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 
+st.write("DEBUG — entering Tab 3")
 def render_weights_tab(tab, prices, model):
     """
     Weights & Shares tab.

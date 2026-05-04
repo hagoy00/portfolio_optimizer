@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 
-def render_tab3(tab, prices, model):
+def render_weights_tab(tab, prices, model):
     """
     Weights & Shares tab.
     Shows portfolio weights, dollar allocation, and share counts.

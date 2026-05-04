@@ -4,6 +4,7 @@ def render_ai_commentary_tab(tab, prices, model):
 
 #def render_ai_commentary_tab(tab, model, sector_weights):
     tab.markdown("## AI Commentary")
+sector_weights = model.get("sector_weights")
 
     if model is None:
         tab.info("Run optimization to generate commentary.")

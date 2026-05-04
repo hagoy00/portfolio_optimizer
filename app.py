@@ -85,14 +85,12 @@ if run_button:
         # ---------------------------------------------------------
         # Sector Weights (Tab 4)
         # ---------------------------------------------------------
-        # TODO: replace with real sector mapping
         sector_map = {
             "AAPL": "Technology",
             "MSFT": "Technology",
             "NVDA": "Technology",
             "AMZN": "Consumer Discretionary",
         }
-        # Only keep tickers that exist in the map
         mapped = {t: sector_map.get(t, "Other") for t in tickers}
         sector_weights = w_series.groupby(mapped).sum()
 

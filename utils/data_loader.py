@@ -1,115 +1,91 @@
-import streamlit as st
-from datetime import date
+import pandas as pd
 
-# Loaders
-#from utils.data_loader import load_price_data, load_returns_data
+def clean_ticker_input(raw):
+    """
+    Cleans user input like:
+    'AAPL, TSLA , MSFT'
+    'BRK.B, VOO'
+    'AAPL TSLA MSFT'
+    """
+    raw = raw.replace(" ", "")
+    parts = raw.split(",")
+    parts = [p for p in parts if p]
 
-# Import all tab modules
-from components.tab1_summary import render_tab as tab1_render
-from components.tab2_frontier import render_tab as tab2_render
-from components.tab3_weights import render_tab as tab3_render
-from components.tab4_sector import render_tab as tab4_render
-from components.tab5_drawdown import render_tab as tab5_render
-from components.tab6_montecarlo import render_tab as tab6_render
-from components.tab7_rebalancing import render_tab as tab7_render
-from components.tab8_ai_commentary import render_tab as tab8_render
-from components.tab9_buy_analysis import render_tab as tab9_render
+    cleaned = []
+    for p in parts:
+        # Fix cases like "AAPL.MSFT"
+        if "." in p and p.count(".") > 1:
+            cleaned.extend(p.split("."))
+        else:
+            cleaned.append(p)
 
-
-# ---------------------------------------------------------
-# Streamlit Page Config
-# ---------------------------------------------------------
-st.set_page_config(
-    page_title="Portfolio Optimizer Dashboard",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
-
-st.title("📈 Portfolio Optimizer Dashboard")
+    return cleaned
 
 
-# ---------------------------------------------------------
-# Sidebar Inputs
-# ---------------------------------------------------------
-st.sidebar.header("Input Parameters")
+def load_full_prices_from_raw(raw, tickers):
+    """
+    Converts raw yf.download output (flat or grouped) into a proper MultiIndex:
+        (ticker, field)
+    Ensures Close and Adj Close exist.
+    """
 
-tickers_input = st.sidebar.text_input(
-    "Tickers (comma separated)",
-    value="AAPL, MSFT, NVDA, AMZN"
-)
+    if raw is None or raw.empty:
+        return None
 
-start_date = st.sidebar.date_input(
-    "Start Date",
-    value=date(2020, 1, 1)
-)
+    # Case 1: Yahoo returned grouped MultiIndex (normal behavior)
+    if isinstance(raw.columns, pd.MultiIndex):
+        data = raw.copy()
 
-end_date = st.sidebar.date_input(
-    "End Date",
-    value=date.today()
-)
+    else:
+        # Case 2: Yahoo returned FLAT columns (your 2026 case)
+        # Example: AAPL_Open, AAPL_Close, TSLA_Open, TSLA_Close
+        new_cols = []
+        for col in raw.columns:
+            parts = col.split("_")
+            if len(parts) == 2:
+                ticker, field = parts
+                new_cols.append((ticker, field))
+            else:
+                # fallback: put everything under the first ticker
+                new_cols.append((tickers[0], col))
 
-run_button = st.sidebar.button("Run Analysis")
+        data = raw.copy()
+        data.columns = pd.MultiIndex.from_tuples(new_cols)
+
+    # Keep only tickers that actually downloaded
+    valid = [t for t in tickers if t in data.columns.levels[0]]
+    if not valid:
+        return None
+
+    data = data[valid]
+
+    # Ensure Close and Adj Close exist
+    for t in valid:
+        fields = data[t].columns
+
+        if "Close" not in fields and "Adj Close" in fields:
+            data[(t, "Close")] = data[(t, "Adj Close")]
+
+        if "Adj Close" not in fields and "Close" in fields:
+            data[(t, "Adj Close")] = data[(t, "Close")]
+
+    return data.dropna(how="all")
 
 
-# ---------------------------------------------------------
-# Main Logic
-# ---------------------------------------------------------
-if run_button:
 
-    try:
-        # Load data
-        prices = load_price_data(tickers_input, start_date, end_date)
-        returns = load_returns_data(tickers_input, start_date, end_date)
+def extract_adj_close(full_prices):
+    """
+    Returns a flat DataFrame of adjusted close prices.
+    If 'Adj Close' is missing (as in some 2026 Yahoo data),
+    fall back to 'Close'.
+    """
+    level1 = full_prices.columns.get_level_values(1)
 
-        st.success("Data loaded successfully.")
+    if "Adj Close" in level1:
+        return full_prices.xs("Adj Close", level=1, axis=1).dropna(how="all")
 
-        # ---------------------------------------------------------
-        # Create 9 tabs
-        # ---------------------------------------------------------
-        (
-            tab1, tab2, tab3, tab4, tab5,
-            tab6, tab7, tab8, tab9
-        ) = st.tabs([
-            "📊 Summary",
-            "📈 Efficient Frontier",
-            "⚖️ Optimal Weights",
-            "🏭 Sector Exposure",
-            "📉 Drawdowns",
-            "🎲 Monte Carlo",
-            "🔄 Rebalancing",
-            "🤖 AI Commentary",
-            "🛒 Buy Analysis"
-        ])
+    # Fallback for 2026+ Yahoo data
+    if "Close" in level1:
+        return full_prices.xs("Close", level=1, axis=1).dropna(how="all")
 
-        # ---------------------------------------------------------
-        # Render each tab
-        # ---------------------------------------------------------
-        with tab1:
-            tab1_render(prices, returns)
-
-        with tab2:
-            tab2_render(prices, returns)
-
-        with tab3:
-            tab3_render(prices, returns)
-
-        with tab4:
-            tab4_render(prices, returns)
-
-        with tab5:
-            tab5_render(prices, returns)
-
-        with tab6:
-            tab6_render(prices, returns)
-
-        with tab7:
-            tab7_render(prices, returns)
-
-        with tab8:
-            tab8_render(prices, returns)
-
-        with tab9:
-            tab9_render(prices, returns)
-
-    except Exception as e:
-        st.error(f"❌ Error: {str(e)}")
+    raise KeyError("Neither 'Adj Close' nor 'Close' found in price data.")

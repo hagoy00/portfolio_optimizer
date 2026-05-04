@@ -92,6 +92,24 @@ section[data-testid="stSidebar"] * {
 
 </style>
 """, unsafe_allow_html=True)
+st.markdown("""
+<style>
+
+/* your existing CSS here... */
+
+/* Make the title sticky inside the scrolling content container */
+div[data-testid="stAppViewContainer"] h1 {
+    position: sticky !important;
+    top: 0 !important;
+    background-color: white !important;
+    padding: 12px 0 !important;
+    margin: 0 !important;
+    z-index: 99999 !important;
+    border-bottom: 1px solid #e0e0e0 !important;
+}
+
+</style>
+""", unsafe_allow_html=True)
 
 st.title("Portfolio Optimizer Dashboard")
 

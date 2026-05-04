@@ -143,24 +143,27 @@ def rebalancing_backtest(prices, target_weights, freq=None, rebalance_freq=None,
     if returns.empty:
         return None
 
-    tickers = adj.columns
-
     # Normalize target_weights into a Series aligned to tickers
-    if isinstance(target_weights, pd.Series):
-        w_series = target_weights.reindex(tickers).fillna(0.0)
-    elif isinstance(target_weights, dict):
-        w_series = pd.Series(target_weights).reindex(tickers).fillna(0.0)
-    else:
-        w_array = np.array(target_weights)
-        if len(w_array) != len(tickers):
-            return None
-        w_series = pd.Series(w_array, index=tickers)
+tickers = adj.columns
 
-    if w_series.sum() == 0:
-        return None
+if isinstance(target_weights, pd.Series):
+    w_series = target_weights.reindex(tickers).fillna(0.0)
 
-    w_series = w_series / w_series.sum()
-    w = w_series.values
+elif isinstance(target_weights, dict):
+    w_series = pd.Series(target_weights).reindex(tickers).fillna(0.0)
+
+else:
+    w_array = np.array(target_weights)
+    if len(w_array) != len(tickers):
+        raise ValueError("Weight array length does not match tickers")
+    w_series = pd.Series(w_array, index=tickers)
+
+# Normalize
+if w_series.sum() == 0:
+    raise ValueError("Weights sum to zero")
+
+w_series = w_series / w_series.sum()
+w = w_series.values
 
     rebal_dates = returns.resample(freq).first().index
 

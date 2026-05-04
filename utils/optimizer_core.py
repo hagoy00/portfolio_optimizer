@@ -7,9 +7,6 @@ print(">>> USING optimizer_core.py FROM:", __file__)
 # HELPER: Compute portfolio performance
 # ---------------------------------------------------
 def portfolio_performance(weights, mean_returns, cov_matrix):
-    """
-    Returns expected portfolio return and volatility (annualized).
-    """
     weights = np.array(weights)
     port_return = np.sum(mean_returns * weights) * 252
     port_vol = np.sqrt(np.dot(weights.T, np.dot(cov_matrix, weights))) * np.sqrt(252)
@@ -28,10 +25,6 @@ def sharpe_ratio(weights, mean_returns, cov_matrix, risk_free_rate=0.0):
 # HELPER: Sector Weights
 # ---------------------------------------------------
 def compute_sector_weights(weights, tickers):
-    """
-    Simple sector mapping for FAANG-style tickers.
-    Extend this mapping as needed.
-    """
     sector_map = {
         "AAPL": "Technology",
         "MSFT": "Technology",
@@ -51,21 +44,11 @@ def compute_sector_weights(weights, tickers):
 # MAIN OPTIMIZER
 # ---------------------------------------------------
 def run_optimizer(prices, investment_amount=None):
-    """
-    Core optimizer:
-    - Computes returns & covariance
-    - Generates random portfolios
-    - Selects max Sharpe portfolio
-    - Computes sector weights
-    - Computes drawdown & simple Monte Carlo
-    - Stores investment amount for downstream tabs
-    """
-
     if prices is None or prices.empty:
         return None
 
     try:
-        adj = prices.xs("Adj Close", level=1, axis=1)
+        adj = prices.xs("Adj Close", level="Field", axis=1)
     except Exception:
         return None
 
@@ -77,9 +60,6 @@ def run_optimizer(prices, investment_amount=None):
     mean_returns = returns.mean()
     cov_matrix = returns.cov()
 
-    # -------------------------------
-    # RANDOM PORTFOLIO SEARCH
-    # -------------------------------
     num_portfolios = 5000
     results = np.zeros((3, num_portfolios))
     weight_records = []
@@ -103,21 +83,12 @@ def run_optimizer(prices, investment_amount=None):
     volatility = results[1, max_sharpe_idx]
     sharpe = results[2, max_sharpe_idx]
 
-    # -------------------------------
-    # SECTOR WEIGHTS
-    # -------------------------------
     sector_weights = compute_sector_weights(best_weights, tickers)
 
-    # -------------------------------
-    # DRAWDOWN
-    # -------------------------------
     port_daily_ret = (returns * best_weights).sum(axis=1)
     equity_curve = (1 + port_daily_ret).cumprod()
     drawdown = equity_curve / equity_curve.cummax() - 1.0
 
-    # -------------------------------
-    # MONTE CARLO (simple bootstrap)
-    # -------------------------------
     num_paths = 200
     horizon = 252
     mc_paths = []
@@ -127,14 +98,11 @@ def run_optimizer(prices, investment_amount=None):
         path_curve = (1 + sampled).cumprod()
         mc_paths.append(path_curve)
 
-    mc_df = pd.DataFrame(mc_paths).T  # index = step, columns = path
+    mc_df = pd.DataFrame(mc_paths).T
 
-    # -------------------------------
-    # BUILD MODEL
-    # -------------------------------
     model = {
         "tickers": tickers,
-        "weights": pd.Series(best_weights, index=tickers),  # Series for tabs
+        "weights": pd.Series(best_weights, index=tickers),
         "expected_return": exp_return,
         "volatility": volatility,
         "sharpe": sharpe,
@@ -151,23 +119,23 @@ def run_optimizer(prices, investment_amount=None):
 
 
 # ---------------------------------------------------
-# REBALANCING BACKTEST
+# REBALANCING BACKTEST (FIXED)
 # ---------------------------------------------------
 def rebalancing_backtest(prices, target_weights, freq=None, rebalance_freq=None, **kwargs):
     """
     Simple rebalancing backtest:
     - Accepts freq OR rebalance_freq (or neither)
-    - Computes portfolio value over time
+    - Uses Adj Close from MultiIndex prices
+    - Aligns weights to tickers
     """
 
-    # accept any of: freq=, rebalance_freq=, nothing
     if freq is None and rebalance_freq is None:
         freq = "M"
     elif freq is None:
         freq = rebalance_freq
 
     try:
-        adj = prices.xs("Adj Close", level=1, axis=1)
+        adj = prices.xs("Adj Close", level="Field", axis=1)
     except Exception:
         return None
 
@@ -175,12 +143,24 @@ def rebalancing_backtest(prices, target_weights, freq=None, rebalance_freq=None,
     if returns.empty:
         return None
 
-    # Ensure weights is numpy array with correct length
+    tickers = adj.columns
+
+    # Normalize target_weights into a Series aligned to tickers
     if isinstance(target_weights, pd.Series):
-        w = target_weights.values
+        w_series = target_weights.reindex(tickers).fillna(0.0)
+    elif isinstance(target_weights, dict):
+        w_series = pd.Series(target_weights).reindex(tickers).fillna(0.0)
     else:
-        w = np.array(target_weights)
-    w = w / w.sum()
+        w_array = np.array(target_weights)
+        if len(w_array) != len(tickers):
+            return None
+        w_series = pd.Series(w_array, index=tickers)
+
+    if w_series.sum() == 0:
+        return None
+
+    w_series = w_series / w_series.sum()
+    w = w_series.values
 
     rebal_dates = returns.resample(freq).first().index
 

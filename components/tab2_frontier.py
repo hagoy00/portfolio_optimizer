@@ -2,7 +2,8 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 
-def render_tab2(tab, prices, model):
+def render_frontier_tab(tab, prices, model):
+#def render_tab2(tab, prices, model):
     tab.markdown("## Efficient Frontier")
 
     if model is None:

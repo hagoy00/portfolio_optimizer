@@ -3,9 +3,7 @@ import pandas as pd
 import numpy as np
 import yfinance as yf
 
-# ---------------------------------------------------
-# Helper: Color coding for BUY/HOLD/SELL
-# ---------------------------------------------------
+
 def color_signal(val):
     if val == "BUY":
         return "color: green; font-weight: bold;"
@@ -14,9 +12,6 @@ def color_signal(val):
     return "color: red; font-weight: bold;"
 
 
-# ---------------------------------------------------
-# Technical Indicators
-# ---------------------------------------------------
 def compute_RSI(series, period=14):
     delta = series.diff()
     gain = delta.clip(lower=0)
@@ -43,9 +38,6 @@ def compute_bollinger(series, window=20):
     return ma, upper, lower
 
 
-# ---------------------------------------------------
-# Valuation + Analyst Data
-# ---------------------------------------------------
 def fetch_valuation_and_analyst(ticker):
     try:
         tk = yf.Ticker(ticker)
@@ -67,10 +59,6 @@ def fetch_valuation_and_analyst(ticker):
         }
 
 
-# ---------------------------------------------------
-# MAIN TAB RENDERER
-# ---------------------------------------------------
-st.write("DEBUG — entering Tab X")
 def render_buy_analysis_tab(tab, prices, model):
 
     tab.markdown("## Buy Analysis")
@@ -80,13 +68,11 @@ def render_buy_analysis_tab(tab, prices, model):
         return
 
     try:
+        # ✅ Use the named MultiIndex level
         close = prices.xs("Close", level="Field", axis=1)
-        #close = prices.xs("Close", level=1, axis=1)
+
         results = []
 
-        # ---------------------------------------------------
-        # PER-TICKER ANALYSIS
-        # ---------------------------------------------------
         for ticker in close.columns:
             series = close[ticker].dropna()
             if len(series) < 220:
@@ -150,9 +136,7 @@ def render_buy_analysis_tab(tab, prices, model):
 
         df = pd.DataFrame(results).set_index("Ticker")
 
-        # ---------------------------------------------------
-        # SIGNAL SUMMARY
-        # ---------------------------------------------------
+        # Signal summary
         tab.markdown("### Signal Summary")
         col1, col2, col3 = tab.columns(3)
         col1.metric("BUY", (df["Signal"] == "BUY").sum())
@@ -161,9 +145,7 @@ def render_buy_analysis_tab(tab, prices, model):
 
         tab.markdown("---")
 
-        # ---------------------------------------------------
-        # MAIN TABLE
-        # ---------------------------------------------------
+        # Main table
         tab.markdown("### Buy / Hold / Sell Table")
 
         styled = (
@@ -184,9 +166,7 @@ def render_buy_analysis_tab(tab, prices, model):
 
         tab.markdown("---")
 
-        # ---------------------------------------------------
-        # TECHNICAL CHARTS
-        # ---------------------------------------------------
+        # Technical charts
         tab.markdown("### Technical Charts")
 
         for ticker in df.index:
@@ -213,9 +193,7 @@ def render_buy_analysis_tab(tab, prices, model):
                     "Lower Band": lower
                 }))
 
-        # ---------------------------------------------------
-        # COMMENTARY
-        # ---------------------------------------------------
+        # Commentary
         tab.markdown("### Commentary")
 
         for ticker, row in df.iterrows():

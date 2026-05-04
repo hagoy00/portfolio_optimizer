@@ -1,5 +1,6 @@
 import streamlit as st
 
+st.write("DEBUG — entering Tab X")
 def render_ai_commentary_tab(tab, prices, model):
 
     tab.markdown("## AI Commentary")

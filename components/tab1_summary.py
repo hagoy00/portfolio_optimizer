@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-st.write("DEBUG — entering Tab X")
+st.write("DEBUG — entering Tab 1")
 
 def render_summary_tab(tab, prices, model):
     tab.markdown("## Portfolio Summary")

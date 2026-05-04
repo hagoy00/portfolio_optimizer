@@ -2,7 +2,7 @@ import streamlit as st
 from datetime import date
 
 # Loaders
-from utils.data_loader import load_price_data, load_returns_data
+#from utils.data_loader import load_price_data, load_returns_data
 
 # Import all tab modules
 from components.tab1_summary import render_tab as tab1_render

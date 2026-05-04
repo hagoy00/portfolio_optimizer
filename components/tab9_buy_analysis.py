@@ -58,7 +58,8 @@ def fetch_valuation_and_analyst(ticker):
             "Analyst Recommendation": None,
         }
 
-st.write("DEBUG — entering Tab 9")
+#st.write("DEBUG — entering Tab 9")
+
 def render_buy_analysis_tab(tab, prices, model):
 
     tab.markdown("## Buy Analysis")

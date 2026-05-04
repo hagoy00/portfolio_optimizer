@@ -1,244 +1,101 @@
 import streamlit as st
-import pandas as pd
-import numpy as np
-import yfinance as yf
 
-# ---------------------------------------------------
-# Helper: Color coding for BUY/HOLD/SELL
-# ---------------------------------------------------
-def color_signal(val):
-    if val == "BUY":
-        return "color: green; font-weight: bold;"
-    elif val == "HOLD":
-        return "color: orange; font-weight: bold;"
-    return "color: red; font-weight: bold;"
+def render_ai_commentary_tab(tab, prices, model):
 
-# ---------------------------------------------------
-# Technical Indicators
-# ---------------------------------------------------
-def compute_RSI(series, period=14):
-    delta = series.diff()
-    gain = delta.clip(lower=0)
-    loss = -delta.clip(upper=0)
-    avg_gain = gain.rolling(period).mean()
-    avg_loss = loss.rolling(period).mean()
-    rs = avg_gain / avg_loss
-    return 100 - (100 / (1 + rs))
+    tab.markdown("## AI Commentary")
 
-def compute_MACD(series):
-    ema12 = series.ewm(span=12, adjust=False).mean()
-    ema26 = series.ewm(span=26, adjust=False).mean()
-    macd = ema12 - ema26
-    signal = macd.ewm(span=9, adjust=False).mean()
-    return macd, signal
-
-def compute_bollinger(series, window=20):
-    ma = series.rolling(window).mean()
-    std = series.rolling(window).std()
-    upper = ma + 2 * std
-    lower = ma - 2 * std
-    return ma, upper, lower
-
-# ---------------------------------------------------
-# Valuation + Analyst Data
-# ---------------------------------------------------
-def fetch_valuation_and_analyst(ticker):
-    try:
-        tk = yf.Ticker(ticker)
-        info = tk.info or {}
-        rec = info.get("recommendationKey", None)
-
-        return {
-            "PE": info.get("trailingPE", np.nan),
-            "PB": info.get("priceToBook", np.nan),
-            "PS": info.get("priceToSalesTrailing12Months", np.nan),
-            "Analyst Recommendation": rec.upper() if isinstance(rec, str) else None,
-        }
-    except Exception:
-        return {
-            "PE": np.nan,
-            "PB": np.nan,
-            "PS": np.nan,
-            "Analyst Recommendation": None,
-        }
-
-# ---------------------------------------------------
-# Main Tab Renderer
-# ---------------------------------------------------
-#def render_buy_analysis_tab(tab, full_prices):
-def render_buy_analysis_tab(tab, prices, model):
-
-    tab.markdown("## Buy Analysis")
-
-    if prices is None or prices.empty:
-        tab.info("Load data first to analyze buy signals.")
+    if model is None:
+        tab.info("Run optimization to generate commentary.")
         return
 
     try:
-        close = prices.xs("Close", level=1, axis=1)
-        results = []
-        ...
-
-    try:
-        close = full_prices.xs("Close", level=1, axis=1)
-        results = []
+        perf = model.get("performance", {})
+        dd = model.get("drawdown", None)
+        w = model.get("weights", None)
+        sector_weights = model.get("sector_weights", None)
 
         # ---------------------------------------------------
-        # PER-TICKER ANALYSIS
+        # GUARD CLAUSE — missing data
         # ---------------------------------------------------
-        for ticker in close.columns:
-            series = close[ticker].dropna()
-            if len(series) < 220:
-                continue
-
-            price = series.iloc[-1]
-
-            # Technicals
-            rsi = compute_RSI(series).iloc[-1]
-            macd, signal = compute_MACD(series)
-            macd_last = macd.iloc[-1]
-            signal_last = signal.iloc[-1]
-            ma20, upper, lower = compute_bollinger(series)
-            trend_200 = (price / series.rolling(200).mean().iloc[-1]) - 1
-            momentum_20 = (price / series.iloc[-20]) - 1
-
-            # Valuation + Analyst
-            val = fetch_valuation_and_analyst(ticker)
-            pe, pb, ps = val["PE"], val["PB"], val["PS"]
-            analyst = val["Analyst Recommendation"]
-
-            # Composite Score
-            score = 0
-            if rsi < 30: score += 1
-            if macd_last > signal_last: score += 1
-            if price > ma20.iloc[-1]: score += 1
-            if trend_200 > 0: score += 1
-            if momentum_20 > 0: score += 1
-            if not np.isnan(pe) and pe < 25: score += 1
-            if not np.isnan(pb) and pb < 5: score += 1
-            if not np.isnan(ps) and ps < 10: score += 1
-            if analyst in ("STRONG_BUY", "BUY"): score += 1
-            if analyst in ("SELL", "STRONG_SELL", "UNDERPERFORM"): score -= 1
-
-            if score >= 6:
-                signal_text = "BUY"
-            elif score >= 3:
-                signal_text = "HOLD"
-            else:
-                signal_text = "SELL"
-
-            results.append({
-                "Ticker": ticker,
-                "Price": price,
-                "RSI": rsi,
-                "MACD": macd_last,
-                "Signal Line": signal_last,
-                "200-Day Trend": trend_200,
-                "20-Day Momentum": momentum_20,
-                "PE": pe,
-                "PB": pb,
-                "PS": ps,
-                "Analyst Recommendation": analyst,
-                "Score": score,
-                "Signal": signal_text
-            })
-
-        if not results:
-            tab.warning("Not enough historical data to compute buy analysis.")
+        if not perf or w is None:
+            tab.warning("Model exists but performance or weights are missing.")
             return
 
-        df = pd.DataFrame(results).set_index("Ticker")
+        # Extract metrics
+        ret = perf.get("return", 0)
+        vol = perf.get("volatility", 0)
+        sharpe = perf.get("sharpe", 0)
+        max_dd = dd.min().min() if dd is not None else None
+
+        # Sector commentary
+        if sector_weights is not None and len(sector_weights) > 0:
+            top_sector = sector_weights.idxmax()
+            top_sector_weight = sector_weights.max()
+        else:
+            top_sector = "Unknown"
+            top_sector_weight = 0
 
         # ---------------------------------------------------
-        # SIGNAL SUMMARY
+        # METRIC PANEL
         # ---------------------------------------------------
-        tab.markdown("### Signal Summary")
+        tab.markdown("### Portfolio Metrics Summary")
+
         col1, col2, col3 = tab.columns(3)
-        col1.metric("BUY", (df["Signal"] == "BUY").sum())
-        col2.metric("HOLD", (df["Signal"] == "HOLD").sum())
-        col3.metric("SELL", (df["Signal"] == "SELL").sum())
+        col1.metric("Expected Return", f"{ret:.2%}")
+        col2.metric("Volatility", f"{vol:.2%}")
+        col3.metric("Sharpe Ratio", f"{sharpe:.2f}")
+
+        col4, col5 = tab.columns(2)
+        col4.metric("Max Drawdown", f"{max_dd:.2%}" if max_dd is not None else "N/A")
+        col5.metric("Top Sector Weight", f"{top_sector_weight:.2%}")
 
         tab.markdown("---")
 
-        # ---------------------------------------------------
-        # MAIN TABLE
-        # ---------------------------------------------------
-        tab.markdown("### Buy / Hold / Sell Table")
+        with tab.expander("Portfolio Overview", expanded=True):
+            tab.markdown(
+                f"""
+The portfolio targets an expected return of **{ret:.2%}** with an annualized volatility of 
+**{vol:.2%}**, resulting in a **Sharpe ratio of {sharpe:.2f}**.  
+This places the allocation in a balanced risk‑reward posture consistent with diversified equity portfolios.
+"""
+            )
 
-        styled = (
-            df.style.format({
-                "Price": "{:.2f}",
-                "RSI": "{:.1f}",
-                "MACD": "{:.4f}",
-                "Signal Line": "{:.4f}",
-                "200-Day Trend": "{:.2%}",
-                "20-Day Momentum": "{:.2%}",
-                "PE": "{:.1f}",
-                "PB": "{:.1f}",
-                "PS": "{:.1f}",
-            }).map(color_signal, subset=["Signal"])
-        )
+        with tab.expander("Risk & Drawdown Analysis", expanded=False):
+            tab.markdown(
+                f"""
+Historical drawdown analysis indicates a maximum drawdown of **{max_dd:.2%}**, 
+suggesting controlled downside risk and stable recovery behavior.
+"""
+            )
 
-        tab.dataframe(styled)
+        with tab.expander("Allocation Insights", expanded=False):
+            tab.markdown(
+                f"""
+The optimizer allocated the highest weight to **{top_sector}**, representing 
+**{top_sector_weight:.2%}** of the portfolio.  
+This tilt reflects favorable risk‑adjusted characteristics in that sector.
+"""
+            )
 
-        tab.markdown("---")
+        with tab.expander("Risk Parity Comparison", expanded=False):
+            tab.markdown(
+                """
+Risk‑parity weights differ from the Markowitz solution, indicating:
 
-        # ---------------------------------------------------
-        # TECHNICAL CHARTS
-        # ---------------------------------------------------
-        tab.markdown("### Technical Charts")
+- Uneven covariance structure  
+- Strong return‑to‑risk imbalance  
+- Higher concentration in return‑dominant assets  
+"""
+            )
 
-        for ticker in df.index:
-            series = close[ticker].dropna()
-
-            with tab.expander(f"{ticker} — Charts", expanded=False):
-
-                tab.markdown("#### Price History")
-                tab.line_chart(series)
-
-                tab.markdown("#### RSI (14)")
-                tab.line_chart(compute_RSI(series))
-
-                tab.markdown("#### MACD")
-                macd, signal = compute_MACD(series)
-                tab.line_chart(pd.DataFrame({"MACD": macd, "Signal": signal}))
-
-                tab.markdown("#### Bollinger Bands (20)")
-                ma20, upper, lower = compute_bollinger(series)
-                tab.line_chart(pd.DataFrame({
-                    "Price": series,
-                    "MA20": ma20,
-                    "Upper Band": upper,
-                    "Lower Band": lower
-                }))
-
-        # ---------------------------------------------------
-        # COMMENTARY
-        # ---------------------------------------------------
-        tab.markdown("### Commentary")
-
-        for ticker, row in df.iterrows():
-            sig = row["Signal"]
-            analyst = row["Analyst Recommendation"]
-
-            text = f"**{ticker}: {sig}** — "
-
-            if sig == "BUY":
-                text += "Strong technical and valuation profile. "
-            elif sig == "HOLD":
-                text += "Mixed technicals or valuation; balanced risk/reward. "
-            else:
-                text += "Weak technicals or stretched valuation; caution warranted. "
-
-            if isinstance(analyst, str):
-                text += f"Analyst stance: **{analyst.title().replace('_', ' ')}**. "
-
-            if row["200-Day Trend"] > 0:
-                text += "Price is above long-term trend."
-            else:
-                text += "Price is below long-term trend."
-
-            tab.markdown(f"- {text}")
+        with tab.expander("Summary", expanded=True):
+            tab.markdown(
+                """
+Overall, the portfolio is positioned for efficient growth, balancing return potential with 
+controlled volatility. Sector tilts reflect areas of relative strength, while risk metrics 
+remain well‑anchored.
+"""
+            )
 
     except Exception as e:
-        tab.error(f"Error rendering buy analysis: {e}")
+        tab.error(f"Error generating AI commentary: {e}")

@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-st.write("DEBUG — entering Tab X")
+st.write("DEBUG — entering Tab 4")
 
 def render_sector_tab(tab, prices, model):
     tab.header("Sector Exposure")

@@ -60,6 +60,17 @@ if run_button:
         # Load data
         prices = load_price_data(tickers_input, start_date, end_date)
         returns = load_returns_data(tickers_input, start_date, end_date)
+        tickers = list(prices.columns)
+
+cov_matrix = returns.cov()
+
+model = {
+    "prices": prices,
+    "returns": returns,
+    "tickers": tickers,
+    "cov_matrix": cov_matrix,
+}
+
 
         # Build model dictionary (expand later)
         model = {
@@ -77,15 +88,15 @@ if run_button:
             tab1, tab2, tab3, tab4, tab5,
             tab6, tab7, tab8, tab9
         ) = st.tabs([
-            "📊 Summary",
-            "📈 Efficient Frontier",
-            "⚖️ Optimal Weights",
-            "🏭 Sector Exposure",
-            "📉 Drawdowns",
-            "🎲 Monte Carlo",
-            "🔄 Rebalancing",
-            "🤖 AI Commentary",
-            "🛒 Buy Analysis"
+            "Summary",
+            " Efficient Frontier",
+            " Optimal Weights",
+            " Sector Exposure",
+            " Drawdowns",
+            " Monte Carlo",
+            " Rebalancing",
+            " AI Commentary",
+            " Buy Analysis"
         ])
 
         # ---------------------------------------------------------

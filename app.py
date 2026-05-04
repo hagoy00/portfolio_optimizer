@@ -17,6 +17,7 @@ from components.tab7_rebalancing import render_rebalancing_tab
 from components.tab8_ai_commentary import render_ai_commentary_tab
 from components.tab9_buy_analysis import render_buy_analysis_tab
 
+
 # ---------------------------------------------------------
 # Streamlit Page Config
 # ---------------------------------------------------------
@@ -27,71 +28,67 @@ st.set_page_config(
 )
 
 # ---------------------------------------------------------
-# Global UI styling (sticky + light blue theme)
+# Global UI styling (sticky + blue theme)
 # ---------------------------------------------------------
 st.markdown("""
 <style>
-/* Light blue theme for text */
-html, body, [class*="css"]  {
-    color: #4da6ff !important;
-}
 
 /* Sticky sidebar */
-[data-testid="stSidebar"] {
-    position: fixed;
+section[data-testid="stSidebar"] {
+    position: fixed !important;
     top: 0;
+    left: 0;
     height: 100%;
     z-index: 100;
 }
 
-/* Push main content right to account for fixed sidebar */
-.main {
-    margin-left: 18rem;
+/* Push main content right */
+div[data-testid="stAppViewContainer"] {
+    margin-left: 18rem !important;
 }
 
-/* Sticky title */
+/* Sticky header */
 h1 {
     position: sticky;
     top: 0;
-    background-color: white;
-    padding-top: 10px;
-    padding-bottom: 10px;
+    background-color: white !important;
+    padding: 12px 0;
     z-index: 99;
+    border-bottom: 1px solid #e0e0e0;
 }
 
-/* Light blue metrics */
+/* Blue text everywhere */
+html, body, [class*="css"] {
+    color: #1E90FF !important;   /* Dodger Blue */
+}
+
+/* Blue metric values */
 [data-testid="stMetricValue"] {
-    color: #4da6ff !important;
+    color: #1E90FF !important;
 }
 
-/* Light blue tab labels */
+/* Blue tab labels */
 .stTabs [data-baseweb="tab"] {
-    color: #4da6ff !important;
+    color: #1E90FF !important;
 }
+
 </style>
 """, unsafe_allow_html=True)
 
 st.title("Portfolio Optimizer Dashboard")
+
 
 # ---------------------------------------------------------
 # Sidebar Inputs
 # ---------------------------------------------------------
 st.sidebar.header("Input Parameters")
 
-# 1) User types tickers
 tickers_input = st.sidebar.text_input(
     "Tickers (comma separated)",
-    value="AAPL, MSFT, NVDA, AMZN, TSLA, GOOG, WFC, APP"
+    value="AAPL, MSFT, NVDA, AMZN"
 )
 
-# 2) Parse them immediately and let user choose active ones
-raw_tickers = [t.strip().upper() for t in tickers_input.split(",") if t.strip()]
-
-selected_tickers = st.sidebar.multiselect(
-    "Active portfolio tickers",
-    options=raw_tickers,
-    default=raw_tickers
-)
+tickers = [t.strip().upper() for t in tickers_input.split(",") if t.strip()]
 
 start_date = st.sidebar.date_input(
     "Start Date",
@@ -112,148 +109,151 @@ investment_amount = st.sidebar.number_input(
 
 run_button = st.sidebar.button("Run Analysis")
 
+
 # ---------------------------------------------------------
 # Main Logic
 # ---------------------------------------------------------
 if run_button:
 
-    if not selected_tickers:
-        st.error("Please select at least one ticker in 'Active portfolio tickers'.")
+    if not tickers:
+        st.error("Please enter at least one ticker.")
     else:
         try:
             # ---------------------------------------------------------
-            # Load data for selected tickers only
+            # Load data
             # ---------------------------------------------------------
-            tickers_str = ", ".join(selected_tickers)
+            tickers_str = ", ".join(tickers)
             prices = load_price_data(tickers_str, start_date, end_date)
             returns = load_returns_data(tickers_str, start_date, end_date)
 
-            st.write("DEBUG — column names:", prices.columns.names)
+            # Ensure we only keep requested tickers (safety)
+            if "Ticker" in prices.columns.names:
+                prices = prices.loc[:, prices.columns.get_level_values("Ticker").isin(tickers)]
+            returns = returns[[t for t in tickers if t in returns.columns]]
 
-            # Ensure we only keep selected tickers (safety)
-            prices = prices.loc[:, prices.columns.get_level_values("Ticker").isin(selected_tickers)]
-            returns = returns[selected_tickers]
+            tickers_final = [t for t in tickers if t in returns.columns]
 
-            tickers = selected_tickers
+            if not tickers_final:
+                st.error("No valid tickers found in the data.")
+            else:
+                # ---------------------------------------------------------
+                # Core model components
+                # ---------------------------------------------------------
+                cov_matrix = returns.cov()
 
-            # ---------------------------------------------------------
-            # Core model components
-            # ---------------------------------------------------------
-            cov_matrix = returns.cov()
+                weights = {t: 1 / len(tickers_final) for t in tickers_final}
+                w_series = pd.Series(weights)
 
-            weights = {t: 1 / len(tickers) for t in tickers}
-            w_series = pd.Series(weights)
+                # ---------------------------------------------------------
+                # Sector Weights (Tab 4)
+                # ---------------------------------------------------------
+                sector_map = {
+                    "AAPL": "Technology",
+                    "MSFT": "Technology",
+                    "NVDA": "Technology",
+                    "AMZN": "Consumer Discretionary",
+                    "GOOG": "Communication Services",
+                    "TSLA": "Consumer Discretionary",
+                    "WFC": "Financials",
+                    "APP": "Technology",
+                }
 
-            # ---------------------------------------------------------
-            # Sector Weights (Tab 4)
-            # ---------------------------------------------------------
-            sector_map = {
-                "AAPL": "Technology",
-                "MSFT": "Technology",
-                "NVDA": "Technology",
-                "AMZN": "Consumer Discretionary",
-                "GOOG": "Communication Services",
-                "TSLA": "Consumer Discretionary",
-                "WFC": "Financials",
-                "APP": "Technology",
-            }
+                mapped = {t: sector_map.get(t, "Other") for t in tickers_final}
+                sector_weights = w_series.groupby(mapped).sum()
 
-            mapped = {t: sector_map.get(t, "Other") for t in tickers}
-            sector_weights = w_series.groupby(mapped).sum()
+                # ---------------------------------------------------------
+                # Portfolio Returns
+                # ---------------------------------------------------------
+                portfolio_returns = (returns[tickers_final] * w_series).sum(axis=1)
 
-            # ---------------------------------------------------------
-            # Portfolio Returns
-            # ---------------------------------------------------------
-            portfolio_returns = (returns * w_series).sum(axis=1)
+                # ---------------------------------------------------------
+                # Drawdown (Tab 5)
+                # ---------------------------------------------------------
+                cumulative = (1 + portfolio_returns).cumprod()
+                running_max = cumulative.cummax()
+                drawdown = (cumulative - running_max) / running_max
+                drawdown_df = drawdown.to_frame("Drawdown")
 
-            # ---------------------------------------------------------
-            # Drawdown (Tab 5)
-            # ---------------------------------------------------------
-            cumulative = (1 + portfolio_returns).cumprod()
-            running_max = cumulative.cummax()
-            drawdown = (cumulative - running_max) / running_max
-            drawdown_df = drawdown.to_frame("Drawdown")
+                # ---------------------------------------------------------
+                # Monte Carlo Simulation (Tab 6)
+                # ---------------------------------------------------------
+                num_paths = 200
+                num_days = 252
 
-            # ---------------------------------------------------------
-            # Monte Carlo Simulation (Tab 6)
-            # ---------------------------------------------------------
-            num_paths = 200
-            num_days = 252
+                mu = portfolio_returns.mean()
+                sigma = portfolio_returns.std()
 
-            mu = portfolio_returns.mean()
-            sigma = portfolio_returns.std()
+                simulations = np.zeros((num_days, num_paths))
+                for p in range(num_paths):
+                    daily_returns = np.random.normal(mu, sigma, num_days)
+                    simulations[:, p] = np.cumprod(1 + daily_returns)
 
-            simulations = np.zeros((num_days, num_paths))
-            for p in range(num_paths):
-                daily_returns = np.random.normal(mu, sigma, num_days)
-                simulations[:, p] = np.cumprod(1 + daily_returns)
+                mc_df = pd.DataFrame(
+                    simulations,
+                    columns=[f"Path_{i}" for i in range(num_paths)]
+                )
 
-            mc_df = pd.DataFrame(
-                simulations,
-                columns=[f"Path_{i}" for i in range(num_paths)]
-            )
+                # ---------------------------------------------------------
+                # Performance Metrics (Tab 8)
+                # ---------------------------------------------------------
+                annual_return = portfolio_returns.mean() * 252
+                annual_vol = portfolio_returns.std() * np.sqrt(252)
+                sharpe = annual_return / annual_vol if annual_vol > 0 else 0
 
-            # ---------------------------------------------------------
-            # Performance Metrics (Tab 8)
-            # ---------------------------------------------------------
-            annual_return = portfolio_returns.mean() * 252
-            annual_vol = portfolio_returns.std() * np.sqrt(252)
-            sharpe = annual_return / annual_vol if annual_vol > 0 else 0
+                performance = {
+                    "expected_return": annual_return,
+                    "volatility": annual_vol,
+                    "sharpe": sharpe,
+                }
 
-            performance = {
-                "expected_return": annual_return,
-                "volatility": annual_vol,
-                "sharpe": sharpe,
-            }
+                # ---------------------------------------------------------
+                # Build model dictionary
+                # ---------------------------------------------------------
+                model = {
+                    "prices": prices,
+                    "returns": returns,
+                    "tickers": tickers_final,
+                    "cov_matrix": cov_matrix,
+                    "weights": weights,  # dict; rebalancing_backtest handles dict
+                    "investment_amount": investment_amount,
+                    "sector_weights": sector_weights,
+                    "drawdown": drawdown_df,
+                    "monte_carlo": mc_df,
+                    "performance": performance,
+                }
 
-            # ---------------------------------------------------------
-            # Build model dictionary
-            # ---------------------------------------------------------
-            model = {
-                "prices": prices,
-                "returns": returns,
-                "tickers": tickers,
-                "cov_matrix": cov_matrix,
-                "weights": weights,
-                "investment_amount": investment_amount,
-                "sector_weights": sector_weights,
-                "drawdown": drawdown_df,
-                "monte_carlo": mc_df,
-                "performance": performance,
-            }
+                st.success("Data loaded successfully.")
 
-            st.success("Data loaded successfully.")
+                # ---------------------------------------------------------
+                # Create Tabs
+                # ---------------------------------------------------------
+                (
+                    tab1, tab2, tab3, tab4, tab5,
+                    tab6, tab7, tab8, tab9
+                ) = st.tabs([
+                    " Summary",
+                    " Efficient Frontier",
+                    " Optimal Weights",
+                    " Sector Exposure",
+                    " Drawdowns",
+                    " Monte Carlo",
+                    " Rebalancing",
+                    " AI Commentary",
+                    " Buy Analysis"
+                ])
 
-            # ---------------------------------------------------------
-            # Create Tabs
-            # ---------------------------------------------------------
-            (
-                tab1, tab2, tab3, tab4, tab5,
-                tab6, tab7, tab8, tab9
-            ) = st.tabs([
-                " Summary",
-                " Efficient Frontier",
-                " Optimal Weights",
-                " Sector Exposure",
-                " Drawdowns",
-                " Monte Carlo",
-                " Rebalancing",
-                " AI Commentary",
-                " Buy Analysis"
-            ])
-
-            # ---------------------------------------------------------
-            # Render Tabs
-            # ---------------------------------------------------------
-            render_summary_tab(tab1, prices, model)
-            render_frontier_tab(tab2, prices, model)
-            render_weights_tab(tab3, prices, model)
-            render_sector_tab(tab4, prices, model)
-            render_drawdown_tab(tab5, prices, model)
-            render_montecarlo_tab(tab6, prices, model)
-            render_rebalancing_tab(tab7, prices, model)
-            render_ai_commentary_tab(tab8, prices, model)
-            render_buy_analysis_tab(tab9, prices, model)
+                # ---------------------------------------------------------
+                # Render Tabs
+                # ---------------------------------------------------------
+                render_summary_tab(tab1, prices, model)
+                render_frontier_tab(tab2, prices, model)
+                render_weights_tab(tab3, prices, model)
+                render_sector_tab(tab4, prices, model)
+                render_drawdown_tab(tab5, prices, model)
+                render_montecarlo_tab(tab6, prices, model)
+                render_rebalancing_tab(tab7, prices, model)
+                render_ai_commentary_tab(tab8, prices, model)
+                render_buy_analysis_tab(tab9, prices, model)
 
         except Exception as e:
             st.error(f"❌ Error: {str(e)}")

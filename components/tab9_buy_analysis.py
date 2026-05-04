@@ -65,7 +65,7 @@ def fetch_valuation_and_analyst(ticker):
 # ---------------------------------------------------
 # Main Tab Renderer
 # ---------------------------------------------------
-def render_tab9(tab, full_prices):
+def render_buy_analysis_tab(tab, full_prices):
     tab.markdown("## Buy Analysis")
 
     if full_prices is None or full_prices.empty:

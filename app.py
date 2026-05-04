@@ -6,7 +6,6 @@ import numpy as np
 # Loaders
 from utils.data_loader import load_price_data, load_returns_data
 
-
 # Import tab modules
 from components.tab1_summary import render_summary_tab
 from components.tab2_frontier import render_frontier_tab
@@ -28,7 +27,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-st.title(" Portfolio Optimizer Dashboard")
+st.title("Portfolio Optimizer Dashboard")
 
 
 # ---------------------------------------------------------
@@ -38,7 +37,7 @@ st.sidebar.header("Input Parameters")
 
 tickers_input = st.sidebar.text_input(
     "Tickers (comma separated)",
-    value="AAPL, MSFT, NVDA, AMZN"
+    value="AAPL, MSFT, NVDA, AMZN, TSLA, GOOG, WFC, APP"
 )
 
 start_date = st.sidebar.date_input(
@@ -67,23 +66,34 @@ run_button = st.sidebar.button("Run Analysis")
 if run_button:
 
     try:
-        
         # ---------------------------------------------------------
         # Load data
         # ---------------------------------------------------------
         prices = load_price_data(tickers_input, start_date, end_date)
         returns = load_returns_data(tickers_input, start_date, end_date)
 
-        # ⭐ DEBUG: Check MultiIndex level names
         st.write("DEBUG — column names:", prices.columns.names)
+
+        # ---------------------------------------------------------
+        # Let user choose which tickers to include
+        # ---------------------------------------------------------
+        all_tickers = prices.columns.get_level_values("Ticker").unique().tolist()
+
+        selected_tickers = st.sidebar.multiselect(
+            "Select tickers to include in portfolio",
+            options=all_tickers,
+            default=all_tickers
+        )
+
+        # Filter prices + returns to selected tickers
+        prices = prices.loc[:, prices.columns.get_level_values("Ticker").isin(selected_tickers)]
+        returns = returns[selected_tickers]
+
+        tickers = selected_tickers
 
         # ---------------------------------------------------------
         # Core model components
         # ---------------------------------------------------------
-        # ---------------------------------------------------------
-        # Core model components
-        # ---------------------------------------------------------
-        tickers = prices.columns.get_level_values("Ticker").unique().tolist()
         cov_matrix = returns.cov()
 
         weights = {t: 1 / len(tickers) for t in tickers}
@@ -97,12 +107,17 @@ if run_button:
             "MSFT": "Technology",
             "NVDA": "Technology",
             "AMZN": "Consumer Discretionary",
+            "GOOG": "Communication Services",
+            "TSLA": "Consumer Discretionary",
+            "WFC": "Financials",
+            "APP": "Technology",
         }
+
         mapped = {t: sector_map.get(t, "Other") for t in tickers}
         sector_weights = w_series.groupby(mapped).sum()
 
         # ---------------------------------------------------------
-        # Portfolio Returns (used by multiple tabs)
+        # Portfolio Returns
         # ---------------------------------------------------------
         portfolio_returns = (returns * w_series).sum(axis=1)
 
@@ -141,10 +156,11 @@ if run_button:
         sharpe = annual_return / annual_vol if annual_vol > 0 else 0
 
         performance = {
-        "expected_return": annual_return,
-        "volatility": annual_vol,
-        "sharpe": sharpe,
-    }
+            "expected_return": annual_return,
+            "volatility": annual_vol,
+            "sharpe": sharpe,
+        }
+
         # ---------------------------------------------------------
         # Build model dictionary
         # ---------------------------------------------------------

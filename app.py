@@ -17,7 +17,6 @@ from components.tab7_rebalancing import render_rebalancing_tab
 from components.tab8_ai_commentary import render_ai_commentary_tab
 from components.tab9_buy_analysis import render_buy_analysis_tab
 
-
 # ---------------------------------------------------------
 # Streamlit Page Config
 # ---------------------------------------------------------
@@ -74,7 +73,6 @@ h1 {
 
 st.title("Portfolio Optimizer Dashboard")
 
-
 # ---------------------------------------------------------
 # Sidebar Inputs
 # ---------------------------------------------------------
@@ -113,7 +111,6 @@ investment_amount = st.sidebar.number_input(
 )
 
 run_button = st.sidebar.button("Run Analysis")
-
 
 # ---------------------------------------------------------
 # Main Logic

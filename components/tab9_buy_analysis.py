@@ -70,9 +70,14 @@ def render_buy_analysis_tab(tab, prices, model):
 
     tab.markdown("## Buy Analysis")
 
-    if full_prices is None or full_prices.empty:
+    if prices is None or prices.empty:
         tab.info("Load data first to analyze buy signals.")
         return
+
+    try:
+        close = prices.xs("Close", level=1, axis=1)
+        results = []
+        ...
 
     try:
         close = full_prices.xs("Close", level=1, axis=1)

@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 from utils.optimizer_core import rebalancing_backtest
 
-def render_tab7(tab, prices, model):
+def render_rebalancing_tab(tab, prices, model):
     tab.markdown("## Rebalancing Backtest")
 
     if prices is None or model is None:

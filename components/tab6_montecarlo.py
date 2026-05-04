@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 
-def render_tab6(tab, prices, model):
+def render_montecarlo_tab(tab, prices, model):
     tab.markdown("## Monte Carlo Simulation")
 
     if model is None:

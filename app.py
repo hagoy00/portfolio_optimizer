@@ -5,8 +5,7 @@ import numpy as np
 
 # Loaders
 from utils.data_loader import load_price_data, load_returns_data
-st.write("DEBUG — column names:", prices.columns.names)
-st.write("DEBUG — reached before tabs")
+
 
 # Import tab modules
 from components.tab1_summary import render_summary_tab

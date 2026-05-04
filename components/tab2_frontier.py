@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 
+st.write("DEBUG — entering Tab 2")
 def render_frontier_tab(tab, prices, model):
     tab.markdown("## Efficient Frontier")
 

@@ -70,6 +70,7 @@ def fetch_valuation_and_analyst(ticker):
 # ---------------------------------------------------
 # MAIN TAB RENDERER
 # ---------------------------------------------------
+st.write("DEBUG — entering Tab X")
 def render_buy_analysis_tab(tab, prices, model):
 
     tab.markdown("## Buy Analysis")

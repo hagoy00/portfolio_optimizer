@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 
-def render_tab4(tab, prices, model):
+def render_sector_tab(tab, prices, model):
     tab.header("Sector Exposure")
 
     # ---------------------------------------------------

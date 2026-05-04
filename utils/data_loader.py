@@ -1,100 +1,97 @@
-import pandas as pd
 import yfinance as yf
-import re
-
-def clean_ticker_input(ticker_string):
-    if not ticker_string:
-        return []
-    tickers = (
-        ticker_string.replace(",", " ")
-        .upper()
-        .split()
-    )
-    return list(dict.fromkeys(tickers))
+import pandas as pd
+from datetime import datetime, timedelta
 
 
-def load_full_prices_from_raw(tickers, start, end):
-    if not tickers:
-        return None
+# ---------------------------------------------------------
+# Helper: Clean and validate tickers
+# ---------------------------------------------------------
+def clean_tickers(tickers_input: str):
+    if not tickers_input or tickers_input.strip() == "":
+        raise ValueError("No tickers provided.")
 
-    data = yf.download(
-        tickers,
-        start=start,
-        end=end,
-        auto_adjust=False,
-        progress=False,
-        group_by="ticker",
-        threads=True
-    )
+    tickers = [t.strip().upper() for t in tickers_input.split(",") if t.strip()]
 
-    if data is None or data.empty:
-        return None
+    if len(tickers) == 0:
+        raise ValueError("No valid tickers found after cleaning.")
 
-    # If only one ticker → wrap into MultiIndex
-    if isinstance(data.columns, pd.Index):
-        data = pd.concat({tickers[0]: data}, axis=1)
-
-    cleaned = {}
-
-    for t in tickers:
-        if t not in data.columns.levels[0]:
-            continue
-
-        df = data[t].copy()
-
-        # Flatten MultiIndex
-        if isinstance(df.columns, pd.MultiIndex):
-            df.columns = ["_".join([str(c) for c in col]).lower() for col in df.columns]
-        else:
-            df.columns = df.columns.str.lower()
-
-        # ---------------------------------------------------
-        # DYNAMIC COLUMN DETECTION
-        # ---------------------------------------------------
-        close_col = None
-        adjclose_col = None
-
-        for col in df.columns:
-            if re.search(r"adj.*close", col):
-                adjclose_col = col
-            elif re.search(r"close", col):
-                close_col = col
-
-        # If only adjclose exists → create close
-        if close_col is None and adjclose_col is not None:
-            df["close"] = df[adjclose_col]
-            close_col = "close"
-
-        # If only close exists → create adjclose
-        if adjclose_col is None and close_col is not None:
-            df["adjclose"] = df[close_col]
-            adjclose_col = "adjclose"
-
-        # If neither exists → skip ticker
-        if close_col is None:
-            continue
-
-        cleaned[t] = df
-
-    if not cleaned:
-        return None
-
-    final = pd.concat(cleaned, axis=1)
-    final = final.dropna(how="all")
-
-    return final
+    return tickers
 
 
-def extract_adj_close(full_prices):
-    if full_prices is None:
-        return None
+# ---------------------------------------------------------
+# Helper: Validate date range
+# ---------------------------------------------------------
+def validate_dates(start_date, end_date):
+    if start_date is None or end_date is None:
+        raise ValueError("Start date and end date must be provided.")
 
-    # Find adjclose dynamically
+    if start_date >= end_date:
+        raise ValueError("Start date must be before end date.")
+
+    # Prevent future-date errors
+    today = datetime.today().date()
+    if end_date > today:
+        end_date = today
+
+    return start_date, end_date
+
+
+# ---------------------------------------------------------
+# Core: Download price data with robust guard clauses
+# ---------------------------------------------------------
+def load_price_data(tickers_input: str, start_date, end_date):
+    # Clean tickers
+    tickers = clean_tickers(tickers_input)
+
+    # Validate dates
+    start_date, end_date = validate_dates(start_date, end_date)
+
+    # Download data
     try:
-        adj_cols = [c for c in full_prices.columns.levels[1] if "adjclose" in c]
-        if not adj_cols:
-            return None
-        adj = full_prices.xs(adj_cols[0], level=1, axis=1)
-        return adj.dropna(how="all")
-    except Exception:
-        return None
+        data = yf.download(
+            tickers,
+            start=start_date,
+            end=end_date,
+            auto_adjust=True,
+            progress=False,
+            threads=True
+        )
+    except Exception as e:
+        raise RuntimeError(f"yfinance download failed: {str(e)}")
+
+    # Handle empty DataFrame
+    if data is None or data.empty:
+        raise ValueError("No price data returned. Check tickers and date range.")
+
+    # Handle multi-index columns (yfinance quirk)
+    if isinstance(data.columns, pd.MultiIndex):
+        data = data["Close"]
+
+    # Drop columns with all NaN (IPO issues or delisted tickers)
+    data = data.dropna(axis=1, how="all")
+
+    if data.empty:
+        raise ValueError("All tickers returned empty data. Possibly invalid or too new.")
+
+    # Forward-fill missing values (market holidays, partial data)
+    data = data.ffill().bfill()
+
+    return data
+
+
+# ---------------------------------------------------------
+# Returns daily returns
+# ---------------------------------------------------------
+def load_returns_data(tickers_input: str, start_date, end_date):
+    prices = load_price_data(tickers_input, start_date, end_date)
+    returns = prices.pct_change().dropna()
+    return returns
+
+
+# ---------------------------------------------------------
+# Returns log returns
+# ---------------------------------------------------------
+def load_log_returns(tickers_input: str, start_date, end_date):
+    prices = load_price_data(tickers_input, start_date, end_date)
+    log_returns = (prices / prices.shift(1)).apply(lambda x: pd.Series(np.log(x))).dropna()
+    return log_returns

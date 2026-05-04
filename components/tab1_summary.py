@@ -28,9 +28,18 @@ def render_summary_tab(tab, prices, model):
     # ---------------------------------------------------
     col1, col2, col3 = tab.columns(3)
 
-    col1.metric("Expected Return (Annualized)", f"{exp_return:.2%}" if exp_return is not None else "N/A")
-    col2.metric("Volatility (Annualized)", f"{volatility:.2%}" if volatility is not None else "N/A")
-    col3.metric("Sharpe Ratio", f"{sharpe:.2f}" if sharpe is not None else "N/A")
+    col1.metric(
+        "Expected Return (Annualized)",
+        f"{exp_return:.2%}" if exp_return is not None else "N/A"
+    )
+    col2.metric(
+        "Volatility (Annualized)",
+        f"{volatility:.2%}" if volatility is not None else "N/A"
+    )
+    col3.metric(
+        "Sharpe Ratio",
+        f"{sharpe:.2f}" if sharpe is not None else "N/A"
+    )
 
     tab.markdown("---")
 

@@ -61,6 +61,39 @@ if run_button:
         prices = load_price_data(tickers_input, start_date, end_date)
         returns = load_returns_data(tickers_input, start_date, end_date)
         tickers = list(prices.columns)
+cov_matrix = returns.cov()
+
+# Sidebar input for capital
+investment_amount = st.sidebar.number_input(
+    "Investment Amount ($)",
+    min_value=1000,
+    value=100000,
+    step=1000
+)
+
+# TODO: Replace this with your real optimizer
+# For now, equal weights so Tab 3 works
+weights = {t: 1/len(tickers) for t in tickers}
+
+model = {
+    "prices": prices,
+    "returns": returns,
+    "tickers": tickers,
+    "cov_matrix": cov_matrix,
+    "weights": weights,
+    "investment_amount": investment_amount,
+}
+
+
+# Build model dictionary (expand later)
+model = {
+    "prices": prices,
+    "returns": returns,
+    "tickers": tickers,
+    "cov_matrix": cov_matrix,
+}
+
+        tickers = list(prices.columns)
 
 cov_matrix = returns.cov()
 

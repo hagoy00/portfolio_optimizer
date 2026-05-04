@@ -1,10 +1,10 @@
 import streamlit as st
-import pandas as pd
-import yfinance as yf
+from datetime import date
 
-# -----------------------------
-# IMPORT TAB RENDERERS
-# -----------------------------
+# Loaders
+from utils.data_loader import load_price_data, load_returns_data
+
+# Import tab modules
 from components.tab1_summary import render_summary_tab
 from components.tab2_frontier import render_frontier_tab
 from components.tab3_weights import render_weights_tab
@@ -15,116 +15,91 @@ from components.tab7_rebalancing import render_rebalancing_tab
 from components.tab8_ai_commentary import render_ai_commentary_tab
 from components.tab9_buy_analysis import render_buy_analysis_tab
 
-# -----------------------------
-# IMPORT UTILS
-# -----------------------------
-from utils.data_loader import (
-    clean_ticker_input,
-    load_full_prices_from_raw,
-    extract_adj_close,
-)
 
-from utils.optimizer_core import run_optimizer
-
-
-# -----------------------------
-# PAGE CONFIG
-# -----------------------------
+# ---------------------------------------------------------
+# Streamlit Page Config
+# ---------------------------------------------------------
 st.set_page_config(
-    page_title="Portfolio Optimizer",
+    page_title="Portfolio Optimizer Dashboard",
     layout="wide",
+    initial_sidebar_state="expanded"
 )
 
-st.title("Portfolio Optimizer Dashboard")
+st.title("📈 Portfolio Optimizer Dashboard")
 
 
-# -----------------------------
-# USER INPUTS
-# -----------------------------
-tickers_raw = st.text_input("Tickers (comma separated)")
-col1, col2 = st.columns(2)
-with col1:
-    start_date = st.date_input("Start Date")
-with col2:
-    end_date = st.date_input("End Date")
+# ---------------------------------------------------------
+# Sidebar Inputs
+# ---------------------------------------------------------
+st.sidebar.header("Input Parameters")
 
-tickers = clean_ticker_input(tickers_raw)
+tickers_input = st.sidebar.text_input(
+    "Tickers (comma separated)",
+    value="AAPL, MSFT, NVDA, AMZN"
+)
 
-if not tickers:
-    st.info("Enter at least one ticker to begin.")
-    st.stop()
+start_date = st.sidebar.date_input(
+    "Start Date",
+    value=date(2020, 1, 1)
+)
 
+end_date = st.sidebar.date_input(
+    "End Date",
+    value=date.today()
+)
 
-# -----------------------------
-# LOAD RAW PRICES
-# -----------------------------
-full_prices = load_full_prices_from_raw(tickers, start_date, end_date)
-
-if full_prices is None or full_prices.empty:
-    st.error("No price data returned. Check tickers and date range.")
-    st.stop()
+run_button = st.sidebar.button("Run Analysis")
 
 
-# -----------------------------
-# EXTRACT ADJ CLOSE
-# -----------------------------
-prices = extract_adj_close(full_prices)
-st.write("DEBUG full_prices columns:", full_prices.columns)
+# ---------------------------------------------------------
+# Main Logic
+# ---------------------------------------------------------
+if run_button:
 
+    try:
+        # Load data
+        prices = load_price_data(tickers_input, start_date, end_date)
+        returns = load_returns_data(tickers_input, start_date, end_date)
 
-if prices is None or prices.empty:
-    st.error("Adjusted close data missing or invalid.")
-    st.stop()
+        # Build model dictionary (expand later)
+        model = {
+            "prices": prices,
+            "returns": returns,
+            # Add frontier, weights, sector weights, etc.
+        }
 
+        st.success("Data loaded successfully.")
 
-# -----------------------------
-# RUN OPTIMIZER
-# -----------------------------
-model = run_optimizer(prices)
+        # ---------------------------------------------------------
+        # Create Tabs
+        # ---------------------------------------------------------
+        (
+            tab1, tab2, tab3, tab4, tab5,
+            tab6, tab7, tab8, tab9
+        ) = st.tabs([
+            "📊 Summary",
+            "📈 Efficient Frontier",
+            "⚖️ Optimal Weights",
+            "🏭 Sector Exposure",
+            "📉 Drawdowns",
+            "🎲 Monte Carlo",
+            "🔄 Rebalancing",
+            "🤖 AI Commentary",
+            "🛒 Buy Analysis"
+        ])
 
-if model is None:
-    st.error("Optimizer failed — model returned None.")
-    st.stop()
+        # ---------------------------------------------------------
+        # Render Tabs
+        # ---------------------------------------------------------
+        render_summary_tab(tab1, prices, model)
+        render_frontier_tab(tab2, prices, model)
+        render_weights_tab(tab3, prices, model)
+        render_sector_tab(tab4, prices, model)
+        render_drawdown_tab(tab5, prices, model)
+        render_montecarlo_tab(tab6, prices, model)
+        render_rebalancing_tab(tab7, prices, model)
+        render_ai_commentary_tab(tab8, prices, model)
+        render_buy_analysis_tab(tab9, prices, model)
 
-
-# -----------------------------
-# TABS
-# -----------------------------
-tabs = st.tabs([
-    "Summary",
-    "Efficient Frontier",
-    "Weights",
-    "Sector Exposure",
-    "Drawdown",
-    "Monte Carlo",
-    "Rebalancing",
-    "AI Commentary",
-    "Buy Analysis",
-])
-
-with tabs[0] as tab:
-    render_summary_tab(tab, prices, model)
-
-with tabs[1] as tab:
-    render_frontier_tab(tab, prices, model)
-
-with tabs[2] as tab:
-    render_weights_tab(tab, prices, model)
-
-with tabs[3] as tab:
-    render_sector_tab(tab, prices, model)
-
-with tabs[4] as tab:
-    render_drawdown_tab(tab, prices, model)
-
-with tabs[5] as tab:
-    render_montecarlo_tab(tab, prices, model)
-
-with tabs[6] as tab:
-    render_rebalancing_tab(tab, prices, model)
-
-with tabs[7] as tab:
-    render_ai_commentary_tab(tab, prices, model)
-
-with tabs[8] as tab:
-    render_buy_analysis_tab(tab, full_prices, model)
+    except Exception as e:
+        st.error(f"❌ Error: {str(e)}")

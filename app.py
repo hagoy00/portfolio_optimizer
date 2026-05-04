@@ -27,7 +27,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-st.title("📈 Portfolio Optimizer Dashboard")
+st.title(" Portfolio Optimizer Dashboard")
 
 
 # ---------------------------------------------------------
@@ -42,7 +42,7 @@ tickers_input = st.sidebar.text_input(
 
 start_date = st.sidebar.date_input(
     "Start Date",
-    value=date(2020, 1, 1)
+    value=date(2021, 1, 1)
 )
 
 end_date = st.sidebar.date_input(
@@ -164,15 +164,15 @@ if run_button:
             tab1, tab2, tab3, tab4, tab5,
             tab6, tab7, tab8, tab9
         ) = st.tabs([
-            "📊 Summary",
-            "📈 Efficient Frontier",
-            "⚖️ Optimal Weights",
-            "🏭 Sector Exposure",
-            "📉 Drawdowns",
-            "🎲 Monte Carlo",
-            "🔄 Rebalancing",
-            "🤖 AI Commentary",
-            "🛒 Buy Analysis"
+            " Summary",
+            " Efficient Frontier",
+            " Optimal Weights",
+            " Sector Exposure",
+            " Drawdowns",
+            " Monte Carlo",
+            " Rebalancing",
+            " AI Commentary",
+            " Buy Analysis"
         ])
 
         # ---------------------------------------------------------

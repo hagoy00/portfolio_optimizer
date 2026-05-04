@@ -80,10 +80,12 @@ if run_button:
         # ---------------------------------------------------------
         # Core model components
         # ---------------------------------------------------------
-        tickers = list(prices.columns)
+        # ---------------------------------------------------------
+        # Core model components
+        # ---------------------------------------------------------
+        tickers = prices.columns.get_level_values("Ticker").unique().tolist()
         cov_matrix = returns.cov()
 
-        # TEMP: equal weights (replace with optimizer later)
         weights = {t: 1 / len(tickers) for t in tickers}
         w_series = pd.Series(weights)
 

@@ -1,6 +1,6 @@
 import streamlit as st
 
-def render_tab8(tab, model, sector_weights):
+def render_ai_commentary_tab(tab, model, sector_weights):
     tab.markdown("## AI Commentary")
 
     if model is None:

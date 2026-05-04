@@ -97,15 +97,15 @@ if run_button:
             tab1, tab2, tab3, tab4, tab5,
             tab6, tab7, tab8, tab9
         ) = st.tabs([
-            " Summary",
-            " Efficient Frontier",
-            " Optimal Weights",
-            " Sector Exposure",
-            " Drawdowns",
-            " Monte Carlo",
-            " Rebalancing",
-            " AI Commentary",
-            " Buy Analysis"
+            "📊 Summary",
+            "📈 Efficient Frontier",
+            "⚖️ Optimal Weights",
+            "🏭 Sector Exposure",
+            "📉 Drawdowns",
+            "🎲 Monte Carlo",
+            "🔄 Rebalancing",
+            "🤖 AI Commentary",
+            "🛒 Buy Analysis"
         ])
 
         # ---------------------------------------------------------

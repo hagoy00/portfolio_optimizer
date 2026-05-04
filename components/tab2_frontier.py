@@ -1,13 +1,14 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+from scipy.optimize import minimize
 
-#st.write("DEBUG — entering Tab 2")
+
 def render_frontier_tab(tab, prices, model):
     tab.markdown("## Efficient Frontier")
 
     if model is None:
-        tab.info("Run optimization first.")
+        tab.info("Run analysis first.")
         return
 
     returns = model.get("returns")
@@ -19,40 +20,74 @@ def render_frontier_tab(tab, prices, model):
         return
 
     # ---------------------------------------------------
+    # Prepare data
+    # ---------------------------------------------------
+    mean_returns = returns.mean() * 252
+    cov_matrix = cov * 252
+    n = len(tickers)
+
+    # ---------------------------------------------------
+    # Optimization helpers
+    # ---------------------------------------------------
+    def portfolio_volatility(weights):
+        return np.sqrt(weights.T @ cov_matrix @ weights)
+
+    def portfolio_return(weights):
+        return np.dot(weights, mean_returns)
+
+    def min_vol_for_target(target):
+        """Minimize volatility for a given target return."""
+        constraints = (
+            {"type": "eq", "fun": lambda w: np.sum(w) - 1},
+            {"type": "eq", "fun": lambda w: portfolio_return(w) - target},
+        )
+        bounds = tuple((0, 1) for _ in range(n))
+        w0 = np.ones(n) / n
+
+        result = minimize(
+            portfolio_volatility,
+            w0,
+            method="SLSQP",
+            bounds=bounds,
+            constraints=constraints,
+        )
+
+        if not result.success:
+            return None, None
+
+        return result.x, portfolio_volatility(result.x)
+
+    # ---------------------------------------------------
     # Compute Efficient Frontier
     # ---------------------------------------------------
-    num_points = 50
-    frontier_returns = []
+    target_returns = np.linspace(mean_returns.min(), mean_returns.max(), 50)
+
     frontier_vols = []
+    frontier_rets = []
 
-    mean_returns = returns.mean()
+    for target in target_returns:
+        w_opt, vol = min_vol_for_target(target)
+        if vol is not None:
+            frontier_rets.append(target)
+            frontier_vols.append(vol)
 
-    for target_return in np.linspace(mean_returns.min(), mean_returns.max(), num_points):
-        best_vol = None
-
-        for _ in range(2000):
-            w = np.random.random(len(tickers))
-            w /= w.sum()
-
-            port_ret = np.sum(w * mean_returns) * 252
-            if abs(port_ret - target_return * 252) < 0.002:
-                port_vol = np.sqrt(np.dot(w.T, np.dot(cov, w))) * np.sqrt(252)
-
-                if best_vol is None or port_vol < best_vol:
-                    best_vol = port_vol
-
-        if best_vol is not None:
-            frontier_returns.append(target_return * 252)
-            frontier_vols.append(best_vol)
-
-    if not frontier_returns:
+    if len(frontier_rets) == 0:
         tab.warning("Could not compute efficient frontier.")
         return
 
     df = pd.DataFrame({
-        "Return": frontier_returns,
+        "Return": frontier_rets,
         "Volatility": frontier_vols
     })
 
+    # ---------------------------------------------------
+    # Display Chart
+    # ---------------------------------------------------
     tab.markdown("### Efficient Frontier Curve")
     tab.line_chart(df.set_index("Volatility"))
+
+    # ---------------------------------------------------
+    # Display Table (optional)
+    # ---------------------------------------------------
+    with tab.expander("Show Frontier Data"):
+        tab.dataframe(df.style.format({"Return": "{:.2%}", "Volatility": "{:.2%}"}))

@@ -1,7 +1,8 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-st.write("DEBUG — entering Tab X")
+
+st.write("DEBUG — entering Tab 6")
 
 def render_montecarlo_tab(tab, prices, model):
     tab.markdown("## Monte Carlo Simulation")

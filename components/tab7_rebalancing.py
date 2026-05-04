@@ -2,7 +2,8 @@ import streamlit as st
 import pandas as pd
 
 from utils.optimizer_core import rebalancing_backtest
-st.write("DEBUG — entering Tab X")
+
+st.write("DEBUG — entering Tab 7")
 
 def render_rebalancing_tab(tab, prices, model):
     tab.markdown("## Rebalancing Backtest")

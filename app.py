@@ -28,10 +28,38 @@ st.set_page_config(
 )
 
 # ---------------------------------------------------------
-# Global UI styling (sticky + blue theme)
+# Global UI styling
 # ---------------------------------------------------------
 st.markdown("""
 <style>
+
+/* --- FORCE BLUE TITLE (Overrides Streamlit Theme) --- */
+div[data-testid="stHeader"] h1, 
+div[data-testid="stHeader"] h2, 
+div[data-testid="stHeader"] h3 {
+    color: #1E90FF !important;
+}
+
+/* Also force all headings everywhere */
+h1, h2, h3, h4, h5, h6 {
+    color: #1E90FF !important;
+}
+
+/* --- TRUE STICKY HEADER (No movement, no flicker) --- */
+div[data-testid="stHeader"] {
+    position: sticky !important;
+    top: 0;
+    background-color: white !important;
+    z-index: 9999 !important;
+    border-bottom: 1px solid #e0e0e0;
+    padding-top: 8px;
+    padding-bottom: 8px;
+}
+
+/* Prevent Streamlit from collapsing the header container */
+header[data-testid="stHeader"] {
+    height: auto !important;
+}
 
 /* Sticky sidebar */
 section[data-testid="stSidebar"] {
@@ -47,28 +75,18 @@ div[data-testid="stAppViewContainer"] {
     margin-left: 18rem !important;
 }
 
-/* Sticky header */
-h1 {
-    position: sticky;
-    top: 0;
-    background-color: white !important;
-    padding: 12px 0;
-    z-index: 99;
-    border-bottom: 1px solid #e0e0e0;
-}
-
-/* Blue text everywhere */
-html, body, [class*="css"] {
-    color: #1E90FF !important;   /* Dodger Blue */
-}
-
-/* Blue metric values */
-[data-testid="stMetricValue"] {
+/* --- BLUE SIDEBAR TEXT --- */
+section[data-testid="stSidebar"] * {
     color: #1E90FF !important;
 }
 
-/* Blue tab labels */
+/* --- BLUE TAB LABELS --- */
 .stTabs [data-baseweb="tab"] {
+    color: #1E90FF !important;
+}
+
+/* --- BLUE METRIC VALUES --- */
+[data-testid="stMetricValue"] {
     color: #1E90FF !important;
 }
 
@@ -126,10 +144,11 @@ if run_button:
             prices = load_price_data(tickers_str, start_date, end_date)
             returns = load_returns_data(tickers_str, start_date, end_date)
 
-            # Ensure we only keep requested tickers (safety)
-            if "Ticker" in prices.columns.names:
+            # Safety filter
+            if isinstance(prices.columns, pd.MultiIndex) and "Ticker" in prices.columns.names:
                 prices = prices.loc[:, prices.columns.get_level_values("Ticker").isin(tickers)]
-            returns = returns[[t for t in tickers if t in returns.columns]]
+            if returns is not None and not returns.empty:
+                returns = returns[[t for t in tickers if t in returns.columns]]
 
             tickers_final = [t for t in tickers if t in returns.columns]
 
@@ -155,7 +174,6 @@ if run_button:
                     "GOOG": "Communication Services",
                     "TSLA": "Consumer Discretionary",
                     "WFC": "Financials",
-                    "APP": "Technology",
                 }
 
                 mapped = {t: sector_map.get(t, "Other") for t in tickers_final}
@@ -214,13 +232,16 @@ if run_button:
                     "returns": returns,
                     "tickers": tickers_final,
                     "cov_matrix": cov_matrix,
-                    "weights": weights,  # dict; rebalancing_backtest handles dict
+                    "weights": weights,
                     "investment_amount": investment_amount,
                     "sector_weights": sector_weights,
                     "drawdown": drawdown_df,
                     "monte_carlo": mc_df,
                     "performance": performance,
                 }
+
+                st.session_state["model"] = model
+                st.session_state["prices"] = prices
 
                 st.success("Data loaded successfully.")
 
@@ -243,7 +264,7 @@ if run_button:
                 ])
 
                 # ---------------------------------------------------------
-                # Render Tabs
+                # Render Tabs (Architecture B)
                 # ---------------------------------------------------------
                 render_summary_tab(tab1, prices, model)
                 render_frontier_tab(tab2, prices, model)

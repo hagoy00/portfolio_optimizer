@@ -3,7 +3,6 @@ import pandas as pd
 import numpy as np
 
 def render_frontier_tab(tab, prices, model):
-#def render_tab2(tab, prices, model):
     tab.markdown("## Efficient Frontier")
 
     if model is None:
@@ -28,8 +27,6 @@ def render_frontier_tab(tab, prices, model):
     mean_returns = returns.mean()
 
     for target_return in np.linspace(mean_returns.min(), mean_returns.max(), num_points):
-        # Solve for weights that achieve target return
-        # Using a simple heuristic: random search
         best_vol = None
 
         for _ in range(2000):
@@ -37,7 +34,7 @@ def render_frontier_tab(tab, prices, model):
             w /= w.sum()
 
             port_ret = np.sum(w * mean_returns) * 252
-            if abs(port_ret - target_return * 252) < 0.002:  # tolerance
+            if abs(port_ret - target_return * 252) < 0.002:
                 port_vol = np.sqrt(np.dot(w.T, np.dot(cov, w))) * np.sqrt(252)
 
                 if best_vol is None or port_vol < best_vol:

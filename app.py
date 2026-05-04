@@ -69,6 +69,8 @@ if full_prices is None or full_prices.empty:
 # EXTRACT ADJ CLOSE
 # -----------------------------
 prices = extract_adj_close(full_prices)
+st.write("DEBUG full_prices columns:", full_prices.columns)
+
 
 if prices is None or prices.empty:
     st.error("Adjusted close data missing or invalid.")

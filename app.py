@@ -1,5 +1,7 @@
 import streamlit as st
 from datetime import date
+import pandas as pd
+import numpy as np
 
 # Loaders
 from utils.data_loader import load_price_data, load_returns_data
@@ -71,14 +73,77 @@ if run_button:
         returns = load_returns_data(tickers_input, start_date, end_date)
 
         # ---------------------------------------------------------
-        # Build model dictionary
+        # Core model components
         # ---------------------------------------------------------
         tickers = list(prices.columns)
         cov_matrix = returns.cov()
 
-        # TEMPORARY equal weights (until optimizer added)
-        weights = {t: 1/len(tickers) for t in tickers}
+        # TEMP: equal weights (replace with optimizer later)
+        weights = {t: 1 / len(tickers) for t in tickers}
+        w_series = pd.Series(weights)
 
+        # ---------------------------------------------------------
+        # Sector Weights (Tab 4)
+        # ---------------------------------------------------------
+        # TODO: replace with real sector mapping
+        sector_map = {
+            "AAPL": "Technology",
+            "MSFT": "Technology",
+            "NVDA": "Technology",
+            "AMZN": "Consumer Discretionary",
+        }
+        # Only keep tickers that exist in the map
+        mapped = {t: sector_map.get(t, "Other") for t in tickers}
+        sector_weights = w_series.groupby(mapped).sum()
+
+        # ---------------------------------------------------------
+        # Portfolio Returns (used by multiple tabs)
+        # ---------------------------------------------------------
+        portfolio_returns = (returns * w_series).sum(axis=1)
+
+        # ---------------------------------------------------------
+        # Drawdown (Tab 5)
+        # ---------------------------------------------------------
+        cumulative = (1 + portfolio_returns).cumprod()
+        running_max = cumulative.cummax()
+        drawdown = (cumulative - running_max) / running_max
+        drawdown_df = drawdown.to_frame("Drawdown")
+
+        # ---------------------------------------------------------
+        # Monte Carlo Simulation (Tab 6)
+        # ---------------------------------------------------------
+        num_paths = 200
+        num_days = 252
+
+        mu = portfolio_returns.mean()
+        sigma = portfolio_returns.std()
+
+        simulations = np.zeros((num_days, num_paths))
+        for p in range(num_paths):
+            daily_returns = np.random.normal(mu, sigma, num_days)
+            simulations[:, p] = np.cumprod(1 + daily_returns)
+
+        mc_df = pd.DataFrame(
+            simulations,
+            columns=[f"Path_{i}" for i in range(num_paths)]
+        )
+
+        # ---------------------------------------------------------
+        # Performance Metrics (Tab 8)
+        # ---------------------------------------------------------
+        annual_return = portfolio_returns.mean() * 252
+        annual_vol = portfolio_returns.std() * np.sqrt(252)
+        sharpe = annual_return / annual_vol if annual_vol > 0 else 0
+
+        performance = {
+            "return": annual_return,
+            "volatility": annual_vol,
+            "sharpe": sharpe,
+        }
+
+        # ---------------------------------------------------------
+        # Build model dictionary
+        # ---------------------------------------------------------
         model = {
             "prices": prices,
             "returns": returns,
@@ -86,6 +151,10 @@ if run_button:
             "cov_matrix": cov_matrix,
             "weights": weights,
             "investment_amount": investment_amount,
+            "sector_weights": sector_weights,
+            "drawdown": drawdown_df,
+            "monte_carlo": mc_df,
+            "performance": performance,
         }
 
         st.success("Data loaded successfully.")

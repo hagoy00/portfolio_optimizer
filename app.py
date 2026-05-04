@@ -1,8 +1,6 @@
 import streamlit as st
 import pandas as pd
-import ssl
 import yfinance as yf
-
 
 from components.tab1_summary import render_summary_tab
 from components.tab2_frontier import render_frontier_tab
@@ -17,17 +15,18 @@ from components.tab9_buy_analysis import render_buy_analysis_tab
 from utils.data_loader import (
     clean_ticker_input,
     load_full_prices_from_raw,
-    extract_adj_close
+    extract_adj_close,
 )
 
 from utils.optimizer_core import run_optimizer
 
+
 # ---------------------------------------------------------
-# STREAMLIT PAGE CONFIG
+# PAGE CONFIG
 # ---------------------------------------------------------
 st.set_page_config(
     page_title="Portfolio Optimizer",
-    layout="wide"
+    layout="wide",
 )
 
 st.title("Portfolio Optimizer Dashboard")
@@ -37,10 +36,17 @@ st.title("Portfolio Optimizer Dashboard")
 # USER INPUTS
 # ---------------------------------------------------------
 tickers_raw = st.text_input("Tickers (comma separated)")
-start_date = st.date_input("Start Date")
-end_date = st.date_input("End Date")
+col1, col2 = st.columns(2)
+with col1:
+    start_date = st.date_input("Start Date")
+with col2:
+    end_date = st.date_input("End Date")
 
 tickers = clean_ticker_input(tickers_raw)
+
+if not tickers:
+    st.info("Enter at least one ticker to begin.")
+    st.stop()
 
 
 # ---------------------------------------------------------
@@ -48,11 +54,9 @@ tickers = clean_ticker_input(tickers_raw)
 # ---------------------------------------------------------
 full_prices = load_full_prices_from_raw(tickers, start_date, end_date)
 
-# DEBUG BLOCK — DO NOT REMOVE UNTIL WE CONFIRM PIPELINE
-st.write("DEBUG full_prices type:", type(full_prices))
-if full_prices is not None:
-    st.write("DEBUG full_prices shape:", full_prices.shape)
-    st.write("DEBUG full_prices columns:", full_prices.columns)
+if full_prices is None or full_prices.empty:
+    st.error("No price data returned. Check tickers and date range.")
+    st.stop()
 
 
 # ---------------------------------------------------------
@@ -60,18 +64,8 @@ if full_prices is not None:
 # ---------------------------------------------------------
 prices = extract_adj_close(full_prices)
 
-# DEBUG BLOCK — DO NOT REMOVE UNTIL WE CONFIRM PIPELINE
-st.write("DEBUG prices type:", type(prices))
-if prices is not None:
-    st.write("DEBUG prices shape:", prices.shape)
-    st.write("DEBUG prices head:", prices.head())
-
-
-# ---------------------------------------------------------
-# GUARD CLAUSE — STOP IF NO VALID PRICE DATA
-# ---------------------------------------------------------
 if prices is None or prices.empty:
-    st.error("Optimizer failed — check price data.")
+    st.error("Optimizer failed — check price data (no valid adjusted close series).")
     st.stop()
 
 
@@ -97,7 +91,7 @@ tabs = st.tabs([
     "Monte Carlo",
     "Rebalancing",
     "AI Commentary",
-    "Buy Analysis"
+    "Buy Analysis",
 ])
 
 with tabs[0]:

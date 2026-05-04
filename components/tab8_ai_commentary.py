@@ -1,6 +1,7 @@
 import streamlit as st
 
 def render_ai_commentary_tab(tab, prices, model):
+
     tab.markdown("## AI Commentary")
 
     if model is None:
@@ -50,9 +51,6 @@ def render_ai_commentary_tab(tab, prices, model):
 
         tab.markdown("---")
 
-        # ---------------------------------------------------
-        # COMMENTARY BLOCKS
-        # ---------------------------------------------------
         with tab.expander("Portfolio Overview", expanded=True):
             tab.markdown(
                 f"""

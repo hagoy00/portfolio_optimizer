@@ -47,6 +47,7 @@ def load_full_prices_from_raw(raw, tickers):
         return None
 
     data = data[valid]
+# Ensure Close and Adj Close exist
 
     for t in valid:
         fields = data[t].columns
@@ -56,6 +57,7 @@ def load_full_prices_from_raw(raw, tickers):
 
         if "Adj Close" not in fields and "Close" in fields:
             data[(t, "Adj Close")] = data[(t, "Close")]
+    data.columns = data.columns.set_names(["Ticker", "Field"])
 
     return data.dropna(how="all")
 

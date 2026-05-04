@@ -28,14 +28,14 @@ st.set_page_config(
 )
 
 # ---------------------------------------------------------
-# Global UI styling
+# Global UI styling (FINAL sticky + blue)
 # ---------------------------------------------------------
 st.markdown("""
 <style>
 
 /* --- FORCE BLUE TITLE (Overrides Streamlit Theme) --- */
-div[data-testid="stHeader"] h1, 
-div[data-testid="stHeader"] h2, 
+div[data-testid="stHeader"] h1,
+div[data-testid="stHeader"] h2,
 div[data-testid="stHeader"] h3 {
     color: #1E90FF !important;
 }
@@ -90,21 +90,16 @@ section[data-testid="stSidebar"] * {
     color: #1E90FF !important;
 }
 
-</style>
-""", unsafe_allow_html=True)
-st.markdown("""
-<style>
-
-/* your existing CSS here... */
-
-/* Make the title sticky inside the scrolling content container */
-div[data-testid="stAppViewContainer"] h1 {
+/* ---------------------------------------------------------
+   FINAL FIX — Make title sticky inside the REAL scroll container
+   --------------------------------------------------------- */
+div[data-testid="stAppViewBlockContainer"] h1 {
     position: sticky !important;
     top: 0 !important;
     background-color: white !important;
-    padding: 12px 0 !important;
+    padding: 14px 0 !important;
     margin: 0 !important;
-    z-index: 99999 !important;
+    z-index: 999999 !important;
     border-bottom: 1px solid #e0e0e0 !important;
 }
 

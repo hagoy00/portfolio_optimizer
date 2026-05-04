@@ -141,11 +141,10 @@ if run_button:
         sharpe = annual_return / annual_vol if annual_vol > 0 else 0
 
         performance = {
-            "return": annual_return,
-            "volatility": annual_vol,
-            "sharpe": sharpe,
-        }
-
+        "expected_return": annual_return,
+        "volatility": annual_vol,
+        "sharpe": sharpe,
+    }
         # ---------------------------------------------------------
         # Build model dictionary
         # ---------------------------------------------------------

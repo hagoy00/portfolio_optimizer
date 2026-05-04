@@ -80,7 +80,8 @@ def render_buy_analysis_tab(tab, prices, model):
         return
 
     try:
-        close = prices.xs("Close", level=1, axis=1)
+        close = prices.xs("Close", level="Field", axis=1)
+        #close = prices.xs("Close", level=1, axis=1)
         results = []
 
         # ---------------------------------------------------

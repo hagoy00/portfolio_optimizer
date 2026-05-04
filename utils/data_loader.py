@@ -1,5 +1,10 @@
 import pandas as pd
+import yfinance as yf
 
+
+# ---------------------------------------------------------
+# Clean ticker input
+# ---------------------------------------------------------
 def clean_ticker_input(raw):
     """
     Cleans user input like:
@@ -22,6 +27,9 @@ def clean_ticker_input(raw):
     return cleaned
 
 
+# ---------------------------------------------------------
+# Convert raw Yahoo Finance output into MultiIndex
+# ---------------------------------------------------------
 def load_full_prices_from_raw(raw, tickers):
     """
     Converts raw yf.download output (flat or grouped) into a proper MultiIndex:
@@ -37,7 +45,7 @@ def load_full_prices_from_raw(raw, tickers):
         data = raw.copy()
 
     else:
-        # Case 2: Yahoo returned FLAT columns (your 2026 case)
+        # Case 2: Yahoo returned FLAT columns (2026+ behavior)
         # Example: AAPL_Open, AAPL_Close, TSLA_Open, TSLA_Close
         new_cols = []
         for col in raw.columns:
@@ -72,7 +80,9 @@ def load_full_prices_from_raw(raw, tickers):
     return data.dropna(how="all")
 
 
-
+# ---------------------------------------------------------
+# Extract Adjusted Close (fallback to Close)
+# ---------------------------------------------------------
 def extract_adj_close(full_prices):
     """
     Returns a flat DataFrame of adjusted close prices.
@@ -89,3 +99,40 @@ def extract_adj_close(full_prices):
         return full_prices.xs("Close", level=1, axis=1).dropna(how="all")
 
     raise KeyError("Neither 'Adj Close' nor 'Close' found in price data.")
+
+
+# ---------------------------------------------------------
+# Public API: load price data
+# ---------------------------------------------------------
+def load_price_data(tickers_input, start, end):
+    """
+    High-level wrapper used by app.py.
+    Cleans tickers, downloads data, and normalizes MultiIndex.
+    """
+    tickers = clean_ticker_input(tickers_input)
+
+    raw = yf.download(
+        tickers,
+        start=start,
+        end=end,
+        group_by="ticker",
+        auto_adjust=False,
+        progress=False,
+        threads=True
+    )
+
+    full_prices = load_full_prices_from_raw(raw, tickers)
+    return full_prices
+
+
+# ---------------------------------------------------------
+# Public API: load returns
+# ---------------------------------------------------------
+def load_returns_data(tickers_input, start, end):
+    """
+    Returns daily percentage returns based on Adj Close (or Close fallback).
+    """
+    prices = load_price_data(tickers_input, start, end)
+    adj = extract_adj_close(prices)
+    returns = adj.pct_change().dropna(how="all")
+    return returns

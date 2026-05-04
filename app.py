@@ -3,6 +3,17 @@ import pandas as pd
 import ssl
 import yfinance as yf
 
+
+from components.tab1_summary import render_summary_tab
+from components.tab2_frontier import render_frontier_tab
+from components.tab3_weights import render_weights_tab
+from components.tab4_sector import render_sector_tab
+from components.tab5_drawdown import render_drawdown_tab
+from components.tab6_montecarlo import render_montecarlo_tab
+from components.tab7_rebalancing import render_rebalancing_tab
+from components.tab8_ai_commentary import render_ai_commentary_tab
+from components.tab9_buy_analysis import render_buy_analysis_tab
+
 from utils.data_loader import (
     clean_ticker_input,
     load_full_prices_from_raw,
@@ -10,16 +21,6 @@ from utils.data_loader import (
 )
 
 from utils.optimizer_core import run_optimizer
-from components.summary_tab import render_summary_tab
-from components.frontier_tab import render_frontier_tab
-from components.weights_tab import render_weights_tab
-from components.sector_tab import render_sector_tab
-from components.drawdown_tab import render_drawdown_tab
-from components.montecarlo_tab import render_montecarlo_tab
-from components.rebalancing_tab import render_rebalancing_tab
-from components.ai_commentary_tab import render_ai_commentary_tab
-from components.buy_analysis_tab import render_buy_analysis_tab
-
 
 # ---------------------------------------------------------
 # STREAMLIT PAGE CONFIG

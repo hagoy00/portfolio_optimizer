@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+st.write("DEBUG — entering Tab X")
 
 def render_drawdown_tab(tab, prices, model):
     """

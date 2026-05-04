@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 
-def render_tab5(tab, prices, model):
+def render_drawdown_tab(tab, prices, model):
     """
     Drawdown Analysis tab.
     Safe even when model is None.

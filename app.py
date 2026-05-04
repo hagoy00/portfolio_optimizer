@@ -4,9 +4,9 @@ import yfinance as yf
 import os
 import streamlit as st
 
-st.write("DEBUG — Current working directory:", os.getcwd())
-st.write("DEBUG — Files in CWD:", os.listdir())
-st.write("DEBUG — Files in components/:", os.listdir("components"))
+#st.write("DEBUG — Current working directory:", os.getcwd())
+#st.write("DEBUG — Files in CWD:", os.listdir())
+#st.write("DEBUG — Files in components/:", os.listdir("components"))
 from components.tab1_summary import render_summary_tab
 from components.tab2_frontier import render_frontier_tab
 from components.tab3_weights import render_weights_tab

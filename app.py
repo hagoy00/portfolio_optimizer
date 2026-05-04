@@ -74,6 +74,9 @@ if run_button:
         prices = load_price_data(tickers_input, start_date, end_date)
         returns = load_returns_data(tickers_input, start_date, end_date)
 
+        # ⭐ DEBUG: Check MultiIndex level names
+        st.write("DEBUG — column names:", prices.columns.names)
+
         # ---------------------------------------------------------
         # Core model components
         # ---------------------------------------------------------

@@ -1,10 +1,7 @@
 import streamlit as st
 
 def render_ai_commentary_tab(tab, prices, model):
-
-#def render_ai_commentary_tab(tab, model, sector_weights):
     tab.markdown("## AI Commentary")
-sector_weights = model.get("sector_weights")
 
     if model is None:
         tab.info("Run optimization to generate commentary.")
@@ -14,6 +11,7 @@ sector_weights = model.get("sector_weights")
         perf = model.get("performance", {})
         dd = model.get("drawdown", None)
         w = model.get("weights", None)
+        sector_weights = model.get("sector_weights", None)
 
         # ---------------------------------------------------
         # GUARD CLAUSE — missing data
@@ -29,9 +27,9 @@ sector_weights = model.get("sector_weights")
         max_dd = dd.min().min() if dd is not None else None
 
         # Sector commentary
-        if sector_weights:
-            top_sector = max(sector_weights, key=sector_weights.get)
-            top_sector_weight = sector_weights[top_sector]
+        if sector_weights is not None and len(sector_weights) > 0:
+            top_sector = sector_weights.idxmax()
+            top_sector_weight = sector_weights.max()
         else:
             top_sector = "Unknown"
             top_sector_weight = 0
@@ -47,7 +45,7 @@ sector_weights = model.get("sector_weights")
         col3.metric("Sharpe Ratio", f"{sharpe:.2f}")
 
         col4, col5 = tab.columns(2)
-        col4.metric("Max Drawdown", f"{max_dd:.2%}" if max_dd else "N/A")
+        col4.metric("Max Drawdown", f"{max_dd:.2%}" if max_dd is not None else "N/A")
         col5.metric("Top Sector Weight", f"{top_sector_weight:.2%}")
 
         tab.markdown("---")

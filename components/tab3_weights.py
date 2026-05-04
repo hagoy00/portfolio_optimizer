@@ -39,11 +39,14 @@ def render_weights_tab(tab, prices, model):
     # LATEST PRICES
     # ---------------------------------------------------
     try:
-        latest_prices = prices.xs("Adj Close", level=1, axis=1).iloc[-1]
-        latest_prices = latest_prices.reindex(w.index)
-    except Exception as e:
-        tab.error(f"Error extracting latest prices: {e}")
-        return
+    
+    latest_prices = prices.xs("Adj Close", level="Field", axis=1).iloc[-1]
+    latest_prices = latest_prices.reindex(w.index)
+except Exception as e:
+    tab.error(f"Error extracting latest prices: {e}")
+    return
+        #latest_prices = prices.xs("Adj Close", level=1, axis=1).iloc[-1]
+        #latest_prices = latest_prices.reindex(w.index)
 
     # ---------------------------------------------------
     # DOLLAR ALLOCATION + SHARES

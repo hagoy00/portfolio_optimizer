@@ -48,6 +48,13 @@ end_date = st.sidebar.date_input(
     value=date.today()
 )
 
+investment_amount = st.sidebar.number_input(
+    "Investment Amount ($)",
+    min_value=1000,
+    value=100000,
+    step=1000
+)
+
 run_button = st.sidebar.button("Run Analysis")
 
 
@@ -57,59 +64,28 @@ run_button = st.sidebar.button("Run Analysis")
 if run_button:
 
     try:
+        # ---------------------------------------------------------
         # Load data
+        # ---------------------------------------------------------
         prices = load_price_data(tickers_input, start_date, end_date)
         returns = load_returns_data(tickers_input, start_date, end_date)
+
+        # ---------------------------------------------------------
+        # Build model dictionary
+        # ---------------------------------------------------------
         tickers = list(prices.columns)
-cov_matrix = returns.cov()
+        cov_matrix = returns.cov()
 
-# Sidebar input for capital
-investment_amount = st.sidebar.number_input(
-    "Investment Amount ($)",
-    min_value=1000,
-    value=100000,
-    step=1000
-)
+        # TEMPORARY equal weights (until optimizer added)
+        weights = {t: 1/len(tickers) for t in tickers}
 
-# TODO: Replace this with your real optimizer
-# For now, equal weights so Tab 3 works
-weights = {t: 1/len(tickers) for t in tickers}
-
-model = {
-    "prices": prices,
-    "returns": returns,
-    "tickers": tickers,
-    "cov_matrix": cov_matrix,
-    "weights": weights,
-    "investment_amount": investment_amount,
-}
-
-
-# Build model dictionary (expand later)
-model = {
-    "prices": prices,
-    "returns": returns,
-    "tickers": tickers,
-    "cov_matrix": cov_matrix,
-}
-
-        tickers = list(prices.columns)
-
-cov_matrix = returns.cov()
-
-model = {
-    "prices": prices,
-    "returns": returns,
-    "tickers": tickers,
-    "cov_matrix": cov_matrix,
-}
-
-
-        # Build model dictionary (expand later)
         model = {
             "prices": prices,
             "returns": returns,
-            # Add frontier, weights, sector weights, etc.
+            "tickers": tickers,
+            "cov_matrix": cov_matrix,
+            "weights": weights,
+            "investment_amount": investment_amount,
         }
 
         st.success("Data loaded successfully.")
@@ -121,7 +97,7 @@ model = {
             tab1, tab2, tab3, tab4, tab5,
             tab6, tab7, tab8, tab9
         ) = st.tabs([
-            "Summary",
+            " Summary",
             " Efficient Frontier",
             " Optimal Weights",
             " Sector Exposure",

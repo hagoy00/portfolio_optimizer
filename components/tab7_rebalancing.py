@@ -1,86 +1,91 @@
 import streamlit as st
 import pandas as pd
-from utils.optimizer_core import rebalancing_backtest
-
+import numpy as np
 
 def render_rebalancing_tab(tab, prices, model):
-    tab.markdown("## Rebalancing Backtest")
 
-    if model is None:
-        tab.error("Model is missing.")
-        return
+    with tab:
 
-    # ---------- Frequency selector ----------
-    freq_label = tab.selectbox(
-        "Rebalancing Frequency",
-        options=["Monthly", "Quarterly", "Annual", "Weekly"],
-        index=0
-    )
+        st.subheader("Portfolio Rebalancing Backtest")
 
-    freq_map = {
-        "Monthly": "M",
-        "Quarterly": "Q",
-        "Annual": "Y",
-        "Weekly": "W",
-    }
-    freq = freq_map[freq_label]
+        tickers = model["tickers"]
+        weights = model["weights"]
+        returns = model["returns"]
 
-    # ---------- Weights ----------
-    target_weights = model.get("weights")
-    if target_weights is None:
-        tab.error("No weights found in model.")
-        return
+        if len(tickers) == 0:
+            st.warning("No tickers available for rebalancing.")
+            return
 
-    w = pd.Series(target_weights)
+        # ---------------------------------------------------------
+        # User Inputs
+        # ---------------------------------------------------------
+        st.markdown("### Rebalancing Settings")
 
-    # Align to tickers in prices
-    if isinstance(prices.columns, pd.MultiIndex):
-        tickers = prices.columns.get_level_values("Ticker").unique()
-    else:
-        tickers = prices.columns
-    w = w.reindex(tickers).fillna(0.0)
+        freq = st.selectbox(
+            "Rebalancing Frequency",
+            ["Monthly", "Quarterly", "Annual", "Weekly"],
+            index=0
+        )
 
-    # ---------- Run backtest ----------
-    try:
-        result = rebalancing_backtest(prices, w, freq=freq)
-    except Exception as e:
-        tab.error(f"Rebalancing failed: {e}")
-        return
+        # Convert frequency to pandas offset
+        freq_map = {
+            "Weekly": "W",
+            "Monthly": "M",
+            "Quarterly": "Q",
+            "Annual": "A"
+        }
+        rebalance_offset = freq_map[freq]
 
-    if result is None:
-        tab.warning("Rebalancing backtest returned no data.")
-        return
+        # ---------------------------------------------------------
+        # Prepare Data
+        # ---------------------------------------------------------
+        price_df = prices.copy()
+        ret_df = returns[tickers].copy()
 
-    equity = result["equity_curve"]
-    metrics = result["metrics"]
-    turnover_df = result["turnover"]
+        # Initial equal weights
+        w0 = np.array([1 / len(tickers)] * len(tickers))
 
-    if equity is None or equity.empty:
-        tab.warning("No equity curve generated.")
-        return
+        # Portfolio value tracking
+        portfolio_value = [1.0]
+        current_weights = w0.copy()
 
-    # ---------- Chart ----------
-    tab.markdown("### Portfolio Value Over Time")
-    tab.line_chart(equity["Portfolio Value"])
+        # ---------------------------------------------------------
+        # Rebalancing Loop
+        # ---------------------------------------------------------
+        rebalance_dates = ret_df.resample(rebalance_offset).first().index
 
-    # ---------- KPIs ----------
-    col1, col2, col3 = tab.columns(3)
-    col4, col5, col6 = tab.columns(3)
+        for i in range(1, len(ret_df)):
 
-    col1.metric("CAGR", f"{metrics['CAGR']*100:.2f}%" if pd.notna(metrics["CAGR"]) else "N/A")
-    col2.metric("Volatility (Ann.)", f"{metrics['Volatility']*100:.2f}%" if pd.notna(metrics["Volatility"]) else "N/A")
-    col3.metric("Sharpe", f"{metrics['Sharpe']:.2f}" if pd.notna(metrics["Sharpe"]) else "N/A")
+            # Apply daily returns
+            daily_ret = np.dot(current_weights, ret_df.iloc[i].values)
+            new_value = portfolio_value[-1] * (1 + daily_ret)
+            portfolio_value.append(new_value)
 
-    col4.metric("Max Drawdown", f"{metrics['Max Drawdown']*100:.2f}%" if pd.notna(metrics["Max Drawdown"]) else "N/A")
-    col5.metric("Rebalances", f"{metrics['Rebalance Count']}")
-    col6.metric("Avg Turnover", f"{metrics['Average Turnover']*100:.2f}%" if pd.notna(metrics["Average Turnover"]) else "N/A")
+            # Rebalance on scheduled dates
+            if ret_df.index[i] in rebalance_dates:
+                current_weights = w0.copy()
 
-    # ---------- Tables ----------
-    with tab.expander("Equity Curve (Recent)"):
-        tab.dataframe(equity.tail(), use_container_width=True)
+        # ---------------------------------------------------------
+        # Results
+        # ---------------------------------------------------------
+        portfolio_series = pd.Series(
+            portfolio_value,
+            index=ret_df.index,
+            name="Rebalanced Portfolio"
+        )
 
-    with tab.expander("Turnover by Rebalance Date"):
-        if turnover_df is not None and not turnover_df.empty:
-            tab.dataframe(turnover_df, use_container_width=True)
-        else:
-            tab.write("No turnover data available.")
+        st.line_chart(portfolio_series)
+
+        # ---------------------------------------------------------
+        # Metrics
+        # ---------------------------------------------------------
+        total_return = portfolio_series.iloc[-1] - 1
+        annualized_return = portfolio_series.pct_change().mean() * 252
+        annualized_vol = portfolio_series.pct_change().std() * np.sqrt(252)
+        sharpe = annualized_return / annualized_vol if annualized_vol > 0 else 0
+
+        st.markdown("### Performance Metrics")
+        st.metric("Total Return", f"{total_return:.2%}")
+        st.metric("Annualized Return", f"{annualized_return:.2%}")
+        st.metric("Annualized Volatility", f"{annualized_vol:.2%}")
+        st.metric("Sharpe Ratio", f"{sharpe:.2f}")

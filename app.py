@@ -1,12 +1,20 @@
+import streamlit as st
 import pandas as pd
 import numpy as np
 from datetime import date
+
+# ---------------------------------------------------------
+# Page Config
+# ---------------------------------------------------------
 st.set_page_config(
     page_title="Portfolio Optimizer Dashboard",
     layout="wide",
     initial_sidebar_state="expanded"
 )
-# ---- FIXED TITLE BAR (WORKING VERSION) ----
+
+# ---------------------------------------------------------
+# FIXED STICKY TITLE BAR
+# ---------------------------------------------------------
 st.markdown("""
 <style>
 /* Hide Streamlit default header */
@@ -45,10 +53,12 @@ st.markdown(
     '<div class="app-title"><h1>Portfolio Optimizer Dashboard</h1></div>',
     unsafe_allow_html=True
 )
-# Loaders
+
+# ---------------------------------------------------------
+# IMPORTS FOR TABS + DATA
+# ---------------------------------------------------------
 from utils.data_loader import load_price_data, load_returns_data
 
-# Import tab modules
 from components.tab1_summary import render_summary_tab
 from components.tab2_frontier import render_frontier_tab
 from components.tab3_weights import render_weights_tab
@@ -59,17 +69,8 @@ from components.tab7_rebalancing import render_rebalancing_tab
 from components.tab8_ai_commentary import render_ai_commentary_tab
 from components.tab9_buy_analysis import render_buy_analysis_tab
 
-
 # ---------------------------------------------------------
-# Streamlit Page Config
-# ---------------------------------------------------------
-st.set_page_config(
-    page_title="Portfolio Optimizer Dashboard",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
-# ---------------------------------------------------------
-# Sidebar Inputs
+# SIDEBAR INPUTS
 # ---------------------------------------------------------
 st.sidebar.header("Input Parameters")
 
@@ -80,15 +81,8 @@ tickers_input = st.sidebar.text_input(
 
 tickers = [t.strip().upper() for t in tickers_input.split(",") if t.strip()]
 
-start_date = st.sidebar.date_input(
-    "Start Date",
-    value=date(2021, 1, 1)
-)
-
-end_date = st.sidebar.date_input(
-    "End Date",
-    value=date.today()
-)
+start_date = st.sidebar.date_input("Start Date", value=date(2021, 1, 1))
+end_date = st.sidebar.date_input("End Date", value=date.today())
 
 investment_amount = st.sidebar.number_input(
     "Investment Amount ($)",
@@ -99,9 +93,8 @@ investment_amount = st.sidebar.number_input(
 
 run_button = st.sidebar.button("Run Analysis")
 
-
 # ---------------------------------------------------------
-# Main Logic
+# MAIN LOGIC
 # ---------------------------------------------------------
 if run_button:
 
@@ -110,14 +103,12 @@ if run_button:
         st.stop()
 
     try:
-        # ---------------------------------------------------------
-        # Load Data
-        # ---------------------------------------------------------
+        # Load data
         tickers_str = ", ".join(tickers)
         prices = load_price_data(tickers_str, start_date, end_date)
         returns = load_returns_data(tickers_str, start_date, end_date)
 
-        # Filter to valid tickers
+        # Filter valid tickers
         if isinstance(prices.columns, pd.MultiIndex):
             prices = prices.loc[:, prices.columns.get_level_values("Ticker").isin(tickers)]
 
@@ -130,65 +121,33 @@ if run_button:
             st.error("No valid tickers found in the data.")
             st.stop()
 
-        # ---------------------------------------------------------
-        # Core Model Components
-        # ---------------------------------------------------------
-        cov_matrix = returns.cov()
-
-        weights = {t: 1 / len(tickers_final) for t in tickers_final}
-        w_series = pd.Series(weights)
-
-        # ---------------------------------------------------------
-        # Sector Weights
-        # ---------------------------------------------------------
-        sector_map = {
-            "AAPL": "Technology",
-            "MSFT": "Technology",
-            "NVDA": "Technology",
-            "AMZN": "Consumer Discretionary",
-            "GOOG": "Communication Services",
-            "TSLA": "Consumer Discretionary",
-            "WFC": "Financials",
-        }
-
-        mapped = {t: sector_map.get(t, "Other") for t in tickers_final}
-        sector_weights = w_series.groupby(mapped).sum()
-
-        # ---------------------------------------------------------
-        # Portfolio Returns
-        # ---------------------------------------------------------
+        # Portfolio returns
+        w_series = pd.Series({t: 1 / len(tickers_final) for t in tickers_final})
         portfolio_returns = (returns[tickers_final] * w_series).sum(axis=1)
 
-        # ---------------------------------------------------------
+        if portfolio_returns.empty or portfolio_returns.isna().all():
+            st.error("No valid return data for these tickers. Try different dates.")
+            st.stop()
+
         # Drawdown
-        # ---------------------------------------------------------
         cumulative = (1 + portfolio_returns).cumprod()
         running_max = cumulative.cummax()
-        drawdown = (cumulative - running_max) / running_max
-        drawdown_df = drawdown.to_frame("Drawdown")
+        drawdown_df = ((cumulative - running_max) / running_max).to_frame("Drawdown")
 
-        # ---------------------------------------------------------
-        # Monte Carlo Simulation
-        # ---------------------------------------------------------
+        # Monte Carlo
+        mu = portfolio_returns.mean()
+        sigma = portfolio_returns.std()
         num_paths = 200
         num_days = 252
 
-        mu = portfolio_returns.mean()
-        sigma = portfolio_returns.std()
-
-        simulations = np.zeros((num_days, num_paths))
+        sims = np.zeros((num_days, num_paths))
         for p in range(num_paths):
-            daily_returns = np.random.normal(mu, sigma, num_days)
-            simulations[:, p] = np.cumprod(1 + daily_returns)
+            daily = np.random.normal(mu, sigma, num_days)
+            sims[:, p] = np.cumprod(1 + daily)
 
-        mc_df = pd.DataFrame(
-            simulations,
-            columns=[f"Path_{i}" for i in range(num_paths)]
-        )
+        mc_df = pd.DataFrame(sims, columns=[f"Path_{i}" for i in range(num_paths)])
 
-        # ---------------------------------------------------------
-        # Performance Metrics
-        # ---------------------------------------------------------
+        # Performance
         annual_return = portfolio_returns.mean() * 252
         annual_vol = portfolio_returns.std() * np.sqrt(252)
         sharpe = annual_return / annual_vol if annual_vol > 0 else 0
@@ -199,17 +158,13 @@ if run_button:
             "sharpe": sharpe,
         }
 
-        # ---------------------------------------------------------
-        # Build Model Dictionary
-        # ---------------------------------------------------------
+        # Model dictionary
         model = {
             "prices": prices,
             "returns": returns,
             "tickers": tickers_final,
-            "cov_matrix": cov_matrix,
-            "weights": weights,
+            "weights": w_series.to_dict(),
             "investment_amount": investment_amount,
-            "sector_weights": sector_weights,
             "drawdown": drawdown_df,
             "monte_carlo": mc_df,
             "performance": performance,
@@ -225,12 +180,9 @@ if run_button:
         st.stop()
 
     # ---------------------------------------------------------
-    # Create Tabs
+    # TABS
     # ---------------------------------------------------------
-    (
-        tab1, tab2, tab3, tab4, tab5,
-        tab6, tab7, tab8, tab9
-    ) = st.tabs([
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
         " Summary",
         " Efficient Frontier",
         " Optimal Weights",
@@ -242,9 +194,6 @@ if run_button:
         " Buy Analysis"
     ])
 
-    # ---------------------------------------------------------
-    # Render Tabs
-    # ---------------------------------------------------------
     render_summary_tab(tab1, prices, model)
     render_frontier_tab(tab2, prices, model)
     render_weights_tab(tab3, prices, model)

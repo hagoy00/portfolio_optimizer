@@ -104,9 +104,9 @@ if run_button:
 
     try:
         # Load data
-tickers_str = ", ".join(tickers)
-prices = load_price_data(tickers_str, start_date, end_date)
-returns = load_returns_data(tickers_str, start_date, end_date)
+    tickers_str = ", ".join(tickers)
+    prices = load_price_data(tickers_str, start_date, end_date)
+    returns = load_returns_data(tickers_str, start_date, end_date)
 
 # Filter valid tickers
 if isinstance(prices.columns, pd.MultiIndex):

@@ -1,103 +1,106 @@
 import streamlit as st
-
-#st.write("DEBUG — entering Tab 8")
+import pandas as pd
+import numpy as np
 
 def render_ai_commentary_tab(tab, prices, model):
 
-    tab.markdown("## AI Commentary")
+    with tab:
 
-    if model is None:
-        tab.info("Run optimization to generate commentary.")
-        return
+        st.subheader("AI Portfolio Commentary")
 
-    try:
         perf = model.get("performance", {})
-        dd = model.get("drawdown", None)
-        w = model.get("weights", None)
+        fundamentals = model.get("fundamentals", {})
+        tickers = model.get("tickers", [])
+        drawdown = model.get("drawdown")
         sector_weights = model.get("sector_weights", None)
 
-        # ---------------------------------------------------
-        # GUARD CLAUSE — missing data
-        # ---------------------------------------------------
-        if not perf or w is None:
-            tab.warning("Model exists but performance or weights are missing.")
+        # ---- Safety Checks ----
+        if not perf or perf.get("expected_return") is None:
+            st.warning("Not enough data to generate commentary.")
             return
 
-        # Extract metrics
-        ret = perf.get("return", 0)
-        vol = perf.get("volatility", 0)
-        sharpe = perf.get("sharpe", 0)
-        max_dd = dd.min().min() if dd is not None else None
+        er = perf["expected_return"]
+        vol = perf["volatility"]
+        sharpe = perf["sharpe"]
 
-        # Sector commentary
-        if sector_weights is not None and len(sector_weights) > 0:
-            top_sector = sector_weights.idxmax()
-            top_sector_weight = sector_weights.max()
+        # ---- Drawdown Stats ----
+        max_dd = None
+        if isinstance(drawdown, pd.DataFrame) and not drawdown.empty:
+            max_dd = drawdown["Drawdown"].min()
+
+        # ---- Sector Exposure ----
+        sector_text = ""
+        if sector_weights is not None:
+            sector_text = ", ".join([f"{s}: {w:.1%}" for s, w in sector_weights.items()])
+
+        # ---- Fundamentals Summary ----
+        fund_summary = []
+        for t in tickers:
+            f = fundamentals.get(t, {})
+            fund_summary.append({
+                "Ticker": t,
+                "PE": f.get("pe"),
+                "PS": f.get("ps"),
+                "PB": f.get("pb"),
+                "Rating": f.get("recommendation"),
+                "Target Price": f.get("target_mean_price")
+            })
+        fund_df = pd.DataFrame(fund_summary)
+
+        # ---- Commentary Generation ----
+        st.markdown("### 📌 Portfolio Overview")
+
+        st.write(f"""
+        **Expected Annual Return:** {er:.2%}  
+        **Annualized Volatility:** {vol:.2%}  
+        **Sharpe Ratio:** {sharpe:.2f}  
+        **Max Drawdown:** {max_dd:.2% if max_dd is not None else "N/A"}  
+        """)
+
+        st.markdown("---")
+
+        st.markdown("### 🧠 AI Commentary")
+
+        # ---- Return Commentary ----
+        if er > 0.15:
+            st.write("• The portfolio shows **strong expected returns**, suggesting meaningful upside potential.")
+        elif er > 0.05:
+            st.write("• Expected returns are **moderate**, consistent with a balanced risk profile.")
         else:
-            top_sector = "Unknown"
-            top_sector_weight = 0
+            st.write("• Expected returns appear **muted**, likely due to low‑growth or defensive components.")
 
-        # ---------------------------------------------------
-        # METRIC PANEL
-        # ---------------------------------------------------
-        tab.markdown("### Portfolio Metrics Summary")
+        # ---- Volatility Commentary ----
+        if vol > 0.25:
+            st.write("• Volatility is **elevated**, indicating exposure to high‑beta or momentum names.")
+        elif vol > 0.15:
+            st.write("• Volatility is **moderate**, typical for diversified equity portfolios.")
+        else:
+            st.write("• Volatility is **low**, suggesting defensive or mega‑cap concentration.")
 
-        col1, col2, col3 = tab.columns(3)
-        col1.metric("Expected Return", f"{ret:.2%}")
-        col2.metric("Volatility", f"{vol:.2%}")
-        col3.metric("Sharpe Ratio", f"{sharpe:.2f}")
+        # ---- Sharpe Commentary ----
+        if sharpe > 1.0:
+            st.write("• The Sharpe ratio is **strong**, indicating efficient risk‑adjusted performance.")
+        elif sharpe > 0.5:
+            st.write("• The Sharpe ratio is **acceptable**, though there is room for optimization.")
+        else:
+            st.write("• The Sharpe ratio is **weak**, implying the portfolio may not be compensated for its risk.")
 
-        col4, col5 = tab.columns(2)
-        col4.metric("Max Drawdown", f"{max_dd:.2%}" if max_dd is not None else "N/A")
-        col5.metric("Top Sector Weight", f"{top_sector_weight:.2%}")
+        # ---- Drawdown Commentary ----
+        if max_dd is not None:
+            if max_dd < -0.40:
+                st.write("• Historical drawdowns are **deep**, suggesting vulnerability during market stress.")
+            elif max_dd < -0.20:
+                st.write("• Drawdowns are **moderate**, consistent with typical equity risk.")
+            else:
+                st.write("• Drawdowns are **shallow**, indicating strong downside resilience.")
 
-        tab.markdown("---")
+        # ---- Sector Commentary ----
+        if sector_text:
+            st.markdown("### 🏢 Sector Exposure")
+            st.write(f"**Sector Weights:** {sector_text}")
 
-        with tab.expander("Portfolio Overview", expanded=True):
-            tab.markdown(
-                f"""
-The portfolio targets an expected return of **{ret:.2%}** with an annualized volatility of 
-**{vol:.2%}**, resulting in a **Sharpe ratio of {sharpe:.2f}**.  
-This places the allocation in a balanced risk‑reward posture consistent with diversified equity portfolios.
-"""
-            )
+        # ---- Fundamentals Commentary ----
+        st.markdown("### 📊 Fundamentals Snapshot")
+        st.dataframe(fund_df, use_container_width=True)
 
-        with tab.expander("Risk & Drawdown Analysis", expanded=False):
-            tab.markdown(
-                f"""
-Historical drawdown analysis indicates a maximum drawdown of **{max_dd:.2%}**, 
-suggesting controlled downside risk and stable recovery behavior.
-"""
-            )
-
-        with tab.expander("Allocation Insights", expanded=False):
-            tab.markdown(
-                f"""
-The optimizer allocated the highest weight to **{top_sector}**, representing 
-**{top_sector_weight:.2%}** of the portfolio.  
-This tilt reflects favorable risk‑adjusted characteristics in that sector.
-"""
-            )
-
-        with tab.expander("Risk Parity Comparison", expanded=False):
-            tab.markdown(
-                """
-Risk‑parity weights differ from the Markowitz solution, indicating:
-
-- Uneven covariance structure  
-- Strong return‑to‑risk imbalance  
-- Higher concentration in return‑dominant assets  
-"""
-            )
-
-        with tab.expander("Summary", expanded=True):
-            tab.markdown(
-                """
-Overall, the portfolio is positioned for efficient growth, balancing return potential with 
-controlled volatility. Sector tilts reflect areas of relative strength, while risk metrics 
-remain well‑anchored.
-"""
-            )
-
-    except Exception as e:
-        tab.error(f"Error generating AI commentary: {e}")
+        st.write("• Analyst ratings and valuation multiples provide additional context for upside/downside potential.")

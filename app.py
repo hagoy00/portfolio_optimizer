@@ -2,6 +2,39 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 from datetime import date
+st.set_page_config(
+    page_title="Portfolio Optimizer Dashboard",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# ---- Sticky Title CSS + HTML ----
+st.markdown("""
+<style>
+.sticky-title {
+    position: sticky;
+    top: 0;
+    z-index: 9999;
+    background-color: #0E1117;
+    padding: 16px 0 12px 0;
+    border-bottom: 1px solid #1F2937;
+}
+.sticky-title h1 {
+    color: #4DA8FF !important;
+    font-size: 32px;
+    font-weight: 700;
+    margin: 0;
+}
+div[data-testid="stAppViewContainer"] {
+    overflow: visible !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
+st.markdown(
+    '<div class="sticky-title"><h1>Portfolio Optimizer Dashboard</h1></div>',
+    unsafe_allow_html=True
+)
 
 # Loaders
 from utils.data_loader import load_price_data, load_returns_data

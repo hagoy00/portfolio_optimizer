@@ -284,7 +284,7 @@ if run_button:
                 st.session_state["prices"] = prices
 
                 st.success("Data loaded successfully.")
-# ---------------------------------------------------------
+ # ---------------------------------------------------------
 # GLOBAL TICKER SELECTOR (SIDEBAR)
 # ---------------------------------------------------------
 
@@ -297,7 +297,7 @@ else:
     ALL_TICKERS = prices.columns.tolist()
 
 selected_tickers = st.sidebar.multiselect(
-    "Choose tickers:",
+    "Choose tickers to include:",
     options=ALL_TICKERS,
     default=ALL_TICKERS
 )
@@ -307,7 +307,6 @@ if isinstance(prices.columns, pd.MultiIndex):
     prices_filtered = prices.loc[:, prices.columns.get_level_values("Ticker").isin(selected_tickers)]
 else:
     prices_filtered = prices[selected_tickers]
-
                 # ---------------------------------------------------------
                 # Create Tabs
                 # ---------------------------------------------------------

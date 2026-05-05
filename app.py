@@ -310,9 +310,9 @@ if isinstance(prices.columns, pd.MultiIndex):
     prices_filtered = prices.loc[:, prices.columns.get_level_values("Ticker").isin(selected_tickers)]
 else:
     prices_filtered = prices[selected_tickers]
-                # ---------------------------------------------------------
-                # Create Tabs
-                # ---------------------------------------------------------
+    # ---------------------------------------------------------
+    # Create Tabs
+    # ---------------------------------------------------------
                 (
                     tab1, tab2, tab3, tab4, tab5,
                     tab6, tab7, tab8, tab9

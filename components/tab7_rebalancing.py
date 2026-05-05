@@ -1,6 +1,44 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import streamlit as st
+import pandas as pd
+import numpy as np
+from datetime import date
+
+# ---------------------------------------------------------
+# Sticky Header CSS (MUST be in app.py)
+# ---------------------------------------------------------
+st.markdown("""
+<style>
+
+ /* Make the title truly sticky */
+ .sticky-title {
+     position: sticky;
+     top: 0;
+     z-index: 9999;
+     background-color: #0E1117;
+     padding: 18px 0;
+     border-bottom: 1px solid #1F2937;
+ }
+
+ .sticky-title h1 {
+     color: #4DA8FF !important;
+     font-size: 32px;
+     font-weight: 700;
+     margin: 0;
+ }
+
+ /* Ensure scroll container doesn't override sticky */
+ div[data-testid="stAppViewContainer"] {
+     overflow: visible !important;
+ }
+
+</style>
+""", unsafe_allow_html=True)
+
+# Sticky Title
+st.markdown('<div class="sticky-title"><h1>Portfolio Optimizer Dashboard</h1></div>', unsafe_allow_html=True)
 
 def render_rebalancing_tab(tab, prices, model):
 

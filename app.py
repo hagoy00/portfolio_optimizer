@@ -1,4 +1,3 @@
-import streamlit as st
 import pandas as pd
 import numpy as np
 from datetime import date
@@ -7,35 +6,45 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
-
-# ---- Sticky Title CSS + HTML ----
+# ---- FIXED TITLE BAR (WORKING VERSION) ----
 st.markdown("""
 <style>
-.sticky-title {
-    position: sticky;
+/* Hide Streamlit default header */
+header[data-testid="stHeader"] {
+    display: none;
+}
+
+/* Custom fixed title bar */
+.app-title {
+    position: fixed;
     top: 0;
+    left: 0;
+    right: 0;
     z-index: 9999;
     background-color: #0E1117;
-    padding: 16px 0 12px 0;
+    padding: 16px 32px;
     border-bottom: 1px solid #1F2937;
 }
-.sticky-title h1 {
+
+/* Push content down */
+div[data-testid="stAppViewContainer"] {
+    padding-top: 70px;
+}
+
+/* Title text */
+.app-title h1 {
     color: #4DA8FF !important;
-    font-size: 32px;
+    font-size: 28px;
     font-weight: 700;
     margin: 0;
-}
-div[data-testid="stAppViewContainer"] {
-    overflow: visible !important;
 }
 </style>
 """, unsafe_allow_html=True)
 
 st.markdown(
-    '<div class="sticky-title"><h1>Portfolio Optimizer Dashboard</h1></div>',
+    '<div class="app-title"><h1>Portfolio Optimizer Dashboard</h1></div>',
     unsafe_allow_html=True
 )
-
 # Loaders
 from utils.data_loader import load_price_data, load_returns_data
 
@@ -59,10 +68,6 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
-
-st.title("Portfolio Optimizer Dashboard")
-
-
 # ---------------------------------------------------------
 # Sidebar Inputs
 # ---------------------------------------------------------

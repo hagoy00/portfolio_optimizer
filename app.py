@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 # ... all your other imports ...
+from datetime import date
 
 # ⬇️ PASTE THE STICKY HEADER CSS RIGHT HERE
 st.markdown("""

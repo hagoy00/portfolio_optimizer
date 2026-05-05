@@ -283,14 +283,17 @@ if run_button:
                 st.session_state["model"] = model
                 st.session_state["prices"] = prices
 
-                st.success("Data loaded successfully.")
- # ---------------------------------------------------------
+st.success("Data loaded successfully.")
+
+except Exception as e:
+    st.error(f"Error loading data: {e}")
+
+# ---------------------------------------------------------
 # GLOBAL TICKER SELECTOR (SIDEBAR)
 # ---------------------------------------------------------
-
 st.sidebar.markdown("### Select Tickers")
 
-# Detect tickers from MultiIndex or flat columns
+# Detect tickers
 if isinstance(prices.columns, pd.MultiIndex):
     ALL_TICKERS = prices.columns.get_level_values("Ticker").unique().tolist()
 else:

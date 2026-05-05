@@ -1,7 +1,33 @@
 import streamlit as st
-from datetime import date
 import pandas as pd
 import numpy as np
+# ... all your other imports ...
+
+# ⬇️ PASTE THE STICKY HEADER CSS RIGHT HERE
+st.markdown("""
+<style>
+#portfolio-header {
+    position: sticky;
+    top: 0;
+    background-color: #0E1117;
+    padding: 18px 0px 18px 0px;
+    z-index: 9999;
+    border-bottom: 1px solid #1F2937;
+}
+#portfolio-header h1 {
+    color: #4DA8FF !important;
+    font-size: 32px;
+    font-weight: 700;
+    margin: 0;
+}
+</style>
+""", unsafe_allow_html=True)
+
+st.markdown('<div id="portfolio-header"><h1>Portfolio Optimizer Dashboard</h1></div>', unsafe_allow_html=True)
+
+# ⬇️ Your sidebar, tabs, and page layout come AFTER this
+st.sidebar.title("Navigation")
+
 
 # Loaders
 from utils.data_loader import load_price_data, load_returns_data

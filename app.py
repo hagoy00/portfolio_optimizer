@@ -105,8 +105,11 @@ if run_button:
     try:
         # Load data
         tickers_str = ", ".join(tickers)
+        
         prices = load_price_data(tickers_str, start_date, end_date)
         returns = load_returns_data(tickers_str, start_date, end_date)
+        from utils.fundamentals_loader import load_fundamentals
+        fundamentals = load_fundamentals(tickers_final)
 
         # Filter valid tickers
         if isinstance(prices.columns, pd.MultiIndex):
@@ -168,17 +171,16 @@ if run_button:
             "drawdown": drawdown_df,
             "monte_carlo": mc_df,
             "performance": performance,
+            "fundamentals": fundamentals,   # <-- ADD THIS
         }
 
         st.session_state["model"] = model
         st.session_state["prices"] = prices
-
         st.success("Data loaded successfully.")
 
     except Exception as e:
         st.error(f"Error loading data: {e}")
         st.stop()
-
     # ---------------------------------------------------------
     # TABS
     # ---------------------------------------------------------

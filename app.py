@@ -107,6 +107,10 @@ try:
     tickers_str = ", ".join(tickers)
     prices = load_price_data(tickers_str, start_date, end_date)
     returns = load_returns_data(tickers_str, start_date, end_date)
+    # DEBUG
+    st.write("DEBUG — prices shape:", prices.shape if prices is not None else "None")
+    st.write("DEBUG — returns shape:", returns.shape if returns is not None else "None")
+    st.write("DEBUG — tickers:", tickers)
 
     # Filter valid tickers
     if isinstance(prices.columns, pd.MultiIndex):

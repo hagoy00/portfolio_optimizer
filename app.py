@@ -104,19 +104,27 @@ if run_button:
 
     try:
         # Load data
-        tickers_str = ", ".join(tickers)
-        
-        prices = load_price_data(tickers_str, start_date, end_date)
-        returns = load_returns_data(tickers_str, start_date, end_date)
-        from utils.fundamentals_loader import load_fundamentals
-        fundamentals = load_fundamentals(tickers_final)
+tickers_str = ", ".join(tickers)
+prices = load_price_data(tickers_str, start_date, end_date)
+returns = load_returns_data(tickers_str, start_date, end_date)
 
-        # Filter valid tickers
-        if isinstance(prices.columns, pd.MultiIndex):
-            prices = prices.loc[:, prices.columns.get_level_values("Ticker").isin(tickers)]
+# Filter valid tickers
+if isinstance(prices.columns, pd.MultiIndex):
+    prices = prices.loc[:, prices.columns.get_level_values("Ticker").isin(tickers)]
 
-        if returns is not None and not returns.empty:
-            returns = returns[[t for t in tickers if t in returns.columns]]
+if returns is not None and not returns.empty:
+    returns = returns[[t for t in tickers if t in returns.columns]]
+
+# MUST BE HERE — BEFORE fundamentals
+tickers_final = [t for t in tickers if t in returns.columns]
+
+if not tickers_final:
+    st.error("No valid tickers found in the data.")
+    st.stop()
+
+# Load fundamentals AFTER tickers_final exists
+from utils.fundamentals_loader import load_fundamentals
+fundamentals = load_fundamentals(tickers_final)
 
         tickers_final = [t for t in tickers if t in returns.columns]
 

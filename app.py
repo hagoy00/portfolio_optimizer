@@ -102,7 +102,7 @@ if run_button:
         st.error("Please enter at least one ticker.")
         st.stop()
 
-    try:try:
+    try:
     # Load data
     tickers_str = ", ".join(tickers)
     prices = load_price_data(tickers_str, start_date, end_date)

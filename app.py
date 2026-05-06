@@ -100,7 +100,7 @@ if run_button:
         st.stop()
 
     try:
-        # Load data (PASS LIST, NOT STRING)
+        # Load data — PASS LIST, NOT STRING
         prices = load_price_data(tickers, start_date, end_date)
         returns = load_returns_data(tickers, start_date, end_date)
 

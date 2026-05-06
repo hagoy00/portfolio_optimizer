@@ -91,7 +91,7 @@ investment_amount = st.sidebar.number_input(
     step=1000
 )
 
- run_button = st.button("Run Analysis")
+run_button = st.button("Run Analysis")
 
 if run_button:
 

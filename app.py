@@ -11,7 +11,7 @@ from utils.buy_analysis import run_buy_analysis
 from utils.analytics import run_monte_carlo_simulation
 
 # ---------------------------------------------------------
-# Sticky Title
+# Sticky Title (blue)
 # ---------------------------------------------------------
 st.set_page_config(page_title="Portfolio Optimizer Dashboard", layout="wide")
 
@@ -25,6 +25,7 @@ st.markdown("""
             margin: 0;
             font-size: 32px;
             font-weight: 700;
+            color: #007BFF; /* BLUE TITLE */
             z-index: 999999;
             border-bottom: 1px solid #e0e0e0;
         }
@@ -37,31 +38,17 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# Sidebar Inputs
+# Sidebar Inputs (CLEAN — only ONE ticker input)
 # ---------------------------------------------------------
 st.sidebar.header("Configuration")
-# ---------------------------------------------------------
-st.markdown("""
-    <style>
-        .sticky-title {
-            position: sticky;
-            top: 0;
-            background-color: white;
-            padding: 14px 0 14px 0;
-            margin: 0;
-            font-size: 32px;
-            font-weight: 700;
-            color: #007BFF; /* Light blue */
-            z-index: 999999;
-            border-bottom: 1px solid #e0e0e0;
-        }
-        div[data-testid="stAppViewBlockContainer"] {
-            overflow: visible !important;
-        }
-    </style>
 
-    <div class="sticky-title">Portfolio Optimizer Dashboard</div>
-""", unsafe_allow_html=True)
+tickers_input = st.sidebar.text_area(
+    "Enter your stock tickers (one per line)",
+    placeholder="AAPL\nMSFT\nNVDA"
+)
+
+tickers = [t.strip().upper() for t in tickers_input.split("\n") if t.strip()]
+
 if not tickers:
     st.sidebar.info("Please enter at least one ticker.")
     st.stop()
@@ -187,25 +174,22 @@ with tab8:
 # HEAVY TABS (Run Analysis button required)
 # ---------------------------------------------------------
 with tab6:
-    st.subheader("Optimizer")
+    st.subheader("Optimizer & Monte Carlo")
     if not run_button:
-        st.info("Run Analysis to generate optimizer results.")
+        st.info("Run Analysis to generate optimizer and Monte Carlo results.")
     else:
         opt_results = run_optimizer(returns, cov)
+        st.write("Optimizer Results")
         st.write(opt_results)
+
+        mc_df = run_monte_carlo_simulation(returns, mc_sims, mc_horizon)
+        st.write("Monte Carlo Simulation")
+        st.line_chart(mc_df)
 
 with tab9:
     st.subheader("Buy / Hold / Sell Analysis")
     if not run_button:
         st.info("Run Analysis to generate buy analysis.")
     else:
-        buy_results = run_buy_analysis(tickers, fundamentals, performance)
+        buy_results = run_buy_analysis(tickers, fundamentals, prices)
         st.write(buy_results)
-
-# Monte Carlo (shown inside Optimizer or Buy tab depending on your design)
-if run_button:
-    mc_df = run_monte_carlo_simulation(returns, mc_sims, mc_horizon)
-    st.subheader("Monte Carlo Simulation")
-    st.line_chart(mc_df)
-else:
-    st.info("Run Analysis to generate Monte Carlo simulation.")

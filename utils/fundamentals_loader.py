@@ -1,39 +1,40 @@
+# utils/fundamentals_loader.py
+
 import yfinance as yf
 import pandas as pd
-import numpy as np
 
 def load_fundamentals(tickers, full_prices=None):
+    """
+    Load key fundamentals for each ticker using yfinance.
+    Optionally attach full_prices (price history) for downstream modules.
+    """
+
     fundamentals = {}
 
-    for t in tickers:
+    for ticker in tickers:
         try:
-            stock = yf.Ticker(t)
+            stock = yf.Ticker(ticker)
+            info = stock.info
 
-            # New Yahoo Finance API (fast_info)
-            fast = stock.fast_info
-
-            pe = fast.get("trailing_pe")
-            pb = fast.get("price_to_book")
-            div = fast.get("dividend_yield")
-
-            # Fallbacks
-            if pe is None:
-                pe = fast.get("pe_ratio")
-
-            fundamentals[t] = {
-                "PE": pe,
-                "PB": pb,
-                "DividendYield": div,
+            fundamentals[ticker] = {
+                "market_cap": info.get("marketCap"),
+                "pe_ratio": info.get("trailingPE"),
+                "forward_pe": info.get("forwardPE"),
+                "pb_ratio": info.get("priceToBook"),
+                "dividend_yield": info.get("dividendYield"),
+                "sector": info.get("sector"),
+                "beta": info.get("beta"),
+                "eps": info.get("trailingEps"),
+                "revenue": info.get("totalRevenue"),
+                "gross_margins": info.get("grossMargins"),
+                "profit_margins": info.get("profitMargins"),
             }
 
-        except Exception:
-            fundamentals[t] = {
-                "PE": None,
-                "PB": None,
-                "DividendYield": None,
-            }
+        except Exception as e:
+            fundamentals[ticker] = {"error": str(e)}
 
-    # Add full prices for momentum engine
-    fundamentals["full_prices"] = full_prices
+    # Attach price data if provided
+    if full_prices is not None:
+        fundamentals["full_prices"] = full_prices
 
     return fundamentals

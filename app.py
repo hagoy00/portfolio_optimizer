@@ -141,10 +141,11 @@ sector_weights = compute_sector_weights(weights, tickers)
 # ---------------------------------------------------------
 # Tabs
 # ---------------------------------------------------------
-tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab7, tab8, tab9, tab6 = st.tabs([
     "Overview", "Performance", "Risk", "Sectors",
-    "Fundamentals", "Optimizer", "Weights",
-    "AI Commentary", "Buy Analysis"
+    "Fundamentals", "Weights",
+    "AI Commentary", "Buy Analysis",
+    "Optimizer"
 ])
 
 # ---------------------------------------------------------

@@ -12,7 +12,7 @@ def build_portfolio_model(prices):
     - daily returns
     - covariance matrix
     - optimized weights (equal-weight for now)
-    - performance metrics (expected return, volatility, Sharpe)
+    - performance metrics (expected return, volatility, Sharpe) 
     """
 
     # Daily returns
@@ -125,3 +125,40 @@ def compute_beta_vs_spy(prices, ticker):
 
     return beta
 
+# ---------------------------------------------------------
+# MONTE CARLO SIMULATION ENGINE (REQUIRED BY app.py)
+# ---------------------------------------------------------
+
+import pandas as pd
+import numpy as np
+
+def run_monte_carlo_simulation(returns, sims=500, horizon=252):
+    """
+    Simple Monte Carlo simulation using:
+    - Historical mean
+    - Historical volatility
+    - Geometric Brownian Motion (GBM)
+    """
+
+    # Portfolio returns (equal weight)
+    n = len(returns.columns)
+    weights = np.array([1/n] * n)
+    port_ret = returns.dot(weights)
+
+    mu = port_ret.mean()
+    sigma = port_ret.std()
+
+    # Simulations
+    simulations = []
+
+    for _ in range(sims):
+        prices = [1.0]
+        for _ in range(horizon):
+            drift = mu - 0.5 * sigma**2
+            shock = sigma * np.random.normal()
+            prices.append(prices[-1] * np.exp(drift + shock))
+        simulations.append(prices)
+
+    df = pd.DataFrame(simulations).T
+    df.index.name = "Day"
+    return df

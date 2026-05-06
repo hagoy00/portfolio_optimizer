@@ -549,7 +549,7 @@ with tab8:
                 score += 1
                 conviction += 20
 
-            # --- Momentum (from model performance if available) ---
+            # --- Momentum ---
             momentum = model.get("momentum", {}).get(t, 0)
             if momentum > 0:
                 score += 1
@@ -563,7 +563,6 @@ with tab8:
             else:
                 rating = "Sell"
 
-            # Normalize conviction to 0–100
             conviction = min(100, max(0, conviction))
 
             signals.append({
@@ -634,8 +633,6 @@ with tab8:
             st.write(
                 "The portfolio presents a balanced but indecisive signal profile. Monitoring key metrics "
                 "and maintaining diversification is recommended."
-            )
-
 # ---------------------------------------------------------
 # BUY ANALYSIS
 # ---------------------------------------------------------

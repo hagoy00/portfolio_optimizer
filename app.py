@@ -381,3 +381,91 @@ with tab9:
     else:
         buy_results = run_buy_analysis(tickers, fundamentals, prices)
         st.dataframe(buy_results)
+def color_signal(val):
+    if val == "Buy":
+        return "background-color: #2ecc71; color: white;"
+    elif val == "Hold":
+        return "background-color: #f1c40f; color: black;"
+    else:
+        return "background-color: #e74c3c; color: white;"
+
+styled = buy_results.style.applymap(color_signal, subset=["Rating"])
+st.dataframe(styled)
+st.subheader("AI Buy Analysis Commentary")
+
+def generate_buy_commentary(df):
+    lines = []
+
+    best = df.sort_values("Score", ascending=False).iloc[0]
+    lines.append(
+        f"**{best['Ticker']}** leads the group with a score of {best['Score']}. "
+        f"Momentum ({best['Momentum']:.2f}) and valuation (PE={best['PE']}, PB={best['PB']}) "
+        f"support its relative strength."
+    )
+
+    worst = df.sort_values("Score", ascending=True).iloc[0]
+    lines.append(
+        f"**{worst['Ticker']}** ranks weakest with a score of {worst['Score']}. "
+        f"Drivers include softer momentum ({worst['Momentum']:.2f}) and less favorable valuation metrics."
+    )
+
+    mids = df.sort_values("Score", ascending=False).iloc[1:-1]
+    for _, row in mids.iterrows():
+        lines.append(
+            f"**{row['Ticker']}** shows a balanced profile with a score of {row['Score']}."
+        )
+
+    return "\n\n".join(lines)
+
+st.markdown(generate_buy_commentary(buy_results))
+import plotly.graph_objects as go
+
+st.subheader("Fundamentals Radar Chart")
+
+radar_cols = ["PE", "PB", "DividendYield", "Momentum", "Risk"]
+
+fig = go.Figure()
+
+for _, row in buy_results.iterrows():
+    fig.add_trace(go.Scatterpolar(
+        r=[row[c] for c in radar_cols],
+        theta=radar_cols,
+        fill='toself',
+        name=row["Ticker"]
+    ))
+
+fig.update_layout(
+    polar=dict(radialaxis=dict(visible=True)),
+    showlegend=True,
+    height=500
+)
+
+st.plotly_chart(fig, use_container_width=True)
+st.subheader("Top Strengths & Weaknesses")
+
+def strengths_weaknesses(row):
+    strengths, weaknesses = [], []
+
+    strengths.append("Positive momentum") if row["Momentum"] > 0 else weaknesses.append("Weak momentum")
+    strengths.append("Low volatility") if row["Risk"] < 0.30 else weaknesses.append("High volatility")
+    strengths.append("Reasonable PE ratio") if 0 < row["PE"] < 30 else weaknesses.append("Stretched PE ratio")
+    strengths.append("Healthy PB ratio") if 0 < row["PB"] < 5 else weaknesses.append("Rich PB ratio")
+    strengths.append("Dividend support") if row["DividendYield"] > 0.01 else weaknesses.append("Low or no dividend")
+
+    return strengths, weaknesses
+
+for _, row in buy_results.iterrows():
+    st.markdown(f"### {row['Ticker']}")
+
+    strengths, weaknesses = strengths_weaknesses(row)
+
+    st.markdown("**Strengths:**")
+    for s in strengths:
+        st.markdown(f"- {s}")
+
+    st.markdown("**Weaknesses:**")
+    for w in weaknesses:
+        st.markdown(f"- {w}")
+
+    st.markdown("---")
+

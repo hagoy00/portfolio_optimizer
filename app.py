@@ -104,11 +104,6 @@ if run_button:
         prices = load_price_data(tickers, start_date, end_date)
         returns = load_returns_data(tickers, start_date, end_date)
 
-        # DEBUG
-        st.write("DEBUG — prices:", prices)
-        st.write("DEBUG — returns:", returns)
-        st.write("DEBUG — tickers:", tickers)
-
         # Filter valid tickers
         if isinstance(prices.columns, pd.MultiIndex):
             prices = prices.loc[:, prices.columns.get_level_values("Ticker").isin(tickers)]

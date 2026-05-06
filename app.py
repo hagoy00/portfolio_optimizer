@@ -632,7 +632,7 @@ with tab8:
         else:
             st.write(
                 "The portfolio presents a balanced but indecisive signal profile. Monitoring key metrics "
-                "and maintaining diversification is recommended."
+                "and maintaining diversification is recommended.")
 # ---------------------------------------------------------
 # BUY ANALYSIS
 # ---------------------------------------------------------

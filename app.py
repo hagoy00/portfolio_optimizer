@@ -4,7 +4,6 @@ import numpy as np
 from datetime import datetime, timedelta
 
 from data_loader import load_price_data, load_returns_data
-
 # Components (import only those you actually have)
 from components.tab8_ai_commentary import render_ai_commentary_tab
 # from components.tab1_overview import render_overview_tab

@@ -11,34 +11,35 @@ from utils.buy_analysis import run_buy_analysis
 from utils.analytics import run_monte_carlo_simulation
 
 # ---------------------------------------------------------
-# Sticky Title (blue)
+# Sticky Title (blue + fixed)
 # ---------------------------------------------------------
 st.set_page_config(page_title="Portfolio Optimizer Dashboard", layout="wide")
 
 st.markdown("""
     <style>
-        .sticky-title {
-            position: sticky;
+        .fixed-title {
+            position: fixed;
             top: 0;
+            left: 0;
+            width: 100%;
             background-color: white;
-            padding: 14px 0 14px 0;
-            margin: 0;
+            padding: 16px 0 16px 20px;
             font-size: 32px;
             font-weight: 700;
-            color: #007BFF; /* BLUE TITLE */
-            z-index: 999999;
+            color: #007BFF;
             border-bottom: 1px solid #e0e0e0;
+            z-index: 99999;
         }
-        div[data-testid="stAppViewBlockContainer"] {
-            overflow: visible !important;
+        .main .block-container {
+            padding-top: 100px !important;
         }
     </style>
 
-    <div class="sticky-title">Portfolio Optimizer Dashboard</div>
+    <div class="fixed-title">Portfolio Optimizer Dashboard</div>
 """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# Sidebar Inputs (CLEAN — only ONE ticker input)
+# Sidebar Inputs (ONE ticker input)
 # ---------------------------------------------------------
 st.sidebar.header("Configuration")
 
@@ -70,7 +71,7 @@ mc_sims = st.sidebar.slider("Monte Carlo Simulations", 200, 3000, 500)
 mc_horizon = st.sidebar.slider("Monte Carlo Horizon (days)", 50, 500, 252)
 
 # ---------------------------------------------------------
-# Auto-run Light Model Builder
+# Load Data
 # ---------------------------------------------------------
 prices = load_price_data(tickers, start_date, end_date)
 returns = load_returns_data(tickers, start_date, end_date)
@@ -91,10 +92,12 @@ if cov is None or cov.empty:
 # Equal weights for light tabs
 weights = np.array([1 / len(tickers)] * len(tickers))
 
-# Fundamentals
-fundamentals = load_fundamentals(tickers)
+# Fundamentals (now includes full_prices)
+fundamentals = load_fundamentals(tickers, full_prices=prices)
 
+# ---------------------------------------------------------
 # Drawdown
+# ---------------------------------------------------------
 def compute_drawdown(prices):
     adj = prices.xs("Adj Close", level=1, axis=1, drop_level=False)
     adj_simple = adj.droplevel(1, axis=1)
@@ -106,7 +109,9 @@ def compute_drawdown(prices):
 
 drawdown_df = compute_drawdown(prices)
 
+# ---------------------------------------------------------
 # Performance
+# ---------------------------------------------------------
 def compute_performance(returns, weights):
     port_ret = returns.dot(weights)
     mu = port_ret.mean() * 252
@@ -116,7 +121,9 @@ def compute_performance(returns, weights):
 
 performance = compute_performance(returns, weights)
 
-# Sector weights
+# ---------------------------------------------------------
+# Sector Weights
+# ---------------------------------------------------------
 def compute_sector_weights(weights, tickers):
     sector_map = {
         "AAPL": "Technology", "MSFT": "Technology", "NVDA": "Technology",
@@ -140,7 +147,7 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
 ])
 
 # ---------------------------------------------------------
-# LIGHT TABS (Auto-run)
+# LIGHT TABS
 # ---------------------------------------------------------
 with tab1:
     st.subheader("Overview")
@@ -160,7 +167,7 @@ with tab4:
 
 with tab5:
     st.subheader("Fundamentals")
-    st.write(pd.DataFrame(fundamentals).T)
+    st.write(pd.DataFrame(fundamentals).T.drop("full_prices", errors="ignore"))
 
 with tab7:
     st.subheader("Weights")
@@ -171,7 +178,7 @@ with tab8:
     st.write("AI Commentary based on performance, risk, and fundamentals will go here.")
 
 # ---------------------------------------------------------
-# HEAVY TABS (Run Analysis button required)
+# HEAVY TABS
 # ---------------------------------------------------------
 with tab6:
     st.subheader("Optimizer & Monte Carlo")

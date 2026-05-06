@@ -368,12 +368,8 @@ with tab7:
 # AI COMMENTARY
 # ---------------------------------------------------------
 with tab8:
-    st.subheader("AI Commentary")
-    st.write("AI Commentary based on performance, risk, and fundamentals will go here.")
+    render_ai_commentary_tab(tab8, prices, model)
 
-# ---------------------------------------------------------
-# BUY ANALYSIS
-# ---------------------------------------------------------
 # ---------------------------------------------------------
 # BUY ANALYSIS
 # ---------------------------------------------------------

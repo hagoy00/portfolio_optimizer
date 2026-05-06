@@ -24,18 +24,18 @@ def render_ai_commentary_tab(tab, prices, model):
         sharpe = perf["sharpe"]
 
         # ---- Drawdown ----
-       
-dd = model.get("drawdown", None)
+        dd = drawdown_df
+        if isinstance(dd, pd.DataFrame) and not dd.empty:
+            dd_series = dd["Drawdown"]
+            max_dd = float(dd_series.min())
+        else:
+            max_dd = None
 
-if isinstance(dd, pd.DataFrame) and not dd.empty:
-    dd_series = dd["Drawdown"]
-    max_dd = float(dd_series.min())
-else:
-    max_dd = None
-
-# Safe formatting
-max_dd_text = f"{max_dd:.2%}" if isinstance(max_dd, (int, float, np.floating)) else "N/A"
-
+        max_dd_text = (
+            f"{max_dd:.2%}"
+            if isinstance(max_dd, (int, float, np.floating))
+            else "N/A"
+        )
 
         # ---- Sector Exposure ----
         sector_text = ""
@@ -100,7 +100,7 @@ max_dd_text = f"{max_dd:.2%}" if isinstance(max_dd, (int, float, np.floating)) e
         **Expected Annual Return:** {er:.2%}  
         **Annualized Volatility:** {vol:.2%}  
         **Sharpe Ratio:** {sharpe:.2f}  
-        **Max Drawdown:** {max_dd:.2% if max_dd is not None else "N/A"}  
+        **Max Drawdown:** {max_dd_text}  
         """
         )
 
@@ -134,7 +134,7 @@ max_dd_text = f"{max_dd:.2%}" if isinstance(max_dd, (int, float, np.floating)) e
             st.write("• Weak Sharpe ratio suggests the portfolio may not be compensated for its risk.")
 
         # Drawdown Commentary
-        if max_dd is not None:
+        if isinstance(max_dd, (int, float, np.floating)):
             if max_dd < -0.40:
                 st.write("• Deep drawdowns indicate vulnerability during market stress.")
             elif max_dd < -0.20:
@@ -169,59 +169,4 @@ max_dd_text = f"{max_dd:.2%}" if isinstance(max_dd, (int, float, np.floating)) e
 
             # Valuation
             if row["PE"] and row["PE"] < 15:
-                score += 1
-            if row["PE"] and row["PE"] > 40:
-                score -= 1
-
-            # Analyst Rating
-            if row["Rating"] in ["strong_buy", "buy"]:
-                score += 1
-            if row["Rating"] in ["sell", "strong_sell"]:
-                score -= 1
-
-            # Beta
-            if row["Beta"] and row["Beta"] < 1:
-                score += 0.5
-            if row["Beta"] and row["Beta"] > 1.5:
-                score -= 0.5
-
-            # Final Signal
-            if score >= 1.5:
-                signal = "BUY"
-            elif score <= -1:
-                signal = "SELL"
-                # keep as is
-            else:
-                signal = "HOLD"
-
-            signals.append({"Ticker": t, "Signal": signal, "Score": score})
-
-        st.dataframe(pd.DataFrame(signals), use_container_width=True)
-
-        # ---- Optimization Suggestions ----
-        st.markdown("### 🛠 Optimization Suggestions")
-
-        suggestions = []
-
-        if sharpe < 0.5:
-            suggestions.append("• Improve Sharpe ratio by reducing high-volatility names.")
-        if vol > 0.25:
-            suggestions.append("• Consider lowering exposure to high-beta stocks.")
-        if er < 0.05:
-            suggestions.append("• Expected return is low — consider adding growth or momentum names.")
-        if (
-            sector_weights is not None
-            and "Technology" in sector_weights
-            and sector_weights["Technology"] > 0.45
-        ):
-            suggestions.append("• Reduce Technology concentration to improve diversification.")
-
-        if not suggestions:
-            suggestions.append("• Portfolio is well-balanced with no major red flags.")
-
-        for s in suggestions:
-            st.write(s)
-
-        # ---- Fundamentals Table ----
-        st.markdown("### 📑 Fundamentals Snapshot")
-        st.dataframe(fund_df, use_container_width=True)
+                score

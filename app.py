@@ -39,7 +39,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# Sidebar Inputs (ONE ticker input)
+# Sidebar Inputs
 # ---------------------------------------------------------
 st.sidebar.header("Configuration")
 
@@ -92,8 +92,7 @@ if cov is None or cov.empty:
 # Equal weights for light tabs
 weights = np.array([1 / len(tickers)] * len(tickers))
 
-# Fundamentals (now includes full_prices)
-#fundamentals = load_fundamentals(tickers, full_prices=prices)
+# Fundamentals
 fundamentals = load_fundamentals(tickers)
 
 # ---------------------------------------------------------
@@ -137,9 +136,12 @@ def compute_sector_weights(weights, tickers):
     return df.groupby("Sector")["Weight"].sum().to_dict()
 
 sector_weights = compute_sector_weights(weights, tickers)
+
 # ---------------------------------------------------------
-# RUN OPTIMIZER (must come BEFORE Tab 8)
+# RUN OPTIMIZER (for AI model)
 # ---------------------------------------------------------
+# Assumes run_optimizer returns a dict-like model with keys:
+# "performance", "fundamentals", "tickers", "drawdown", "sector_weights", "monte_carlo", "momentum", etc.
 model = run_optimizer(tickers, fundamentals, prices)
 
 # ---------------------------------------------------------
@@ -190,6 +192,7 @@ with tab4:
     st.subheader("Sector Exposure")
     sector_df = pd.DataFrame.from_dict(sector_weights, orient="index", columns=["Weight"])
     st.bar_chart(sector_df)
+
 # ---------------------------------------------------------
 # FUNDAMENTALS
 # ---------------------------------------------------------
@@ -301,37 +304,9 @@ with tab5:
         return "\n\n".join(lines)
 
     st.markdown(generate_fundamentals_commentary(ranked_df))
- 
-    # -----------------------------
-    # Fundamentals Scoring Model
-    # -----------------------------
-    st.subheader("Fundamentals Ranking")
-
-    def score_fundamentals(row):
-        score = 0
-
-        # Higher is better
-        if row.get("gross_margins"): score += row["gross_margins"] * 10
-        if row.get("profit_margins"): score += row["profit_margins"] * 10
-        if row.get("revenue"): score += (row["revenue"] / 1e9)
-
-        # Lower valuation ratios are better
-        if row.get("pe_ratio"): score += max(0, 50 - row["pe_ratio"])
-        if row.get("forward_pe"): score += max(0, 50 - row["forward_pe"])
-        if row.get("pb_ratio"): score += max(0, 20 - row["pb_ratio"])
-
-        # Dividend yield bonus
-        if row.get("dividend_yield"): score += row["dividend_yield"] * 100
-
-        return score
-
-    fundamentals_df["score"] = fundamentals_df.apply(score_fundamentals, axis=1)
-    ranked_df = fundamentals_df.sort_values("score", ascending=False)
-
-    st.dataframe(ranked_df[["score"]])
 
     # -----------------------------
-    # Commentary
+    # Simple Commentary List
     # -----------------------------
     st.subheader("Commentary")
 
@@ -342,49 +317,25 @@ with tab5:
     st.markdown("\n".join(commentary))
 
 # ---------------------------------------------------------
-# OPTIMIZER (button + cached)
+# WEIGHTS (Tab 6)
 # ---------------------------------------------------------
-@st.cache_data(show_spinner=True)
-def run_optimizer_cached(returns, cov):
-    return run_optimizer(returns, cov)
-
 with tab6:
-    st.subheader("Optimizer & Monte Carlo")
-
-    if st.button("Run Optimization"):
-        opt_results = run_optimizer_cached(returns, cov)
-        st.success("Optimization complete!")
-        st.write(opt_results)
-
-    else:
-        opt_results = run_optimizer_cached(returns, cov)
-        st.success("Optimization complete!")
-        st.write(opt_results)
-
-        mc_df = run_monte_carlo_simulation(returns, mc_sims, mc_horizon)
-        st.subheader("Monte Carlo Simulation")
-        st.line_chart(mc_df)
-
-# ---------------------------------------------------------
-# WEIGHTS
-# ---------------------------------------------------------
-with tab7:
     st.subheader("Weights")
     weights_df = pd.DataFrame({"Ticker": tickers, "Weight": weights})
     st.dataframe(weights_df)
 
 # ---------------------------------------------------------
-# AI COMMENTARY (FULL TAB 8)
+# AI COMMENTARY (FULL TAB 7)
 # ---------------------------------------------------------
-with tab8:
+with tab7:
 
     st.subheader("AI Portfolio Commentary")
 
     perf = model.get("performance", {})
-    fundamentals = model.get("fundamentals", {})
-    tickers = model.get("tickers", [])
-    drawdown_df = model.get("drawdown")
-    sector_weights = model.get("sector_weights", None)
+    fundamentals_model = model.get("fundamentals", {})
+    tickers_model = model.get("tickers", tickers)
+    drawdown_model = model.get("drawdown", drawdown_df)
+    sector_weights_model = model.get("sector_weights", sector_weights)
     mc = model.get("monte_carlo")
 
     if not perf or perf.get("expected_return") is None:
@@ -395,8 +346,8 @@ with tab8:
         sharpe = perf["sharpe"]
 
         # ---- Drawdown ----
-        if isinstance(drawdown_df, pd.DataFrame) and not drawdown_df.empty:
-            max_dd = float(drawdown_df["Drawdown"].min())
+        if isinstance(drawdown_model, pd.DataFrame) and not drawdown_model.empty:
+            max_dd = float(drawdown_model["Drawdown"].min())
         else:
             max_dd = None
 
@@ -404,13 +355,13 @@ with tab8:
 
         # ---- Sector Exposure ----
         sector_text = ""
-        if sector_weights:
-            sector_text = ", ".join([f"{s}: {w:.1%}" for s, w in sector_weights.items()])
+        if sector_weights_model:
+            sector_text = ", ".join([f"{s}: {w:.1%}" for s, w in sector_weights_model.items()])
 
         # ---- Fundamentals Table ----
         fund_summary = []
-        for t in tickers:
-            f = fundamentals.get(t, {})
+        for t in tickers_model:
+            f = fundamentals_model.get(t, {})
             fund_summary.append({
                 "Ticker": t,
                 "PE": f.get("PE"),
@@ -506,7 +457,7 @@ with tab8:
             st.markdown("### Sector Exposure")
             st.write(f"**Sector Weights:** {sector_text}")
 
-            if "Technology" in sector_weights and sector_weights["Technology"] > 0.45:
+            if "Technology" in sector_weights_model and sector_weights_model["Technology"] > 0.45:
                 st.write("• Heavy concentration in Technology increases sensitivity to interest rates.")
 
         # Monte Carlo Commentary
@@ -632,11 +583,13 @@ with tab8:
         else:
             st.write(
                 "The portfolio presents a balanced but indecisive signal profile. Monitoring key metrics "
-                "and maintaining diversification is recommended.")
+                "and maintaining diversification is recommended."
+            )
+
 # ---------------------------------------------------------
-# BUY ANALYSIS
+# BUY ANALYSIS (Tab 8)
 # ---------------------------------------------------------
-with tab9:
+with tab8:
     st.subheader("Buy / Hold / Sell Analysis")
 
     if not run_button:
@@ -751,3 +704,24 @@ with tab9:
                 st.markdown(f"- {w}")
 
             st.markdown("---")
+
+# ---------------------------------------------------------
+# OPTIMIZER (Tab 9, heavy, last)
+# ---------------------------------------------------------
+@st.cache_data(show_spinner=True)
+def run_optimizer_cached(returns, cov):
+    return run_optimizer(returns, cov)
+
+with tab9:
+    st.subheader("Optimizer & Monte Carlo")
+
+    if not run_button:
+        st.info("Run Analysis to generate optimizer and Monte Carlo results.")
+    else:
+        opt_results = run_optimizer_cached(returns, cov)
+        st.success("Optimization complete!")
+        st.write(opt_results)
+
+        mc_df = run_monte_carlo_simulation(returns, mc_sims, mc_horizon)
+        st.subheader("Monte Carlo Simulation")
+        st.line_chart(mc_df)

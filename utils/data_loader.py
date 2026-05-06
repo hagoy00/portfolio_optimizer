@@ -23,38 +23,30 @@ def clean_ticker_input(raw):
 
 
 # ---------------------------------------------------------
-# Convert raw Yahoo Finance output into MultiIndex
+# Normalize Yahoo Finance output (new API format)
 # ---------------------------------------------------------
-def load_full_prices_from_raw(raw, tickers):
+def normalize_yahoo_output(raw, tickers):
 
     if raw is None or raw.empty:
         return pd.DataFrame()
 
-    # If Yahoo already returns MultiIndex
+    # If Yahoo returns Field → Ticker (new format)
     if isinstance(raw.columns, pd.MultiIndex):
-        data = raw.copy()
-    else:
-        # Convert single-level columns into MultiIndex
-        new_cols = []
-        for col in raw.columns:
-            parts = col.split("_")
-            if len(parts) == 2:
-                ticker, field = parts
-                new_cols.append((ticker.upper(), field))
-            else:
-                new_cols.append((tickers[0], col))
+        if raw.columns.names == ["Attributes", "Ticker"]:
+            raw = raw.swaplevel(0, 1, axis=1).sort_index(axis=1)
 
-        data = raw.copy()
-        data.columns = pd.MultiIndex.from_tuples(new_cols)
+    # Now raw should be Ticker → Field
+    if not isinstance(raw.columns, pd.MultiIndex):
+        return pd.DataFrame()
 
-    # Filter only tickers that exist in the data
-    level0 = [str(x).upper() for x in data.columns.get_level_values(0)]
+    # Filter only valid tickers
+    level0 = [str(x).upper() for x in raw.columns.get_level_values(0)]
     valid = [t for t in tickers if t.upper() in level0]
 
     if not valid:
         return pd.DataFrame()
 
-    data = data[valid]
+    data = raw[valid]
 
     # Ensure Close and Adj Close exist
     for t in valid:
@@ -109,12 +101,13 @@ def load_price_data(tickers_input, start, end):
     if raw is None or raw.empty:
         return pd.DataFrame()
 
-    full_prices = load_full_prices_from_raw(raw, tickers)
+    full_prices = normalize_yahoo_output(raw, tickers)
 
     if full_prices is None or full_prices.empty:
         return pd.DataFrame()
 
     return full_prices
+
 
 # ---------------------------------------------------------
 # Public API: load returns

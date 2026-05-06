@@ -91,11 +91,6 @@ investment_amount = st.sidebar.number_input(
     step=1000
 )
 
-run_button = st.sidebar.button("Run Analysis")
-
-# ---------------------------------------------------------
-# MAIN LOGIC
-# ---------------------------------------------------------
 if run_button:
 
     if not tickers:
@@ -103,10 +98,9 @@ if run_button:
         st.stop()
 
     try:
-        # Load data
-        tickers_str = ", ".join(tickers)
-        prices = load_price_data(tickers_str, start_date, end_date)
-        returns = load_returns_data(tickers_str, start_date, end_date)
+        # Load data (PASS LIST, NOT STRING)
+        prices = load_price_data(tickers, start_date, end_date)
+        returns = load_returns_data(tickers, start_date, end_date)
 
         # DEBUG
         st.write("DEBUG — prices:", prices)

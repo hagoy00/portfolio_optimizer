@@ -41,25 +41,29 @@ st.markdown("""
 # ---------------------------------------------------------
 st.sidebar.header("Configuration")
 # ---------------------------------------------------------
+st.markdown("""
+    <style>
+        .sticky-title {
+            position: sticky;
+            top: 0;
+            background-color: white;
+            padding: 14px 0 14px 0;
+            margin: 0;
+            font-size: 32px;
+            font-weight: 700;
+            color: #007BFF; /* Light blue */
+            z-index: 999999;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        div[data-testid="stAppViewBlockContainer"] {
+            overflow: visible !important;
+        }
+    </style>
+
+    <div class="sticky-title">Portfolio Optimizer Dashboard</div>
+""", unsafe_allow_html=True)
 if not tickers:
     st.sidebar.info("Please enter at least one ticker.")
-    st.stop()
-
-
-tickers_input = st.sidebar.text_input(
-    "Enter your stock tickers (comma-separated)",
-    placeholder="AAPL, MSFT, NVDA"
-)
-
-tickers = [t.strip().upper() for t in tickers_input.split(",") if t.strip()]
-
-if not tickers:
-    st.sidebar.info("Please enter at least one ticker.")
-    st.stop()
-
-
-if not tickers:
-    st.sidebar.info("Please type a ticker and press Enter.")
     st.stop()
 
 # Date range

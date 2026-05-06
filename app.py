@@ -137,14 +137,23 @@ def compute_sector_weights(weights, tickers):
     return df.groupby("Sector")["Weight"].sum().to_dict()
 
 sector_weights = compute_sector_weights(weights, tickers)
+# ---------------------------------------------------------
+# RUN OPTIMIZER (must come BEFORE Tab 8)
+# ---------------------------------------------------------
+model = run_optimizer(tickers, fundamentals, prices)
 
 # ---------------------------------------------------------
 # Tabs
 # ---------------------------------------------------------
-tab1, tab2, tab3, tab4, tab5, tab7, tab8, tab9, tab6 = st.tabs([
-    "Overview", "Performance", "Risk", "Sectors",
-    "Fundamentals", "Weights",
-    "AI Commentary", "Buy Analysis",
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
+    "Overview",
+    "Performance",
+    "Risk",
+    "Sectors",
+    "Fundamentals",
+    "Weights",
+    "AI Commentary",
+    "Buy Analysis",
     "Optimizer"
 ])
 

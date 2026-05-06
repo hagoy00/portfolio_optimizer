@@ -91,7 +91,7 @@ def render_ai_commentary_tab(tab, prices, model):
             )
 
         # ---- Display Metrics ----
-        st.markdown("### 📌 Portfolio Overview")
+        st.markdown("###  Portfolio Overview")
 
         st.write(
             f"""
@@ -107,7 +107,7 @@ def render_ai_commentary_tab(tab, prices, model):
         st.markdown("---")
 
         # ---- AI Commentary ----
-        st.markdown("### 🧠 AI Commentary")
+        st.markdown("### AI Commentary")
 
         # Return Commentary
         if er > 0.15:
@@ -144,7 +144,7 @@ def render_ai_commentary_tab(tab, prices, model):
 
         # Sector Commentary
         if sector_text:
-            st.markdown("### 🏢 Sector Exposure")
+            st.markdown("### Sector Exposure")
             st.write(f"**Sector Weights:** {sector_text}")
 
             if (
@@ -156,11 +156,11 @@ def render_ai_commentary_tab(tab, prices, model):
 
         # Monte Carlo Commentary
         if mc_comment:
-            st.markdown("### 📈 Monte Carlo Outlook")
+            st.markdown("### Monte Carlo Outlook")
             st.write(mc_comment)
 
         # ---- Buy/Hold/Sell Scoring ----
-        st.markdown("### 📊 AI Buy / Hold / Sell Signals")
+        st.markdown("### AI Buy / Hold / Sell Signals")
 
         signals = []
         for _, row in fund_df.iterrows():

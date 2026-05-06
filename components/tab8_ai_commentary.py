@@ -26,7 +26,8 @@ def render_ai_commentary_tab(tab, prices, model):
         # ---- Drawdown ----
         max_dd = None
         if isinstance(drawdown, pd.DataFrame) and not drawdown.empty:
-            max_dd = drawdown["Drawdown"].min()
+            dd_series = model["drawdown"]["Drawdown"]
+            max_dd = dd_series.min() if dd_series is not None else None
 
         # ---- Sector Exposure ----
         sector_text = ""

@@ -93,7 +93,8 @@ if cov is None or cov.empty:
 weights = np.array([1 / len(tickers)] * len(tickers))
 
 # Fundamentals (now includes full_prices)
-fundamentals = load_fundamentals(tickers, full_prices=prices)
+#fundamentals = load_fundamentals(tickers, full_prices=prices)
+fundamentals = load_fundamentals(tickers)
 
 # ---------------------------------------------------------
 # Drawdown

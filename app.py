@@ -200,8 +200,11 @@ def run_optimizer_cached(returns, cov):
 with tab6:
     st.subheader("Optimizer & Monte Carlo")
 
-    if not run_button:
-        st.info("Run Analysis to generate optimizer and Monte Carlo results.")
+    if st.button("Run Optimization"):
+        opt_results = run_optimizer_cached(returns, cov)
+        st.success("Optimization complete!")
+        st.write(opt_results)
+
     else:
         opt_results = run_optimizer_cached(returns, cov)
         st.success("Optimization complete!")

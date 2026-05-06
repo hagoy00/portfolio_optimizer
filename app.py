@@ -367,8 +367,130 @@ with tab7:
 # ---------------------------------------------------------
 # AI COMMENTARY
 # ---------------------------------------------------------
-with tab8:
-    render_ai_commentary_tab(tab8, prices, model)
+# ---------------------------------------------------------
+# AI BUY / HOLD / SELL SIGNALS (UPGRADED)
+# ---------------------------------------------------------
+st.markdown("### AI Buy / Hold / Sell Signals")
+
+signals = []
+
+for _, row in fund_df.iterrows():
+    t = row["Ticker"]
+    pe = row["PE"] or 0
+    pb = row["PB"] or 0
+    dy = row["Dividend Yield"] or 0
+    beta = row["Beta"] or 0
+
+    score = 0
+    conviction = 0
+
+    # --- Valuation ---
+    if 0 < pe < 20:
+        score += 1
+        conviction += 25
+    if 0 < pb < 4:
+        score += 1
+        conviction += 20
+
+    # --- Dividend ---
+    if dy and dy > 0.01:
+        score += 1
+        conviction += 15
+
+    # --- Risk (beta) ---
+    if beta and beta < 1.2:
+        score += 1
+        conviction += 20
+
+    # --- Momentum (from model performance if available) ---
+    momentum = model.get("momentum", {}).get(t, 0)
+    if momentum > 0:
+        score += 1
+        conviction += 20
+
+    # --- Rating ---
+    if score >= 4:
+        rating = "Buy"
+    elif score >= 2:
+        rating = "Hold"
+    else:
+        rating = "Sell"
+
+    # Normalize conviction to 0–100
+    conviction = min(100, max(0, conviction))
+
+    signals.append({
+        "Ticker": t,
+        "PE": pe,
+        "PB": pb,
+        "DividendYield": dy,
+        "Beta": beta,
+        "Momentum": momentum,
+        "Score": score,
+        "Conviction": conviction,
+        "Rating": rating
+    })
+
+signals_df = pd.DataFrame(signals)
+
+# Display table
+st.dataframe(signals_df)
+
+# ---------------------------------------------------------
+# AI Signal Summary
+# ---------------------------------------------------------
+st.markdown("### AI Signal Summary")
+
+buys = signals_df[signals_df["Rating"] == "Buy"]["Ticker"].tolist()
+holds = signals_df[signals_df["Rating"] == "Hold"]["Ticker"].tolist()
+sells = signals_df[signals_df["Rating"] == "Sell"]["Ticker"].tolist()
+
+if buys:
+    st.write(f"• **Buy signals:** {', '.join(buys)} show strong valuation and risk-adjusted characteristics.")
+if holds:
+    st.write(f"• **Hold signals:** {', '.join(holds)} appear fairly valued with balanced fundamentals.")
+if sells:
+    st.write(f"• **Sell signals:** {', '.join(sells)} exhibit weaker fundamentals or elevated risk.")
+
+# ---------------------------------------------------------
+# Portfolio-Level Signal
+# ---------------------------------------------------------
+st.markdown("### AI Portfolio-Level Signal")
+
+buy_count = len(buys)
+sell_count = len(sells)
+
+if buy_count > sell_count:
+    portfolio_signal = "Buy"
+    st.success("**AI Portfolio Signal: BUY** — The portfolio shows strong aggregate fundamentals.")
+elif sell_count > buy_count:
+    portfolio_signal = "Sell"
+    st.error("**AI Portfolio Signal: SELL** — The portfolio shows broad fundamental weakness.")
+else:
+    portfolio_signal = "Hold"
+    st.warning("**AI Portfolio Signal: HOLD** — Mixed signals across the portfolio.")
+
+# ---------------------------------------------------------
+# AI Commentary on Signals
+# ---------------------------------------------------------
+st.markdown("### AI Commentary on Signals")
+
+if portfolio_signal == "Buy":
+    st.write(
+        "The portfolio demonstrates broad fundamental strength, with multiple tickers showing "
+        "attractive valuation, healthy risk profiles, and supportive momentum."
+    )
+elif portfolio_signal == "Sell":
+    st.write(
+        "The portfolio exhibits widespread fundamental weakness. Several names show elevated risk, "
+        "poor valuation, or weak momentum. Rebalancing may be warranted."
+    )
+else:
+    st.write(
+        "The portfolio presents a balanced but indecisive signal profile. Monitoring key metrics "
+        "and maintaining diversification is recommended."
+    )
+
 
 # ---------------------------------------------------------
 # BUY ANALYSIS

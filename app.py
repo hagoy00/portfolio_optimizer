@@ -381,13 +381,22 @@ with tab9:
     else:
         buy_results = run_buy_analysis(tickers, fundamentals, prices)
         st.dataframe(buy_results)
-def color_signal(val):
+def rating_color(val):
     if val == "Buy":
-        return "background-color: #2ecc71; color: white;"
+        return "🟢 Buy"
     elif val == "Hold":
-        return "background-color: #f1c40f; color: black;"
+        return "🟡 Hold"
     else:
-        return "background-color: #e74c3c; color: white;"
+        return "🔴 Sell"
+
+# Add a new column with emojis
+buy_results["RatingColored"] = buy_results["Rating"].apply(rating_color)
+
+# Display without Styler (Streamlit‑safe)
+st.dataframe(
+    buy_results[["Ticker", "Momentum", "Risk", "PE", "PB", "DividendYield", "Score", "RatingColored"]]
+)
+
 
 styled = buy_results.style.applymap(color_signal, subset=["Rating"])
 st.dataframe(styled)

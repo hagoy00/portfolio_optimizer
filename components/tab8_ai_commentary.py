@@ -24,11 +24,18 @@ def render_ai_commentary_tab(tab, prices, model):
         sharpe = perf["sharpe"]
 
         # ---- Drawdown ----
-        max_dd = None
-        if isinstance(drawdown_df, pd.DataFrame) and not drawdown_df.empty:
-            # drawdown_df is a DataFrame with a single column "Drawdown"
-            dd_series = drawdown_df["Drawdown"]
-            max_dd = dd_series.min()
+       
+dd = model.get("drawdown", None)
+
+if isinstance(dd, pd.DataFrame) and not dd.empty:
+    dd_series = dd["Drawdown"]
+    max_dd = float(dd_series.min())
+else:
+    max_dd = None
+
+# Safe formatting
+max_dd_text = f"{max_dd:.2%}" if isinstance(max_dd, (int, float, np.floating)) else "N/A"
+
 
         # ---- Sector Exposure ----
         sector_text = ""

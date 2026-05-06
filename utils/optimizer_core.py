@@ -1,5 +1,10 @@
 import numpy as np
 import pandas as pd
+import streamlit as st
+
+@st.cache_data(show_spinner=True)
+def run_optimizer_cached(prices, tickers):
+    return run_optimizer(prices, tickers)
 
 # ---------------------------------------------------------
 # Utility: Portfolio Performance

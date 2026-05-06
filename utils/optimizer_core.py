@@ -13,6 +13,51 @@ def rebalancing_backtest(prices, target_weights, freq="M", rf_rate=0.0):
             "trades": DataFrame (optional, simple turnover info)
         }
     """
+# ---------------------------------------------------------
+# SIMPLE INSTITUTIONAL OPTIMIZER (REQUIRED BY app.py)
+# ---------------------------------------------------------
+
+def run_optimizer(returns, cov):
+    """
+    Minimal working optimizer:
+    Computes equal weights, max-sharpe, and min-vol portfolios.
+    This ensures the Optimizer tab and Run Analysis button work.
+    """
+
+    tickers = list(returns.columns)
+    n = len(tickers)
+
+    # Equal weights
+    equal_weights = np.array([1/n] * n)
+
+    # Expected returns (annualized)
+    mu = returns.mean() * 252
+
+    # Volatility (annualized)
+    vol = np.sqrt(np.diag(cov) * 252)
+
+    # Sharpe ratio (risk-free = 0)
+    sharpe = mu / vol.replace(0, np.nan)
+
+    # Max Sharpe portfolio (1-stock version)
+    max_sharpe_idx = sharpe.idxmax()
+    max_sharpe_port = np.zeros(n)
+    max_sharpe_port[tickers.index(max_sharpe_idx)] = 1.0
+
+    # Min Vol portfolio (1-stock version)
+    min_vol_idx = vol.argmin()
+    min_vol_port = np.zeros(n)
+    min_vol_port[min_vol_idx] = 1.0
+
+    return {
+        "tickers": tickers,
+        "equal_weights": equal_weights,
+        "max_sharpe_port": max_sharpe_port,
+        "min_vol_port": min_vol_port,
+        "expected_returns": mu.to_dict(),
+        "volatility": vol.tolist(),
+        "sharpe": sharpe.tolist(),
+    }
 
     # ---------- 1. Normalize frequency ----------
     freq_map = {

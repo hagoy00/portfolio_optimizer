@@ -148,56 +148,90 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
 ])
 
 # ---------------------------------------------------------
-# LIGHT TABS
+# OVERVIEW
 # ---------------------------------------------------------
 with tab1:
+    st.markdown("<h2 style='color:#1E90FF;'>Optimizer Dashboard Report</h2>", unsafe_allow_html=True)
     st.subheader("Overview")
-    st.write(prices.tail())
+    st.dataframe(prices.tail())
 
+# ---------------------------------------------------------
+# PERFORMANCE (formatted)
+# ---------------------------------------------------------
 with tab2:
-    st.subheader("Performance")
-    st.write(performance)
+    st.subheader("Performance Metrics")
 
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Expected Return", f"{performance['expected_return']:.2%}")
+    col2.metric("Volatility", f"{performance['volatility']:.2%}")
+    col3.metric("Sharpe Ratio", f"{performance['sharpe']:.2f}")
+
+# ---------------------------------------------------------
+# RISK & DRAWDOWN
+# ---------------------------------------------------------
 with tab3:
     st.subheader("Risk & Drawdown")
     st.line_chart(drawdown_df)
 
+# ---------------------------------------------------------
+# SECTOR EXPOSURE (chart)
+# ---------------------------------------------------------
 with tab4:
     st.subheader("Sector Exposure")
-    st.write(sector_weights)
+    sector_df = pd.DataFrame.from_dict(sector_weights, orient="index", columns=["Weight"])
+    st.bar_chart(sector_df)
 
+# ---------------------------------------------------------
+# FUNDAMENTALS
+# ---------------------------------------------------------
 with tab5:
     st.subheader("Fundamentals")
-    st.write(pd.DataFrame(fundamentals).T.drop("full_prices", errors="ignore"))
+    fundamentals_df = pd.DataFrame(fundamentals).T.drop("full_prices", errors="ignore")
+    st.dataframe(fundamentals_df)
 
+# ---------------------------------------------------------
+# OPTIMIZER (button + cached)
+# ---------------------------------------------------------
+@st.cache_data(show_spinner=True)
+def run_optimizer_cached(returns, cov):
+    return run_optimizer(returns, cov)
+
+with tab6:
+    st.subheader("Optimizer & Monte Carlo")
+
+    if not run_button:
+        st.info("Run Analysis to generate optimizer and Monte Carlo results.")
+    else:
+        opt_results = run_optimizer_cached(returns, cov)
+        st.success("Optimization complete!")
+        st.write(opt_results)
+
+        mc_df = run_monte_carlo_simulation(returns, mc_sims, mc_horizon)
+        st.subheader("Monte Carlo Simulation")
+        st.line_chart(mc_df)
+
+# ---------------------------------------------------------
+# WEIGHTS
+# ---------------------------------------------------------
 with tab7:
     st.subheader("Weights")
-    st.write(pd.DataFrame({"Ticker": tickers, "Weight": weights}))
+    weights_df = pd.DataFrame({"Ticker": tickers, "Weight": weights})
+    st.dataframe(weights_df)
 
+# ---------------------------------------------------------
+# AI COMMENTARY
+# ---------------------------------------------------------
 with tab8:
     st.subheader("AI Commentary")
     st.write("AI Commentary based on performance, risk, and fundamentals will go here.")
 
 # ---------------------------------------------------------
-# HEAVY TABS
+# BUY ANALYSIS
 # ---------------------------------------------------------
-with tab6:
-    st.subheader("Optimizer & Monte Carlo")
-    if not run_button:
-        st.info("Run Analysis to generate optimizer and Monte Carlo results.")
-    else:
-        opt_results = run_optimizer(returns, cov)
-        st.write("Optimizer Results")
-        st.write(opt_results)
-
-        mc_df = run_monte_carlo_simulation(returns, mc_sims, mc_horizon)
-        st.write("Monte Carlo Simulation")
-        st.line_chart(mc_df)
-
 with tab9:
     st.subheader("Buy / Hold / Sell Analysis")
     if not run_button:
         st.info("Run Analysis to generate buy analysis.")
     else:
         buy_results = run_buy_analysis(tickers, fundamentals, prices)
-        st.write(buy_results)
+        st.dataframe(buy_results)

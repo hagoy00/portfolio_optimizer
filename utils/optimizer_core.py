@@ -16,6 +16,9 @@ def rebalancing_backtest(prices, target_weights, freq="M", rf_rate=0.0):
 # ---------------------------------------------------------
 # SIMPLE INSTITUTIONAL OPTIMIZER (REQUIRED BY app.py)
 # ---------------------------------------------------------
+# ---------------------------------------------------------
+# SIMPLE INSTITUTIONAL OPTIMIZER (REQUIRED BY app.py)
+# ---------------------------------------------------------
 
 def run_optimizer(returns, cov):
     """
@@ -58,7 +61,6 @@ def run_optimizer(returns, cov):
         "volatility": vol.tolist(),
         "sharpe": sharpe.tolist(),
     }
-
     # ---------- 1. Normalize frequency ----------
     freq_map = {
         "W": "W-FRI",

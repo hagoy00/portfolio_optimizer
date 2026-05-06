@@ -363,6 +363,7 @@ with tab7:
     st.subheader("Weights")
     weights_df = pd.DataFrame({"Ticker": tickers, "Weight": weights})
     st.dataframe(weights_df)
+
 # ---------------------------------------------------------
 # AI COMMENTARY (FULL TAB 8)
 # ---------------------------------------------------------
@@ -625,7 +626,6 @@ with tab8:
                 "The portfolio presents a balanced but indecisive signal profile. Monitoring key metrics "
                 "and maintaining diversification is recommended."
             )
-
 
 # ---------------------------------------------------------
 # BUY ANALYSIS

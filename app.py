@@ -374,107 +374,121 @@ with tab8:
 # ---------------------------------------------------------
 # BUY ANALYSIS
 # ---------------------------------------------------------
+# ---------------------------------------------------------
+# BUY ANALYSIS
+# ---------------------------------------------------------
 with tab9:
     st.subheader("Buy / Hold / Sell Analysis")
+
     if not run_button:
         st.info("Run Analysis to generate buy analysis.")
     else:
         buy_results = run_buy_analysis(tickers, fundamentals, prices)
-        st.dataframe(buy_results)
-def rating_color(val):
-    if val == "Buy":
-        return "🟢 Buy"
-    elif val == "Hold":
-        return "🟡 Hold"
-    else:
-        return "🔴 Sell"
 
-# Add a new column with emojis
-buy_results["RatingColored"] = buy_results["Rating"].apply(rating_color)
+        # -----------------------------
+        # Color-coded Buy/Hold/Sell
+        # -----------------------------
+        def rating_color(val):
+            if val == "Buy":
+                return "🟢 Buy"
+            elif val == "Hold":
+                return "🟡 Hold"
+            else:
+                return "🔴 Sell"
 
-# Display without Styler (Streamlit‑safe)
-st.dataframe(
-    buy_results[["Ticker", "Momentum", "Risk", "PE", "PB", "DividendYield", "Score", "RatingColored"]]
-)
+        buy_results["RatingColored"] = buy_results["Rating"].apply(rating_color)
 
-
-styled = buy_results.style.applymap(color_signal, subset=["Rating"])
-st.dataframe(styled)
-st.subheader("AI Buy Analysis Commentary")
-
-def generate_buy_commentary(df):
-    lines = []
-
-    best = df.sort_values("Score", ascending=False).iloc[0]
-    lines.append(
-        f"**{best['Ticker']}** leads the group with a score of {best['Score']}. "
-        f"Momentum ({best['Momentum']:.2f}) and valuation (PE={best['PE']}, PB={best['PB']}) "
-        f"support its relative strength."
-    )
-
-    worst = df.sort_values("Score", ascending=True).iloc[0]
-    lines.append(
-        f"**{worst['Ticker']}** ranks weakest with a score of {worst['Score']}. "
-        f"Drivers include softer momentum ({worst['Momentum']:.2f}) and less favorable valuation metrics."
-    )
-
-    mids = df.sort_values("Score", ascending=False).iloc[1:-1]
-    for _, row in mids.iterrows():
-        lines.append(
-            f"**{row['Ticker']}** shows a balanced profile with a score of {row['Score']}."
+        st.dataframe(
+            buy_results[
+                ["Ticker", "Momentum", "Risk", "PE", "PB", "DividendYield", "Score", "RatingColored"]
+            ]
         )
 
-    return "\n\n".join(lines)
+        # -----------------------------
+        # AI Buy Analysis Commentary
+        # -----------------------------
+        st.subheader("AI Buy Analysis Commentary")
 
-st.markdown(generate_buy_commentary(buy_results))
-import plotly.graph_objects as go
+        def generate_buy_commentary(df):
+            lines = []
 
-st.subheader("Fundamentals Radar Chart")
+            best = df.sort_values("Score", ascending=False).iloc[0]
+            lines.append(
+                f"**{best['Ticker']}** leads the group with a score of {best['Score']}. "
+                f"Momentum ({best['Momentum']:.2f}) and valuation (PE={best['PE']}, PB={best['PB']}) "
+                f"support its relative strength."
+            )
 
-radar_cols = ["PE", "PB", "DividendYield", "Momentum", "Risk"]
+            worst = df.sort_values("Score", ascending=True).iloc[0]
+            lines.append(
+                f"**{worst['Ticker']}** ranks weakest with a score of {worst['Score']}. "
+                f"Drivers include softer momentum ({worst['Momentum']:.2f}) and less favorable valuation metrics."
+            )
 
-fig = go.Figure()
+            mids = df.sort_values("Score", ascending=False).iloc[1:-1]
+            for _, row in mids.iterrows():
+                lines.append(
+                    f"**{row['Ticker']}** shows a balanced profile with a score of {row['Score']}."
+                )
 
-for _, row in buy_results.iterrows():
-    fig.add_trace(go.Scatterpolar(
-        r=[row[c] for c in radar_cols],
-        theta=radar_cols,
-        fill='toself',
-        name=row["Ticker"]
-    ))
+            return "\n\n".join(lines)
 
-fig.update_layout(
-    polar=dict(radialaxis=dict(visible=True)),
-    showlegend=True,
-    height=500
-)
+        st.markdown(generate_buy_commentary(buy_results))
 
-st.plotly_chart(fig, use_container_width=True)
-st.subheader("Top Strengths & Weaknesses")
+        # -----------------------------
+        # Radar Chart
+        # -----------------------------
+        import plotly.graph_objects as go
 
-def strengths_weaknesses(row):
-    strengths, weaknesses = [], []
+        st.subheader("Fundamentals Radar Chart")
 
-    strengths.append("Positive momentum") if row["Momentum"] > 0 else weaknesses.append("Weak momentum")
-    strengths.append("Low volatility") if row["Risk"] < 0.30 else weaknesses.append("High volatility")
-    strengths.append("Reasonable PE ratio") if 0 < row["PE"] < 30 else weaknesses.append("Stretched PE ratio")
-    strengths.append("Healthy PB ratio") if 0 < row["PB"] < 5 else weaknesses.append("Rich PB ratio")
-    strengths.append("Dividend support") if row["DividendYield"] > 0.01 else weaknesses.append("Low or no dividend")
+        radar_cols = ["PE", "PB", "DividendYield", "Momentum", "Risk"]
 
-    return strengths, weaknesses
+        fig = go.Figure()
 
-for _, row in buy_results.iterrows():
-    st.markdown(f"### {row['Ticker']}")
+        for _, row in buy_results.iterrows():
+            fig.add_trace(go.Scatterpolar(
+                r=[row[c] for c in radar_cols],
+                theta=radar_cols,
+                fill='toself',
+                name=row["Ticker"]
+            ))
 
-    strengths, weaknesses = strengths_weaknesses(row)
+        fig.update_layout(
+            polar=dict(radialaxis=dict(visible=True)),
+            showlegend=True,
+            height=500
+        )
 
-    st.markdown("**Strengths:**")
-    for s in strengths:
-        st.markdown(f"- {s}")
+        st.plotly_chart(fig, use_container_width=True)
 
-    st.markdown("**Weaknesses:**")
-    for w in weaknesses:
-        st.markdown(f"- {w}")
+        # -----------------------------
+        # Strengths & Weaknesses
+        # -----------------------------
+        st.subheader("Top Strengths & Weaknesses")
 
-    st.markdown("---")
+        def strengths_weaknesses(row):
+            strengths, weaknesses = [], []
 
+            strengths.append("Positive momentum") if row["Momentum"] > 0 else weaknesses.append("Weak momentum")
+            strengths.append("Low volatility") if row["Risk"] < 0.30 else weaknesses.append("High volatility")
+            strengths.append("Reasonable PE ratio") if 0 < row["PE"] < 30 else weaknesses.append("Stretched PE ratio")
+            strengths.append("Healthy PB ratio") if 0 < row["PB"] < 5 else weaknesses.append("Rich PB ratio")
+            strengths.append("Dividend support") if row["DividendYield"] > 0.01 else weaknesses.append("Low or no dividend")
+
+            return strengths, weaknesses
+
+        for _, row in buy_results.iterrows():
+            st.markdown(f"### {row['Ticker']}")
+
+            strengths, weaknesses = strengths_weaknesses(row)
+
+            st.markdown("**Strengths:**")
+            for s in strengths:
+                st.markdown(f"- {s}")
+
+            st.markdown("**Weaknesses:**")
+            for w in weaknesses:
+                st.markdown(f"- {w}")
+
+            st.markdown("---")

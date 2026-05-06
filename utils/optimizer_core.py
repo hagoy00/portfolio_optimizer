@@ -1,179 +1,118 @@
 import numpy as np
 import pandas as pd
 
+# ---------------------------------------------------------
+# Utility: Portfolio Performance
+# ---------------------------------------------------------
+def portfolio_performance(weights, mean_returns, cov_matrix):
+    """
+    Computes expected return, volatility, and Sharpe ratio.
+    """
+    ret = np.dot(weights, mean_returns) * 252
+    vol = np.sqrt(np.dot(weights.T, np.dot(cov_matrix * 252, weights)))
+    sharpe = ret / vol if vol > 0 else 0
+    return ret, vol, sharpe
 
-def rebalancing_backtest(prices, target_weights, freq="M", rf_rate=0.0):
-    """
-    Institutional-grade rebalancing backtest.
 
-    Returns:
-        {
-            "equity_curve": DataFrame[Portfolio Value],
-            "metrics": dict,
-            "trades": DataFrame (optional, simple turnover info)
-        }
+# ---------------------------------------------------------
+# Optimization Helpers
+# ---------------------------------------------------------
+def min_volatility(mean_returns, cov_matrix):
     """
-# ---------------------------------------------------------
-# SIMPLE INSTITUTIONAL OPTIMIZER (REQUIRED BY app.py)
-# ---------------------------------------------------------
-# ---------------------------------------------------------
-# SIMPLE INSTITUTIONAL OPTIMIZER (REQUIRED BY app.py)
-# ---------------------------------------------------------
+    Computes the minimum-volatility portfolio using a simple grid search.
+    """
+    n = len(mean_returns)
+    best_vol = 1e9
+    best_w = None
 
-def run_optimizer(returns, cov):
+    # Simple grid search (fast for small ticker sets)
+    for _ in range(5000):
+        w = np.random.random(n)
+        w /= w.sum()
+        _, vol, _ = portfolio_performance(w, mean_returns, cov_matrix)
+        if vol < best_vol:
+            best_vol = vol
+            best_w = w
+
+    return best_w
+
+
+def max_sharpe_ratio(mean_returns, cov_matrix):
     """
-    Minimal working optimizer:
-    Computes equal weights, max-sharpe, and min-vol portfolios.
-    This ensures the Optimizer tab and Run Analysis button work.
+    Computes the maximum Sharpe portfolio using random search.
     """
+    n = len(mean_returns)
+    best_sharpe = -1e9
+    best_w = None
+
+    for _ in range(5000):
+        w = np.random.random(n)
+        w /= w.sum()
+        _, _, sharpe = portfolio_performance(w, mean_returns, cov_matrix)
+        if sharpe > best_sharpe:
+            best_sharpe = sharpe
+            best_w = w
+
+    return best_w
+
+
+# ---------------------------------------------------------
+# MAIN OPTIMIZER FUNCTION (REQUIRED BY app.py)
+# ---------------------------------------------------------
+def run_optimizer(returns, cov_matrix):
+    """
+    Main optimizer used by the dashboard.
+    Computes:
+    - Equal weight portfolio
+    - Minimum volatility portfolio
+    - Maximum Sharpe portfolio
+    """
+
+    if returns is None or returns.empty:
+        return {"error": "Returns data is empty"}
+
+    if cov_matrix is None or cov_matrix.empty:
+        return {"error": "Covariance matrix is empty"}
 
     tickers = list(returns.columns)
     n = len(tickers)
 
-    # Equal weights
-    equal_weights = np.array([1/n] * n)
+    mean_returns = returns.mean()
 
-    # Expected returns (annualized)
-    mu = returns.mean() * 252
+    # Equal weight
+    w_equal = np.array([1 / n] * n)
+    ret_eq, vol_eq, sharpe_eq = portfolio_performance(w_equal, mean_returns, cov_matrix)
 
-    # Volatility (annualized)
-    vol = np.sqrt(np.diag(cov) * 252)
+    # Min volatility
+    w_min = min_volatility(mean_returns, cov_matrix)
+    ret_min, vol_min, sharpe_min = portfolio_performance(w_min, mean_returns, cov_matrix)
 
-    # Sharpe ratio (risk-free = 0)
-    sharpe = mu / vol.replace(0, np.nan)
+    # Max Sharpe
+    w_max = max_sharpe_ratio(mean_returns, cov_matrix)
+    ret_max, vol_max, sharpe_max = portfolio_performance(w_max, mean_returns, cov_matrix)
 
-    # Max Sharpe portfolio (1-stock version)
-    max_sharpe_idx = sharpe.idxmax()
-    max_sharpe_port = np.zeros(n)
-    max_sharpe_port[tickers.index(max_sharpe_idx)] = 1.0
-
-    # Min Vol portfolio (1-stock version)
-    min_vol_idx = vol.argmin()
-    min_vol_port = np.zeros(n)
-    min_vol_port[min_vol_idx] = 1.0
-
+    # Return clean dictionary for Streamlit
     return {
         "tickers": tickers,
-        "equal_weights": equal_weights,
-        "max_sharpe_port": max_sharpe_port,
-        "min_vol_port": min_vol_port,
-        "expected_returns": mu.to_dict(),
-        "volatility": vol.tolist(),
-        "sharpe": sharpe.tolist(),
-    }
-    # ---------- 1. Normalize frequency ----------
-    freq_map = {
-        "W": "W-FRI",
-        "Weekly": "W-FRI",
-        "M": "M",
-        "ME": "M",
-        "Monthly": "M",
-        "Q": "Q-DEC",
-        "QE": "Q-DEC",
-        "Quarterly": "Q-DEC",
-        "Y": "A-DEC",
-        "YE": "A-DEC",
-        "Annual": "A-DEC",
-    }
-    safe_freq = freq_map.get(freq, "M")
 
-    # ---------- 2. Extract Adj Close ----------
-    try:
-        adj = prices.xs("Adj Close", level="Field", axis=1)
-    except Exception:
-        return None
+        "equal_weight": {
+            "weights": w_equal,
+            "expected_return": ret_eq,
+            "volatility": vol_eq,
+            "sharpe": sharpe_eq,
+        },
 
-    returns = adj.pct_change().dropna()
-    if returns.empty:
-        return None
+        "min_volatility": {
+            "weights": w_min,
+            "expected_return": ret_min,
+            "volatility": vol_min,
+            "sharpe": sharpe_min,
+        },
 
-    # ---------- 3. Align & normalize weights ----------
-    tickers = adj.columns
-    w = target_weights.reindex(tickers).fillna(0.0)
-    if w.sum() == 0:
-        return None
-    w = w / w.sum()
-
-    # ---------- 4. Rebalancing dates ----------
-    try:
-        rb_dates = returns.resample(safe_freq).last().index
-    except Exception:
-        return None
-
-    # ---------- 5. Backtest loop ----------
-    port_val = []
-    weights_history = []
-    value = 1.0
-    current_weights = w.copy()
-    last_weights = w.copy()
-    turnover_list = []
-    rebalance_count = 0
-
-    for dt in returns.index:
-        # Rebalance on scheduled dates
-        if dt in rb_dates:
-            rebalance_count += 1
-            # turnover = 0.5 * sum(|w_new - w_old|)
-            turnover = 0.5 * np.abs(current_weights - last_weights).sum()
-            turnover_list.append((dt, turnover))
-            last_weights = current_weights.copy()
-            current_weights = w.copy()
-
-        daily_ret = float((returns.loc[dt] * current_weights).sum())
-        value *= (1.0 + daily_ret)
-
-        port_val.append((dt, value))
-        weights_history.append((dt, current_weights.copy()))
-
-    equity = pd.DataFrame(port_val, columns=["Date", "Portfolio Value"]).set_index("Date")
-
-    # ---------- 6. Metrics ----------
-    daily_ret_series = equity["Portfolio Value"].pct_change().dropna()
-    if daily_ret_series.empty:
-        return None
-
-    # CAGR
-    days = (equity.index[-1] - equity.index[0]).days
-    years = days / 365.25 if days > 0 else 0
-    if years > 0:
-        cagr = (equity["Portfolio Value"].iloc[-1] / equity["Portfolio Value"].iloc[0]) ** (1 / years) - 1
-    else:
-        cagr = np.nan
-
-    # Volatility (annualized)
-    vol = daily_ret_series.std() * np.sqrt(252)
-
-    # Sharpe (using rf_rate as annual)
-    if vol > 0 and not np.isnan(vol):
-        excess_ret = cagr - rf_rate
-        sharpe = excess_ret / vol
-    else:
-        sharpe = np.nan
-
-    # Max drawdown
-    roll_max = equity["Portfolio Value"].cummax()
-    dd = equity["Portfolio Value"] / roll_max - 1.0
-    max_dd = dd.min()
-
-    # Turnover summary
-    if turnover_list:
-        turnover_df = pd.DataFrame(turnover_list, columns=["Date", "Turnover"]).set_index("Date")
-        avg_turnover = turnover_df["Turnover"].mean()
-    else:
-        turnover_df = pd.DataFrame(columns=["Turnover"])
-        avg_turnover = np.nan
-
-    metrics = {
-        "CAGR": cagr,
-        "Volatility": vol,
-        "Sharpe": sharpe,
-        "Max Drawdown": max_dd,
-        "Rebalance Count": rebalance_count,
-        "Average Turnover": avg_turnover,
-    }
-
-    return {
-        "equity_curve": equity,
-        "metrics": metrics,
-        "turnover": turnover_df,
+        "max_sharpe": {
+            "weights": w_max,
+            "expected_return": ret_max,
+            "volatility": vol_max,
+            "sharpe": sharpe_max,
+        }
     }

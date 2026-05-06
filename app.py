@@ -41,12 +41,17 @@ st.markdown("""
 # ---------------------------------------------------------
 st.sidebar.header("Configuration")
 
-# User enters their own tickers (no defaults, no list)
-tickers = st.sidebar.multiselect(
-    "Enter your stock tickers",
-    options=[],
-    default=[]
+tickers_input = st.sidebar.text_input(
+    "Enter your stock tickers (comma-separated)",
+    placeholder="AAPL, MSFT, NVDA"
 )
+
+tickers = [t.strip().upper() for t in tickers_input.split(",") if t.strip()]
+
+if not tickers:
+    st.sidebar.info("Please enter at least one ticker.")
+    st.stop()
+
 
 if not tickers:
     st.sidebar.info("Please type a ticker and press Enter.")

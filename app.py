@@ -181,14 +181,43 @@ with tab4:
     st.subheader("Sector Exposure")
     sector_df = pd.DataFrame.from_dict(sector_weights, orient="index", columns=["Weight"])
     st.bar_chart(sector_df)
-
 # ---------------------------------------------------------
 # FUNDAMENTALS
 # ---------------------------------------------------------
 with tab5:
     st.subheader("Fundamentals")
+
     fundamentals_df = pd.DataFrame(fundamentals).T.drop("full_prices", errors="ignore")
     st.dataframe(fundamentals_df)
+
+    # -----------------------------
+    # Fundamentals Scoring Model
+    # -----------------------------
+    st.subheader("Fundamentals Ranking")
+
+    def score_fundamentals(row):
+        score = 0
+
+        # Higher is better
+        if row.get("gross_margins"): score += row["gross_margins"] * 10
+        if row.get("profit_margins"): score += row["profit_margins"] * 10
+        if row.get("revenue"): score += (row["revenue"] / 1e9)
+
+        # Lower valuation ratios are better
+        if row.get("pe_ratio"): score += max(0, 50 - row["pe_ratio"])
+        if row.get("forward_pe"): score += max(0, 50 - row["forward_pe"])
+        if row.get("pb_ratio"): score += max(0, 20 - row["pb_ratio"])
+
+        # Dividend yield bonus
+        if row.get("dividend_yield"): score += row["dividend_yield"] * 100
+
+        return score
+
+    fundamentals_df["score"] = fundamentals_df.apply(score_fundamentals, axis=1)
+    ranked_df = fundamentals_df.sort_values("score", ascending=False)
+
+    st.dataframe(ranked_df[["score"]])
+
     # -----------------------------
     # Natural-Language AI Commentary
     # -----------------------------

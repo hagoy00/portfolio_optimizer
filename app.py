@@ -185,14 +185,85 @@ with tab4:
 # ---------------------------------------------------------
 # FUNDAMENTALS
 # ---------------------------------------------------------
-# ---------------------------------------------------------
-# FUNDAMENTALS
-# ---------------------------------------------------------
 with tab5:
     st.subheader("Fundamentals")
     fundamentals_df = pd.DataFrame(fundamentals).T.drop("full_prices", errors="ignore")
     st.dataframe(fundamentals_df)
+    # -----------------------------
+    # Natural-Language AI Commentary
+    # -----------------------------
+    st.subheader("AI Fundamentals Commentary")
 
+    def generate_fundamentals_commentary(ranked_df):
+        lines = []
+        tickers_sorted = ranked_df.index.tolist()
+
+        best = tickers_sorted[0]
+        worst = tickers_sorted[-1]
+
+        # Best ticker commentary
+        best_row = ranked_df.loc[best]
+        best_reasons = []
+
+        if best_row.get("gross_margins"):
+            best_reasons.append("strong gross margins")
+        if best_row.get("profit_margins"):
+            best_reasons.append("solid profitability")
+        if best_row.get("revenue"):
+            best_reasons.append("healthy revenue base")
+        if best_row.get("pe_ratio") and best_row["pe_ratio"] < 25:
+            best_reasons.append("reasonable valuation")
+        if best_row.get("dividend_yield"):
+            best_reasons.append("added income from dividends")
+
+        best_reason_text = ", ".join(best_reasons) if best_reasons else "overall stronger fundamentals"
+
+        lines.append(
+            f"**{best}** ranks as the strongest fundamental name in the group, supported by {best_reason_text}."
+        )
+
+        # Middle tickers commentary
+        if len(tickers_sorted) > 2:
+            middle = tickers_sorted[1:-1]
+            for t in middle:
+                row = ranked_df.loc[t]
+                mid_reasons = []
+
+                if row.get("gross_margins"):
+                    mid_reasons.append("solid margins")
+                if row.get("profit_margins"):
+                    mid_reasons.append("healthy profitability")
+                if row.get("revenue"):
+                    mid_reasons.append("stable revenue")
+                if row.get("pe_ratio") and row["pe_ratio"] < 40:
+                    mid_reasons.append("fair valuation")
+
+                reason_text = ", ".join(mid_reasons) if mid_reasons else "balanced fundamentals"
+                lines.append(f"**{t}** shows {reason_text}, placing it in the middle of the group.")
+
+        # Weakest ticker commentary
+        worst_row = ranked_df.loc[worst]
+        worst_reasons = []
+
+        if worst_row.get("gross_margins") and worst_row["gross_margins"] < 0.2:
+            worst_reasons.append("thin margins")
+        if worst_row.get("profit_margins") and worst_row["profit_margins"] < 0.1:
+            worst_reasons.append("weak profitability")
+        if worst_row.get("pe_ratio") and worst_row["pe_ratio"] > 50:
+            worst_reasons.append("elevated valuation")
+        if worst_row.get("pb_ratio") and worst_row["pb_ratio"] > 10:
+            worst_reasons.append("rich price-to-book ratio")
+
+        worst_reason_text = ", ".join(worst_reasons) if worst_reasons else "weaker fundamentals overall"
+
+        lines.append(
+            f"**{worst}** ranks lowest, driven by {worst_reason_text}."
+        )
+
+        return "\n\n".join(lines)
+
+    st.markdown(generate_fundamentals_commentary(ranked_df))
+ 
     # -----------------------------
     # Fundamentals Scoring Model
     # -----------------------------

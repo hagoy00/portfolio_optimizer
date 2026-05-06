@@ -40,6 +40,21 @@ st.markdown("""
 # Sidebar Inputs
 # ---------------------------------------------------------
 st.sidebar.header("Configuration")
+# ---------------------------------------------------------
+# Sidebar Inputs
+# ---------------------------------------------------------
+st.sidebar.header("Configuration")
+
+tickers_input = st.sidebar.text_area(
+    "Enter your stock tickers (one per line)",
+    placeholder="AAPL\nMSFT\nNVDA"
+)
+
+tickers = [t.strip().upper() for t in tickers_input.split("\n") if t.strip()]
+
+if not tickers:
+    st.sidebar.info("Please enter at least one ticker.")
+    st.stop()
 
 tickers_input = st.sidebar.text_input(
     "Enter your stock tickers (comma-separated)",

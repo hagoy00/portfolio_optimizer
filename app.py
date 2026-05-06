@@ -1,206 +1,245 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-from datetime import date
+from datetime import datetime, timedelta
 
-# ---------------------------------------------------------
-# Page Config
-# ---------------------------------------------------------
-st.set_page_config(
-    page_title="Portfolio Optimizer Dashboard",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+from data_loader import load_price_data, load_returns_data
 
-# ---------------------------------------------------------
-# FIXED STICKY TITLE BAR
-# ---------------------------------------------------------
-st.markdown("""
-<style>
-/* Hide Streamlit default header */
-header[data-testid="stHeader"] {
-    display: none;
-}
-
-/* Custom fixed title bar */
-.app-title {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    z-index: 9999;
-    background-color: #0E1117;
-    padding: 16px 32px;
-    border-bottom: 1px solid #1F2937;
-}
-
-/* Push content down */
-div[data-testid="stAppViewContainer"] {
-    padding-top: 70px;
-}
-
-/* Title text */
-.app-title h1 {
-    color: #4DA8FF !important;
-    font-size: 28px;
-    font-weight: 700;
-    margin: 0;
-}
-</style>
-""", unsafe_allow_html=True)
-
-st.markdown(
-    '<div class="app-title"><h1>Portfolio Optimizer Dashboard</h1></div>',
-    unsafe_allow_html=True
-)
-
-# ---------------------------------------------------------
-# IMPORTS FOR TABS + DATA
-# ---------------------------------------------------------
-from utils.data_loader import load_price_data, load_returns_data
-
-from components.tab1_summary import render_summary_tab
-from components.tab2_frontier import render_frontier_tab
-from components.tab3_weights import render_weights_tab
-from components.tab4_sector import render_sector_tab
-from components.tab5_drawdown import render_drawdown_tab
-from components.tab6_montecarlo import render_montecarlo_tab
-from components.tab7_rebalancing import render_rebalancing_tab
+# Components (import only those you actually have)
 from components.tab8_ai_commentary import render_ai_commentary_tab
-from components.tab9_buy_analysis import render_buy_analysis_tab
+# from components.tab1_overview import render_overview_tab
+# from components.tab2_performance import render_performance_tab
+# from components.tab3_risk import render_risk_tab
+# from components.tab4_sectors import render_sector_tab
+# from components.tab5_fundamentals import render_fundamentals_tab
+# from components.tab6_optimizer import render_optimizer_tab
+# from components.tab7_weights import render_weights_tab
+# from components.tab9_buy_analysis import render_buy_analysis_tab
+
 
 # ---------------------------------------------------------
-# SIDEBAR INPUTS
+# Simple helpers (you can replace with your real ones)
 # ---------------------------------------------------------
-st.sidebar.header("Input Parameters")
+def compute_drawdown(prices: pd.DataFrame) -> pd.DataFrame:
+    if prices is None or prices.empty:
+        return pd.DataFrame()
+
+    # Use equal-weighted portfolio for drawdown
+    adj = prices.xs("Adj Close", level=1, axis=1, drop_level=False)
+    adj_simple = adj.droplevel(1, axis=1)
+    weights = np.array([1 / adj_simple.shape[1]] * adj_simple.shape[1])
+
+    portfolio = (adj_simple * weights).sum(axis=1)
+    cum = portfolio / portfolio.iloc[0]
+    running_max = cum.cummax()
+    dd = (cum - running_max) / running_max
+
+    return pd.DataFrame({"Drawdown": dd})
+
+
+def compute_performance(returns: pd.DataFrame, weights: np.ndarray) -> dict:
+    if returns is None or returns.empty:
+        return {}
+
+    port_ret = returns.dot(weights)
+    mu = port_ret.mean() * 252
+    vol = port_ret.std() * np.sqrt(252)
+    sharpe = mu / vol if vol > 0 else 0.0
+
+    return {
+        "expected_return": float(mu),
+        "volatility": float(vol),
+        "sharpe": float(sharpe),
+    }
+
+
+def run_monte_carlo(prices: pd.DataFrame, weights: np.ndarray, n_sims: int = 500, horizon_days: int = 252) -> pd.DataFrame:
+    if prices is None or prices.empty:
+        return pd.DataFrame()
+
+    adj = prices.xs("Adj Close", level=1, axis=1, drop_level=False)
+    adj_simple = adj.droplevel(1, axis=1)
+    returns = adj_simple.pct_change().dropna(how="all")
+
+    if returns.empty:
+        return pd.DataFrame()
+
+    port_ret = returns.dot(weights)
+    mu = port_ret.mean()
+    sigma = port_ret.std()
+
+    sims = []
+    for _ in range(n_sims):
+        shocks = np.random.normal(mu, sigma, horizon_days)
+        path = (1 + shocks).cumprod()
+        sims.append(path)
+
+    mc_df = pd.DataFrame(sims).T
+    return mc_df
+
+
+def compute_sector_weights(weights: np.ndarray, tickers: list) -> dict:
+    # Minimal static sector map; extend as needed
+    sector_map = {
+        "AAPL": "Technology",
+        "MSFT": "Technology",
+        "NVDA": "Technology",
+        "AMZN": "Consumer Discretionary",
+        "GOOG": "Communication Services",
+        "META": "Communication Services",
+        "TSLA": "Consumer Discretionary",
+        "JPM": "Financials",
+        "XOM": "Energy",
+    }
+
+    sectors = [sector_map.get(t, "Other") for t in tickers]
+    df = pd.DataFrame({"Ticker": tickers, "Weight": weights, "Sector": sectors})
+    return df.groupby("Sector")["Weight"].sum().to_dict()
+
+
+def load_fundamentals(tickers: list) -> dict:
+    # Placeholder: you can wire your real fundamentals loader here
+    fundamentals = {}
+    for t in tickers:
+        fundamentals[t] = {
+            "pe": None,
+            "ps": None,
+            "pb": None,
+            "recommendation": None,
+            "target_mean_price": None,
+            "dividend_yield": None,
+            "beta": None,
+        }
+    return fundamentals
+
+
+# ---------------------------------------------------------
+# Streamlit app
+# ---------------------------------------------------------
+st.set_page_config(page_title="Portfolio Optimizer Dashboard", layout="wide")
+st.title("Portfolio Optimizer Dashboard")
+
+# Sidebar inputs
+st.sidebar.header("Configuration")
 
 tickers_input = st.sidebar.text_input(
-    "Please enter your tickers (comma separated)",
-    value=""
+    "Tickers (comma-separated)",
+    value="AAPL, MSFT, NVDA"
 )
+
+end_date = st.sidebar.date_input("End Date", value=datetime.today())
+start_date = st.sidebar.date_input("Start Date", value=end_date - timedelta(days=365))
+
+if start_date >= end_date:
+    st.sidebar.error("Start date must be before end date.")
+    st.stop()
 
 tickers = [t.strip().upper() for t in tickers_input.split(",") if t.strip()]
 
-start_date = st.sidebar.date_input("Start Date", value=date(2021, 1, 1))
-end_date = st.sidebar.date_input("End Date", value=date.today())
+if not tickers:
+    st.sidebar.error("Please enter at least one valid ticker.")
+    st.stop()
 
-investment_amount = st.sidebar.number_input(
-    "Investment Amount ($)",
-    min_value=1000,
-    value=100000,
-    step=1000
+# ---------------------------------------------------------
+# Load prices and returns with guard clauses
+# ---------------------------------------------------------
+prices = load_price_data(tickers, start_date, end_date)
+returns = load_returns_data(tickers, start_date, end_date)
+
+if prices is None or prices.empty:
+    st.error("Price data could not be loaded. Check tickers or date range.")
+    st.stop()
+
+if returns is None or returns.empty:
+    st.error("Could not compute returns. Not enough price data.")
+    st.stop()
+
+cov = returns.cov()
+if cov is None or cov.empty:
+    st.error("Covariance matrix is empty. Cannot compute optimization.")
+    st.stop()
+
+# ---------------------------------------------------------
+# Simple equal-weight portfolio (replace with optimizer later)
+# ---------------------------------------------------------
+weights = np.array([1 / len(tickers)] * len(tickers))
+
+# ---------------------------------------------------------
+# Compute sector weights, fundamentals, drawdown, performance, MC
+# ---------------------------------------------------------
+try:
+    sector_weights = compute_sector_weights(weights, tickers)
+except Exception:
+    sector_weights = None
+
+fundamentals = load_fundamentals(tickers)
+drawdown_df = compute_drawdown(prices)
+performance = compute_performance(returns, weights)
+mc_df = run_monte_carlo(prices, weights)
+
+# ---------------------------------------------------------
+# Build model dictionary
+# ---------------------------------------------------------
+model = {
+    "prices": prices,
+    "returns": returns,
+    "cov": cov,
+    "weights": weights,
+    "sector_weights": sector_weights,
+    "fundamentals": fundamentals,
+    "drawdown": drawdown_df,
+    "performance": performance,
+    "monte_carlo": mc_df,
+    "tickers": tickers,
+}
+
+# ---------------------------------------------------------
+# Tabs
+# ---------------------------------------------------------
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs(
+    [
+        "Overview",
+        "Performance",
+        "Risk",
+        "Sectors",
+        "Fundamentals",
+        "Optimizer",
+        "Weights",
+        "AI Commentary",
+        "Buy Analysis",
+    ]
 )
 
-run_button = st.button("Run Analysis")
+# You can wire real renderers for tabs 1–7 and 9 later.
+with tab1:
+    st.write("Overview placeholder.")
 
-if run_button:
+with tab2:
+    st.write("Performance placeholder.")
 
-    if not tickers:
-        st.error("Please enter at least one ticker.")
-        st.stop()
+with tab3:
+    st.write("Risk placeholder.")
 
-    try:
-        # Load data — PASS LIST, NOT STRING
-        prices = load_price_data(tickers, start_date, end_date)
-        returns = load_returns_data(tickers, start_date, end_date)
+with tab4:
+    st.write("Sector Exposure")
+    if sector_weights:
+        st.write(sector_weights)
+    else:
+        st.write("Sector weights not available.")
 
-        # Filter valid tickers
-        if isinstance(prices.columns, pd.MultiIndex):
-            prices = prices.loc[:, prices.columns.get_level_values("Ticker").isin(tickers)]
+with tab5:
+    st.write("Fundamentals placeholder.")
+    st.write(pd.DataFrame.from_dict(fundamentals, orient="index"))
 
-        if returns is not None and not returns.empty:
-            returns = returns[[t for t in tickers if t in returns.columns]]
+with tab6:
+    st.write("Optimizer placeholder.")
 
-        # MUST BE HERE — BEFORE fundamentals
-        tickers_final = [t for t in tickers if t in returns.columns]
+with tab7:
+    st.write("Weights")
+    st.write(pd.DataFrame({"Ticker": tickers, "Weight": weights}))
 
-        if not tickers_final:
-            st.error("No valid tickers found in the data.")
-            st.stop()
+# Tab 8: AI Commentary (real implementation)
+render_ai_commentary_tab(tab8, prices, model)
 
-        # Load fundamentals AFTER tickers_final exists
-        from utils.fundamentals_loader import load_fundamentals
-        fundamentals = load_fundamentals(tickers_final)
-
-        # Portfolio returns
-        w_series = pd.Series({t: 1 / len(tickers_final) for t in tickers_final})
-        portfolio_returns = (returns[tickers_final] * w_series).sum(axis=1)
-
-        if portfolio_returns.empty or portfolio_returns.isna().all():
-            st.error("No valid return data for these tickers. Try different dates.")
-            st.stop()
-
-        # Drawdown
-        cumulative = (1 + portfolio_returns).cumprod()
-        running_max = cumulative.cummax()
-        drawdown_df = ((cumulative - running_max) / running_max).to_frame("Drawdown")
-
-        # Monte Carlo
-        mu = portfolio_returns.mean()
-        sigma = portfolio_returns.std()
-        num_paths = 200
-        num_days = 252
-
-        sims = np.zeros((num_days, num_paths))
-        for p in range(num_paths):
-            daily = np.random.normal(mu, sigma, num_days)
-            sims[:, p] = np.cumprod(1 + daily)
-
-        mc_df = pd.DataFrame(sims, columns=[f"Path_{i}" for i in range(num_paths)])
-
-        # Performance
-        annual_return = portfolio_returns.mean() * 252
-        annual_vol = portfolio_returns.std() * np.sqrt(252)
-        sharpe = annual_return / annual_vol if annual_vol > 0 else 0
-
-        performance = {
-            "expected_return": annual_return,
-            "volatility": annual_vol,
-            "sharpe": sharpe,
-        }
-
-        # Model dictionary
-        model = {
-            "prices": prices,
-            "returns": returns,
-            "tickers": tickers_final,
-            "weights": w_series.to_dict(),
-            "investment_amount": investment_amount,
-            "drawdown": drawdown_df,
-            "monte_carlo": mc_df,
-            "performance": performance,
-            "fundamentals": fundamentals,
-        }
-
-        st.session_state["model"] = model
-        st.session_state["prices"] = prices
-
-        st.success("Data loaded successfully.")
-
-    except Exception as e:
-        st.error(f"Error loading data: {e}")
-        st.stop()
-    # ---------------------------------------------------------
-    # TABS
-    # ---------------------------------------------------------
-    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
-        " Summary",
-        " Efficient Frontier",
-        " Optimal Weights",
-        " Sector Exposure",
-        " Drawdowns",
-        " Monte Carlo",
-        " Rebalancing",
-        " AI Commentary",
-        " Buy Analysis"
-    ])
-
-    render_summary_tab(tab1, prices, model)
-    render_frontier_tab(tab2, prices, model)
-    render_weights_tab(tab3, prices, model)
-    render_sector_tab(tab4, prices, model)
-    render_drawdown_tab(tab5, prices, model)
-    render_montecarlo_tab(tab6, prices, model)
-    render_rebalancing_tab(tab7, prices, model)
-    render_ai_commentary_tab(tab8, prices, model)
-    render_buy_analysis_tab(tab9, prices, model)
+with tab9:
+    st.write("Buy / Hold / Sell Analysis placeholder.")

@@ -11,7 +11,7 @@ def render_ai_commentary_tab(tab, prices, model):
         perf = model.get("performance", {})
         fundamentals = model.get("fundamentals", {})
         tickers = model.get("tickers", [])
-        drawdown = model.get("drawdown")
+        drawdown_df = model.get("drawdown")
         sector_weights = model.get("sector_weights", None)
         mc = model.get("monte_carlo")
 
@@ -25,14 +25,17 @@ def render_ai_commentary_tab(tab, prices, model):
 
         # ---- Drawdown ----
         max_dd = None
-        if isinstance(drawdown, pd.DataFrame) and not drawdown.empty:
-            dd_series = model["drawdown"]["Drawdown"]
-            max_dd = dd_series.min() if dd_series is not None else None
+        if isinstance(drawdown_df, pd.DataFrame) and not drawdown_df.empty:
+            # drawdown_df is a DataFrame with a single column "Drawdown"
+            dd_series = drawdown_df["Drawdown"]
+            max_dd = dd_series.min()
 
         # ---- Sector Exposure ----
         sector_text = ""
         if sector_weights is not None:
-            sector_text = ", ".join([f"{s}: {w:.1%}" for s, w in sector_weights.items()])
+            sector_text = ", ".join(
+                [f"{s}: {w:.1%}" for s, w in sector_weights.items()]
+            )
 
         # ---- Fundamentals Table ----
         fund_summary = []
@@ -69,7 +72,7 @@ def render_ai_commentary_tab(tab, prices, model):
 
         # ---- Monte Carlo ----
         mc_comment = ""
-        if mc is not None and isinstance(mc, pd.DataFrame):
+        if mc is not None and isinstance(mc, pd.DataFrame) and not mc.empty:
             final_vals = mc.iloc[-1]
             p5 = np.percentile(final_vals, 5)
             p50 = np.percentile(final_vals, 50)
@@ -83,14 +86,16 @@ def render_ai_commentary_tab(tab, prices, model):
         # ---- Display Metrics ----
         st.markdown("### 📌 Portfolio Overview")
 
-        st.write(f"""
+        st.write(
+            f"""
         **Portfolio Grade:** {grade}  
         **Risk Bucket:** {risk_bucket}  
         **Expected Annual Return:** {er:.2%}  
         **Annualized Volatility:** {vol:.2%}  
         **Sharpe Ratio:** {sharpe:.2f}  
         **Max Drawdown:** {max_dd:.2% if max_dd is not None else "N/A"}  
-        """)
+        """
+        )
 
         st.markdown("---")
 
@@ -135,7 +140,11 @@ def render_ai_commentary_tab(tab, prices, model):
             st.markdown("### 🏢 Sector Exposure")
             st.write(f"**Sector Weights:** {sector_text}")
 
-            if "Technology" in sector_weights and sector_weights["Technology"] > 0.45:
+            if (
+                sector_weights is not None
+                and "Technology" in sector_weights
+                and sector_weights["Technology"] > 0.45
+            ):
                 st.write("• Heavy concentration in Technology increases sensitivity to interest rates.")
 
         # Monte Carlo Commentary
@@ -174,6 +183,7 @@ def render_ai_commentary_tab(tab, prices, model):
                 signal = "BUY"
             elif score <= -1:
                 signal = "SELL"
+                # keep as is
             else:
                 signal = "HOLD"
 
@@ -192,7 +202,11 @@ def render_ai_commentary_tab(tab, prices, model):
             suggestions.append("• Consider lowering exposure to high-beta stocks.")
         if er < 0.05:
             suggestions.append("• Expected return is low — consider adding growth or momentum names.")
-        if sector_weights is not None and "Technology" in sector_weights and sector_weights["Technology"] > 0.45:
+        if (
+            sector_weights is not None
+            and "Technology" in sector_weights
+            and sector_weights["Technology"] > 0.45
+        ):
             suggestions.append("• Reduce Technology concentration to improve diversification.")
 
         if not suggestions:

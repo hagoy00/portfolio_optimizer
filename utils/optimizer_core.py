@@ -8,60 +8,55 @@ def portfolio_performance(weights, mean_returns, cov_matrix):
     """
     Computes expected return, volatility, and Sharpe ratio.
     """
+    weights = np.array(weights)
+
     ret = np.dot(weights, mean_returns) * 252
     vol = np.sqrt(np.dot(weights.T, np.dot(cov_matrix * 252, weights)))
     sharpe = ret / vol if vol > 0 else 0
+
     return ret, vol, sharpe
 
 
 # ---------------------------------------------------------
-# Optimization Helpers
+# Safe Random Search Optimizer
 # ---------------------------------------------------------
-def min_volatility(mean_returns, cov_matrix):
-    """
-    Computes the minimum-volatility portfolio using a simple grid search.
-    """
+def safe_random_search(mean_returns, cov_matrix, objective="sharpe", n_iter=5000):
     n = len(mean_returns)
-    best_vol = 1e9
+    best_score = -1e18 if objective == "sharpe" else 1e18
     best_w = None
 
-    # Simple grid search (fast for small ticker sets)
-    for _ in range(5000):
+    for _ in range(n_iter):
         w = np.random.random(n)
         w /= w.sum()
-        _, vol, _ = portfolio_performance(w, mean_returns, cov_matrix)
-        if vol < best_vol:
-            best_vol = vol
-            best_w = w
 
-    return best_w
+        try:
+            ret, vol, sharpe = portfolio_performance(w, mean_returns, cov_matrix)
 
+            if objective == "sharpe":
+                if sharpe > best_score:
+                    best_score = sharpe
+                    best_w = w
 
-def max_sharpe_ratio(mean_returns, cov_matrix):
-    """
-    Computes the maximum Sharpe portfolio using random search.
-    """
-    n = len(mean_returns)
-    best_sharpe = -1e9
-    best_w = None
+            elif objective == "vol":
+                if vol < best_score:
+                    best_score = vol
+                    best_w = w
 
-    for _ in range(5000):
-        w = np.random.random(n)
-        w /= w.sum()
-        _, _, sharpe = portfolio_performance(w, mean_returns, cov_matrix)
-        if sharpe > best_sharpe:
-            best_sharpe = sharpe
-            best_w = w
+        except Exception:
+            continue
+
+    # Fallback if search fails
+    if best_w is None:
+        best_w = np.array([1 / n] * n)
 
     return best_w
 
 
 # ---------------------------------------------------------
-# MAIN OPTIMIZER FUNCTION (REQUIRED BY app.py)
+# MAIN OPTIMIZER FUNCTION
 # ---------------------------------------------------------
 def run_optimizer(returns, cov_matrix):
     """
-    Main optimizer used by the dashboard.
     Computes:
     - Equal weight portfolio
     - Minimum volatility portfolio
@@ -77,21 +72,21 @@ def run_optimizer(returns, cov_matrix):
     tickers = list(returns.columns)
     n = len(tickers)
 
-    mean_returns = returns.mean()
+    # Clean mean returns
+    mean_returns = returns.mean().fillna(0)
 
     # Equal weight
     w_equal = np.array([1 / n] * n)
     ret_eq, vol_eq, sharpe_eq = portfolio_performance(w_equal, mean_returns, cov_matrix)
 
     # Min volatility
-    w_min = min_volatility(mean_returns, cov_matrix)
+    w_min = safe_random_search(mean_returns, cov_matrix, objective="vol")
     ret_min, vol_min, sharpe_min = portfolio_performance(w_min, mean_returns, cov_matrix)
 
     # Max Sharpe
-    w_max = max_sharpe_ratio(mean_returns, cov_matrix)
+    w_max = safe_random_search(mean_returns, cov_matrix, objective="sharpe")
     ret_max, vol_max, sharpe_max = portfolio_performance(w_max, mean_returns, cov_matrix)
 
-    # Return clean dictionary for Streamlit
     return {
         "tickers": tickers,
 

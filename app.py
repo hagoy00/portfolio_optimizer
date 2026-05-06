@@ -140,9 +140,8 @@ sector_weights = compute_sector_weights(weights, tickers)
 # ---------------------------------------------------------
 # RUN OPTIMIZER (for AI model)
 # ---------------------------------------------------------
-# Assumes run_optimizer returns a dict-like model with keys:
-# "performance", "fundamentals", "tickers", "drawdown", "sector_weights", "monte_carlo", "momentum", etc.
-model = run_optimizer(tickers, fundamentals, prices)
+# Uses returns + cov, consistent with your optimizer_core
+model = run_optimizer(returns, cov)
 
 # ---------------------------------------------------------
 # Tabs
@@ -699,7 +698,7 @@ with tab8:
             for s in strengths:
                 st.markdown(f"- {s}")
 
-            st.markdown("**Weaknesses:**")
+            st.markmarkdown("**Weaknesses:**")
             for w in weaknesses:
                 st.markdown(f"- {w}")
 

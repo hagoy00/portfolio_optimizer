@@ -16,26 +16,42 @@ from utils.analytics import run_monte_carlo_simulation
 st.set_page_config(page_title="Portfolio Optimizer Dashboard", layout="wide")
 
 st.markdown("""
-    <style>
-        .fixed-title {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            background-color: white;
-            padding: 16px 0 16px 20px;
-            font-size: 32px;
-            font-weight: 700;
-            color: #007BFF;
-            border-bottom: 1px solid #e0e0e0;
-            z-index: 99999;
-        }
-        .main .block-container {
-            padding-top: 100px !important;
-        }
-    </style>
+<style>
 
-    <div class="fixed-title">Portfolio Optimizer Dashboard</div>
+    /* --- FIXED TOP NAVBAR --- */
+    .fixed-title {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        background-color: #FFFFFF;
+        padding: 14px 24px;
+        font-size: 30px;
+        font-weight: 700;
+        color: #007BFF;
+        border-bottom: 1px solid #E5E5E5;
+        z-index: 9999;
+        line-height: 1.2;
+    }
+
+    /* --- REMOVE WHITE GAP UNDER TITLE --- */
+    .main .block-container {
+        padding-top: 72px !important;   /* Perfect height for your title */
+    }
+
+    /* --- FIX STREAMLIT'S INTERNAL SCROLL CONTAINER --- */
+    div[data-testid="stAppViewContainer"] {
+        overflow: visible !important;
+    }
+
+    /* --- OPTIONAL: SMOOTH SHADOW FOR PRO LOOK --- */
+    .fixed-title {
+        box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    }
+
+</style>
+
+<div class="fixed-title">Portfolio Optimizer Dashboard</div>
 """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------

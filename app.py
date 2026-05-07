@@ -187,10 +187,8 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
 # Overview
 # ---------------------------------------------------------
 with tab1:
-# ---------------------------------------------------------
-# Safe value cleaner (prevents None spam)
-# ---------------------------------------------------------
-def safe_val(x):
+
+    def safe_val(x):
     if x in [None, "None", "nan", "NaN"]:
         return None
     try:

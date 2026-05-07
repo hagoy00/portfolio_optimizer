@@ -9,11 +9,9 @@ def run_buy_analysis(tickers, fundamentals, prices):
         pb = f.get("PB", 0) or 0
         dy = f.get("DividendYield", 0) or 0
 
-        # --- safe momentum & risk calculation ---
         try:
             px = prices[ticker].dropna()
 
-            # If px is a DataFrame, reduce to Close column
             if isinstance(px, pd.DataFrame):
                 if "Close" in px.columns:
                     px = px["Close"]
@@ -22,34 +20,35 @@ def run_buy_analysis(tickers, fundamentals, prices):
 
             returns = px.pct_change().dropna()
 
-            momentum = float(returns.tail(60).mean() * 252) if len(returns) >= 60 else 0
-            risk = float(returns.std() * (252 ** 0.5)) if len(returns) > 0 else 0
+            if len(returns) >= 60:
+                momentum = float(returns.tail(60).mean() * 252)
+            elif len(returns) > 0:
+                momentum = float(returns.mean() * 252)
+            else:
+                momentum = 0.0
+
+            risk = float(returns.std() * (252 ** 0.5)) if len(returns) > 0 else 0.0
 
         except Exception:
-            momentum, risk = 0, 0
+            momentum, risk = 0.0, 0.0
 
-        # --- scoring model ---
         score = 0
 
-        # momentum
         if momentum > 0:
             score += 1
 
-        # risk (lower better)
-        if risk > 0 and risk < 0.30:
+        if 0 < risk < 0.40:
             score += 1
 
-        # valuation
-        if 0 < pe < 30:
-            score += 1
-        if 0 < pb < 5:
+        if 0 < pe < 40:
             score += 1
 
-        # dividend
-        if dy > 0.01:
+        if 0 < pb < 8:
             score += 1
 
-        # rating
+        if dy > 0.005:
+            score += 1
+
         if score >= 4:
             rating = "Buy"
         elif score >= 2:

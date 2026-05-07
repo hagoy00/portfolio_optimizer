@@ -125,9 +125,6 @@ def compute_beta_vs_spy(prices, ticker):
 
     return beta
 
-import numpy as np
-import pandas as pd
-
 def run_monte_carlo_simulation(returns, sims=500, horizon=252):
     """
     Returns a DataFrame where each column is one simulation path.

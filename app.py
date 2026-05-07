@@ -933,12 +933,16 @@ with tab9:
     st.dataframe(ms_df, key="ms_df")
 
     # -----------------------------
-    # Monte Carlo Simulation
-    # -----------------------------
-    st.markdown("### Monte Carlo Simulation")
-    mc_df = run_monte_carlo_simulation(returns, mc_sims, mc_horizon)
+# Monte Carlo Simulation
+# -----------------------------
+st.markdown("### Monte Carlo Simulation")
+mc_df = run_monte_carlo_simulation(returns, mc_sims, mc_horizon)
 
-    if mc_df is None or mc_df.empty:
-        st.error("Monte Carlo simulation failed.")
-    else:
-        st.line_chart(mc_df, key="mc_simulation")
+# DEBUG — PLACE THESE TWO LINES HERE
+st.write("DEBUG mc_df type:", type(mc_df))
+st.write("DEBUG mc_df head:", mc_df if hasattr(mc_df, "head") else mc_df)
+
+if mc_df is None or mc_df.empty:
+    st.error("Monte Carlo simulation failed.")
+else:
+    st.line_chart(mc_df, key="mc_simulation")

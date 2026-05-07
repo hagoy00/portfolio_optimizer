@@ -187,12 +187,36 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
 # Overview
 # ---------------------------------------------------------
 with tab1:
+# ---------------------------------------------------------
+# Safe value cleaner (prevents None spam)
+# ---------------------------------------------------------
+def safe_val(x):
+    if x in [None, "None", "nan", "NaN"]:
+        return None
+    try:
+        if float(x) == 0:
+            return None
+    except:
+        pass
+    return x
     st.markdown("<h2 style='color:#1E90FF;'>Optimizer Dashboard Report</h2>", unsafe_allow_html=True)
     st.subheader("Overview")
     st.dataframe(prices.tail())
 # ---------------------------------------------------------
 # Performance Tab (Upgraded Institutional Version)
 # ---------------------------------------------------------
+# ---------------------------------------------------------
+# Safe value cleaner (prevents None spam)
+# ---------------------------------------------------------
+def safe_val(x):
+    if x in [None, "None", "nan", "NaN"]:
+        return None
+    try:
+        if float(x) == 0:
+            return None
+    except:
+        pass
+    return x
 with tab2:
     st.subheader("Performance Metrics")
 
@@ -247,6 +271,18 @@ with tab2:
 # ---------------------------------------------------------
 # Risk
 # ---------------------------------------------------------
+# ---------------------------------------------------------
+# Safe value cleaner (prevents None spam)
+# ---------------------------------------------------------
+def safe_val(x):
+    if x in [None, "None", "nan", "NaN"]:
+        return None
+    try:
+        if float(x) == 0:
+            return None
+    except:
+        pass
+    return x
 with tab3:
     st.subheader("Risk & Drawdown")
     st.line_chart(drawdown_df)
@@ -254,6 +290,18 @@ with tab3:
 # ---------------------------------------------------------
 # Sectors
 # ---------------------------------------------------------
+# ---------------------------------------------------------
+# Safe value cleaner (prevents None spam)
+# ---------------------------------------------------------
+def safe_val(x):
+    if x in [None, "None", "nan", "NaN"]:
+        return None
+    try:
+        if float(x) == 0:
+            return None
+    except:
+        pass
+    return x
 with tab4:
     st.subheader("Sector Exposure")
     sector_df = pd.DataFrame.from_dict(sector_weights, orient="index", columns=["Weight"])
@@ -262,6 +310,18 @@ with tab4:
 # ---------------------------------------------------------
 # Fundamentals
 # ---------------------------------------------------------
+# ---------------------------------------------------------
+# Safe value cleaner (prevents None spam)
+# ---------------------------------------------------------
+def safe_val(x):
+    if x in [None, "None", "nan", "NaN"]:
+        return None
+    try:
+        if float(x) == 0:
+            return None
+    except:
+        pass
+    return x
 with tab5:
     st.subheader("Fundamentals")
 
@@ -349,6 +409,18 @@ with tab5:
 # ---------------------------------------------------------
 # Weights
 # ---------------------------------------------------------
+# ---------------------------------------------------------
+# Safe value cleaner (prevents None spam)
+# ---------------------------------------------------------
+def safe_val(x):
+    if x in [None, "None", "nan", "NaN"]:
+        return None
+    try:
+        if float(x) == 0:
+            return None
+    except:
+        pass
+    return x
 with tab6:
     st.subheader("Weights")
     weights_df = pd.DataFrame({"Ticker": tickers, "Weight": weights})
@@ -356,6 +428,18 @@ with tab6:
 # ---------------------------------------------------------
 # AI Commentary
 # ---------------------------------------------------------
+# ---------------------------------------------------------
+# Safe value cleaner (prevents None spam)
+# ---------------------------------------------------------
+def safe_val(x):
+    if x in [None, "None", "nan", "NaN"]:
+        return None
+    try:
+        if float(x) == 0:
+            return None
+    except:
+        pass
+    return x
 with tab7:
     st.subheader("AI Portfolio Commentary")
 
@@ -612,6 +696,18 @@ with tab7:
 # ---------------------------------------------------------
 # Buy Analysis (Clean, Corrected, Institutional Version)
 # ---------------------------------------------------------
+# ---------------------------------------------------------
+# Safe value cleaner (prevents None spam)
+# ---------------------------------------------------------
+def safe_val(x):
+    if x in [None, "None", "nan", "NaN"]:
+        return None
+    try:
+        if float(x) == 0:
+            return None
+    except:
+        pass
+    return x
 with tab8:
     st.subheader("Buy / Hold / Sell Analysis")
 
@@ -725,6 +821,18 @@ with tab8:
 @st.cache_data(show_spinner=True)
 def run_optimizer_cached(returns, cov):
     return run_optimizer(returns, cov)
+# ---------------------------------------------------------
+# Safe value cleaner (prevents None spam)
+# ---------------------------------------------------------
+def safe_val(x):
+    if x in [None, "None", "nan", "NaN"]:
+        return None
+    try:
+        if float(x) == 0:
+            return None
+    except:
+        pass
+    return x
 
 with tab9:
     st.subheader("Optimizer & Monte Carlo")

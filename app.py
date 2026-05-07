@@ -608,6 +608,8 @@ with tab7:
 # ---------------------------------------------------------
 # Buy Analysis
 # ---------------------------------------------------------
+def safe_val(x):
+    return None if x in [None, 0, "None", "nan", "NaN"] else x
 with tab8:
     st.subheader("Buy / Hold / Sell Analysis")
 

@@ -11,7 +11,7 @@ from utils.buy_analysis import run_buy_analysis
 from utils.analytics import run_monte_carlo_simulation
 
 # ---------------------------------------------------------
-# Sticky Title (blue + fixed)
+# Sticky top header (final, pixel-perfect)
 # ---------------------------------------------------------
 st.set_page_config(page_title="Portfolio Optimizer Dashboard", layout="wide")
 
@@ -35,12 +35,12 @@ st.markdown("""
         box-shadow: 0 2px 6px rgba(0,0,0,0.08);
     }
 
-    /* CORRECT PAGE OFFSET */
+    /* CORRECT PAGE OFFSET UNDER HEADER */
     .main .block-container {
         padding-top: 80px !important;
     }
 
-    /* PREVENT STREAMLIT FROM CLIPPING STICKY ELEMENTS */
+    /* PREVENT CLIPPING OF STICKY ELEMENTS */
     div[data-testid="stAppViewContainer"] {
         overflow: visible !important;
     }
@@ -150,18 +150,16 @@ def compute_sector_weights(weights, tickers):
 sector_weights = compute_sector_weights(weights, tickers)
 
 # ---------------------------------------------------------
-# RUN OPTIMIZER (for AI model)
+# BUILD MODEL FOR AI COMMENTARY (not using run_optimizer here)
 # ---------------------------------------------------------
-# Uses returns + cov, consistent with your optimizer_core
-#model = run_optimizer(returns, cov)
 model = {
     "performance": performance,
     "fundamentals": fundamentals,
     "tickers": tickers,
     "drawdown": drawdown_df,
     "sector_weights": sector_weights,
-    "monte_carlo": None,
-    "momentum": {},
+    "monte_carlo": None,   # can be filled later if desired
+    "momentum": {},        # placeholder; fill if you compute momentum
 }
 
 # ---------------------------------------------------------
@@ -616,8 +614,12 @@ with tab8:
         st.info("Run Analysis to generate buy analysis.")
     else:
         buy_results = run_buy_analysis(tickers, fundamentals, prices)
+
+        # Clean numeric fields to avoid None spam
         numeric_cols = ["PE", "PB", "DividendYield", "Momentum", "Risk", "Score"]
-        buy_results[numeric_cols] = buy_results[numeric_cols].fillna(0)
+        for col in numeric_cols:
+            if col in buy_results.columns:
+                buy_results[col] = buy_results[col].fillna(0)
 
         # -----------------------------
         # Color-coded Buy/Hold/Sell
@@ -721,7 +723,6 @@ with tab8:
             for s in strengths:
                 st.markdown(f"- {s}")
 
-            #st.markmarkdown("**Weaknesses:**")
             st.markdown("**Weaknesses:**")
             for w in weaknesses:
                 st.markdown(f"- {w}")

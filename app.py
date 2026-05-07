@@ -569,20 +569,12 @@ with tab8:
             lines = []
             best = df.sort_values("Score", ascending=False).iloc[0]
             lines.append(
-                f"**{best['Ticker']}** leads the group with a score of {best['Score']}. "
-                f"Momentum ({best['Momentum']:.2f}) and valuation (PE={best['PE']:.1f}, PB={best['PB']:.1f}) "
-                f"support its relative strength."
+                f"**{best['Ticker']}** leads the group with a score of {best['Score']}."
             )
             worst = df.sort_values("Score", ascending=True).iloc[0]
             lines.append(
-                f"**{worst['Ticker']}** ranks weakest with a score of {worst['Score']}. "
-                f"Drivers include softer momentum ({worst['Momentum']:.2f}) and less favorable valuation metrics."
+                f"**{worst['Ticker']}** ranks weakest with a score of {worst['Score']}."
             )
-            mids = df.sort_values("Score", ascending=False).iloc[1:-1]
-            for _, row in mids.iterrows():
-                lines.append(
-                    f"**{row['Ticker']}** shows a balanced profile with a score of {row['Score']}."
-                )
             return "\n\n".join(lines)
 
         st.markdown(generate_buy_commentary(buy_results))
@@ -627,7 +619,6 @@ with tab8:
             for w in weaknesses:
                 st.markdown(f"- {w}")
             st.markdown("---")
-
 
 # ---------------------------------------------------------
 # Optimizer

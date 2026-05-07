@@ -863,7 +863,7 @@ with tab8:
             for s in strengths:
                 st.markdown(f"- {s}")
 
-            st.markmarkdown("**Weaknesses:**")
+            st.markdown("**Weaknesses:**")
             for w in weaknesses:
                 st.markdown(f"- {w}")
 

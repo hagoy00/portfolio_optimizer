@@ -881,59 +881,64 @@ with tab9:
 
     if not run_button:
         st.info("Run Analysis to generate optimizer and Monte Carlo results.")
+        st.stop()
+
+    # Run optimizer
+    opt_results = run_optimizer_cached(returns, cov)
+    st.success("Optimization complete!")
+
+    # -----------------------------
+    # Equal Weight Portfolio
+    # -----------------------------
+    st.markdown("### Equal Weight Portfolio")
+    ew = opt_results["equal_weight"]
+    st.write(f"**Expected Return:** {ew['expected_return']:.2%}")
+    st.write(f"**Volatility:** {ew['volatility']:.2%}")
+    st.write(f"**Sharpe Ratio:** {ew['sharpe']:.2f}")
+
+    ew_df = pd.DataFrame({
+        "Ticker": opt_results["tickers"],
+        "Weight": ew["weights"]
+    })
+    st.dataframe(ew_df, key="ew_df")
+
+    # -----------------------------
+    # Minimum Volatility Portfolio
+    # -----------------------------
+    st.markdown("### Minimum Volatility Portfolio")
+    mv = opt_results["min_volatility"]
+    st.write(f"**Expected Return:** {mv['expected_return']:.2%}")
+    st.write(f"**Volatility:** {mv['volatility']:.2%}")
+    st.write(f"**Sharpe Ratio:** {mv['sharpe']:.2f}")
+
+    mv_df = pd.DataFrame({
+        "Ticker": opt_results["tickers"],
+        "Weight": mv["weights"]
+    })
+    st.dataframe(mv_df, key="mv_df")
+
+    # -----------------------------
+    # Maximum Sharpe Portfolio
+    # -----------------------------
+    st.markdown("### Maximum Sharpe Portfolio")
+    ms = opt_results["max_sharpe"]
+    st.write(f"**Expected Return:** {ms['expected_return']:.2%}")
+    st.write(f"**Volatility:** {ms['volatility']:.2%}")
+    st.write(f"**Sharpe Ratio:** {ms['sharpe']:.2f}")
+
+    ms_df = pd.DataFrame({
+        "Ticker": opt_results["tickers"],
+        "Weight": ms["weights"]
+    })
+    st.dataframe(ms_df, key="ms_df")
+
+    # -----------------------------
+    # Monte Carlo Simulation
+    # -----------------------------
+    st.markdown("### Monte Carlo Simulation")
+    mc_df = run_monte_carlo_simulation(returns, mc_sims, mc_horizon)
+
+    if mc_df is None or mc_df.empty:
+        st.error("Monte Carlo simulation failed.")
     else:
-        opt_results = run_optimizer_cached(returns, cov)
-        st.success("Optimization complete!")
-
-        # -----------------------------
-        # Equal Weight Portfolio
-        # -----------------------------
-        st.markdown("### Equal Weight Portfolio")
-        ew = opt_results["equal_weight"]
-        st.write(f"**Expected Return:** {ew['expected_return']:.2%}")
-        st.write(f"**Volatility:** {ew['volatility']:.2%}")
-        st.write(f"**Sharpe Ratio:** {ew['sharpe']:.2f}")
-
-        ew_df = pd.DataFrame({
-            "Ticker": opt_results["tickers"],
-            "Weight": ew["weights"]
-        })
-        st.dataframe(ew_df, key="ew_df") #st.dataframe(ew_df)
-
-        # -----------------------------
-        # Minimum Volatility Portfolio
-        # -----------------------------
-        st.markdown("### Minimum Volatility Portfolio")
-        mv = opt_results["min_volatility"]
-        st.write(f"**Expected Return:** {mv['expected_return']:.2%}")
-        st.write(f"**Volatility:** {mv['volatility']:.2%}")
-        st.write(f"**Sharpe Ratio:** {mv['sharpe']:.2f}")
-
-        mv_df = pd.DataFrame({
-            "Ticker": opt_results["tickers"],
-            "Weight": mv["weights"]
-        })
-        st.dataframe(mv_df, key="mv_df")   #st.dataframe(mv_df)
-
-        # -----------------------------
-        # Maximum Sharpe Portfolio
-        # -----------------------------
-        st.markdown("### Maximum Sharpe Portfolio")
-        ms = opt_results["max_sharpe"]
-        st.write(f"**Expected Return:** {ms['expected_return']:.2%}")
-        st.write(f"**Volatility:** {ms['volatility']:.2%}")
-        st.write(f"**Sharpe Ratio:** {ms['sharpe']:.2f}")
-
-        ms_df = pd.DataFrame({
-            "Ticker": opt_results["tickers"],
-            "Weight": ms["weights"]
-        })
-        st.dataframe(ms_df, key="ms_df")  #st.dataframe(ms_df)
-
-        # -----------------------------
-        # Monte Carlo Simulation
-        # -----------------------------
-        st.markdown("### Monte Carlo Simulation")
-        mc_df = run_monte_carlo_simulation(returns, mc_sims, mc_horizon)
         st.line_chart(mc_df, key="mc_simulation")
-        #st.line_chart(mc_df)

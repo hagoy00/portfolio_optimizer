@@ -1,33 +1,44 @@
 import yfinance as yf
+import numpy as np
 
-def _safe_get(info, key, default=0):
-    value = info.get(key)
-    if value in (None, "None", "N/A"):
-        return default
-    return value
-
-def load_fundamentals(tickers, full_prices=None):
+def load_fundamentals(tickers):
     fundamentals = {}
 
-    for ticker in tickers:
+    for t in tickers:
         try:
-            stock = yf.Ticker(ticker)
-            info = stock.info
+            yf_t = yf.Ticker(t)
 
-            fundamentals[ticker] = {
-                "PE": _safe_get(info, "trailingPE"),
-                "PB": _safe_get(info, "priceToBook"),
-                "DividendYield": _safe_get(info, "dividendYield"),
-                "gross_margins": _safe_get(info, "grossMargins"),
-                "profit_margins": _safe_get(info, "profitMargins"),
-                "revenue": _safe_get(info, "totalRevenue"),
-                "beta": _safe_get(info, "beta"),  # ← FIXED
+            # Fast info (much more reliable)
+            fi = yf_t.fast_info
+
+            pe = fi.get("pe_ratio")
+            pb = fi.get("pb_ratio")
+            dy = fi.get("dividend_yield")
+
+            # Fallback to .info only if needed
+            info = yf_t.info
+
+            gross = info.get("grossMargins")
+            profit = info.get("profitMargins")
+            revenue = info.get("totalRevenue")
+
+            fundamentals[t] = {
+                "PE": float(pe) if pe not in [None, "None", np.nan] else None,
+                "PB": float(pb) if pb not in [None, "None", np.nan] else None,
+                "DividendYield": float(dy) if dy not in [None, "None", np.nan] else None,
+                "gross_margins": float(gross) if gross not in [None, "None", np.nan] else None,
+                "profit_margins": float(profit) if profit not in [None, "None", np.nan] else None,
+                "revenue": float(revenue) if revenue not in [None, "None", np.nan] else None,
             }
 
         except Exception as e:
-            fundamentals[ticker] = {"error": str(e)}
-
-    if full_prices is not None:
-        fundamentals["full_prices"] = full_prices
+            fundamentals[t] = {
+                "PE": None,
+                "PB": None,
+                "DividendYield": None,
+                "gross_margins": None,
+                "profit_margins": None,
+                "revenue": None,
+            }
 
     return fundamentals

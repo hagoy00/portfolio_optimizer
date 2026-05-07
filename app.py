@@ -616,6 +616,8 @@ with tab8:
         st.info("Run Analysis to generate buy analysis.")
     else:
         buy_results = run_buy_analysis(tickers, fundamentals, prices)
+        numeric_cols = ["PE", "PB", "DividendYield", "Momentum", "Risk", "Score"]
+        buy_results[numeric_cols] = buy_results[numeric_cols].fillna(0)
 
         # -----------------------------
         # Color-coded Buy/Hold/Sell

@@ -18,13 +18,13 @@ st.set_page_config(page_title="Portfolio Optimizer Dashboard", layout="wide")
 st.markdown("""
 <style>
 
-    /* --- FIXED TOP NAVBAR --- */
+    /* FIXED NAVBAR */
     .fixed-title {
         position: fixed;
         top: 0;
         left: 0;
         width: 100%;
-        background-color: #FFFFFF;
+        background-color: white;
         padding: 14px 24px;
         font-size: 30px;
         font-weight: 700;
@@ -32,21 +32,17 @@ st.markdown("""
         border-bottom: 1px solid #E5E5E5;
         z-index: 9999;
         line-height: 1.2;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.08);
     }
 
-    /* --- REMOVE WHITE GAP UNDER TITLE --- */
+    /* CORRECT PAGE OFFSET */
     .main .block-container {
-        padding-top: 72px !important;   /* Perfect height for your title */
+        padding-top: 80px !important;
     }
 
-    /* --- FIX STREAMLIT'S INTERNAL SCROLL CONTAINER --- */
+    /* PREVENT STREAMLIT FROM CLIPPING STICKY ELEMENTS */
     div[data-testid="stAppViewContainer"] {
         overflow: visible !important;
-    }
-
-    /* --- OPTIONAL: SMOOTH SHADOW FOR PRO LOOK --- */
-    .fixed-title {
-        box-shadow: 0 2px 6px rgba(0,0,0,0.08);
     }
 
 </style>

@@ -814,7 +814,9 @@ with tab8:
                 name=row["Ticker"]
             ))
         fig.update_layout(polar=dict(radialaxis=dict(visible=True)), showlegend=True, height=500)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, key="optimizer_equal_weight")
+
+        #st.plotly_chart(fig, use_container_width=True)
 
         # Strengths & Weaknesses
         st.subheader("Top Strengths & Weaknesses")

@@ -191,14 +191,54 @@ with tab1:
     st.subheader("Overview")
     st.dataframe(prices.tail())
 # ---------------------------------------------------------
-# Performance
+# Performance Tab (Upgraded Institutional Version)
 # ---------------------------------------------------------
 with tab2:
     st.subheader("Performance Metrics")
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Expected Return", f"{performance['expected_return']:.2%}")
-    col2.metric("Volatility", f"{performance['volatility']:.2%}")
-    col3.metric("Sharpe Ratio", f"{performance['sharpe']:.2f}")
+
+    # Compute portfolio returns
+    port_ret = returns.dot(weights)
+    cum_ret = (1 + port_ret).cumprod()
+
+    # Rolling metrics
+    rolling_vol = port_ret.rolling(30).std() * np.sqrt(252)
+    rolling_sharpe = (port_ret.rolling(30).mean() * 252) / rolling_vol
+
+    # Drawdown
+    cum_max = cum_ret.cummax()
+    dd = (cum_ret - cum_max) / cum_max
+
+    # Summary metrics
+    mu = port_ret.mean() * 252
+    vol = port_ret.std() * np.sqrt(252)
+    sharpe = mu / vol if vol > 0 else 0
+    sortino = (port_ret.mean() * 252) / (port_ret[port_ret < 0].std() * np.sqrt(252))
+    calmar = mu / abs(dd.min()) if dd.min() != 0 else 0
+    max_dd = dd.min()
+
+    # Display metrics
+    st.metric("Expected Return", f"{mu:.2%}")
+    st.metric("Volatility", f"{vol:.2%}")
+    st.metric("Sharpe Ratio", f"{sharpe:.2f}")
+    st.metric("Sortino Ratio", f"{sortino:.2f}")
+    st.metric("Calmar Ratio", f"{calmar:.2f}")
+    st.metric("Max Drawdown", f"{max_dd:.2%}")
+
+    # Charts
+    st.markdown("### Cumulative Return")
+    st.line_chart(cum_ret)
+
+    st.markdown("### Rolling 30-Day Volatility")
+    st.line_chart(rolling_vol)
+
+    st.markdown("### Rolling 30-Day Sharpe Ratio")
+    st.line_chart(rolling_sharpe)
+
+    st.markdown("### Drawdown")
+    st.area_chart(dd)
+
+    st.markdown("### Distribution of Daily Returns")
+    st.bar_chart(port_ret.hist(bins=40).to_frame())
 
 # ---------------------------------------------------------
 # Risk

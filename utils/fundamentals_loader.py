@@ -15,15 +15,14 @@ def load_fundamentals(tickers, full_prices=None):
             info = stock.info
 
             fundamentals[ticker] = {
-    "PE": _safe_get(info, "trailingPE"),
-    "PB": _safe_get(info, "priceToBook"),
-    "DividendYield": _safe_get(info, "dividendYield"),
-    "gross_margins": _safe_get(info, "grossMargins"),
-    "profit_margins": _safe_get(info, "profitMargins"),
-    "revenue": _safe_get(info, "totalRevenue"),
-    "beta": _safe_get(info, "beta"),   # <-- ADD THIS
-}
-
+                "PE": _safe_get(info, "trailingPE"),
+                "PB": _safe_get(info, "priceToBook"),
+                "DividendYield": _safe_get(info, "dividendYield"),
+                "gross_margins": _safe_get(info, "grossMargins"),
+                "profit_margins": _safe_get(info, "profitMargins"),
+                "revenue": _safe_get(info, "totalRevenue"),
+                "beta": _safe_get(info, "beta"),  # ← FIXED
+            }
 
         except Exception as e:
             fundamentals[ticker] = {"error": str(e)}

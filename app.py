@@ -133,4 +133,516 @@ def compute_sector_weights(weights, tickers):
         "JPM": "Financials", "XOM": "Energy"
     }
     sectors = [sector_map.get(t, "Other") for t in tickers]
-    df = pd.DataFrame({"Ticker": tickers, "Weight": weights
+    df = pd.DataFrame({"Ticker": tickers, "Weight": weights, "Sector": sectors})
+    return df.groupby("Sector")["Weight"].sum().to_dict()
+
+sector_weights = compute_sector_weights(weights, tickers)
+
+# ---------------------------------------------------------
+# Momentum for AI model
+# ---------------------------------------------------------
+def compute_momentum_series(returns, window=60):
+    momentum = {}
+    for t in returns.columns:
+        r = returns[t].dropna()
+        if len(r) >= window:
+            momentum[t] = float(r.tail(window).mean() * 252)
+        elif len(r) > 0:
+            momentum[t] = float(r.mean() * 252)
+        else:
+            momentum[t] = 0.0
+    return momentum
+
+momentum_dict = compute_momentum_series(returns)
+
+# ---------------------------------------------------------
+# Model for AI commentary
+# ---------------------------------------------------------
+model = {
+    "performance": performance,
+    "fundamentals": fundamentals,
+    "tickers": tickers,
+    "drawdown": drawdown_df,
+    "sector_weights": sector_weights,
+    "monte_carlo": None,
+    "momentum": momentum_dict,
+}
+
+# ---------------------------------------------------------
+# Tabs
+# ---------------------------------------------------------
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
+    "Overview",
+    "Performance",
+    "Risk",
+    "Sectors",
+    "Fundamentals",
+    "Weights",
+    "AI Commentary",
+    "Buy Analysis",
+    "Optimizer"
+])
+
+# ---------------------------------------------------------
+# Overview
+# ---------------------------------------------------------
+with tab1:
+    st.markdown("<h2 style='color:#1E90FF;'>Optimizer Dashboard Report</h2>", unsafe_allow_html=True)
+    st.subheader("Overview")
+    st.dataframe(prices.tail())
+# ---------------------------------------------------------
+# Performance
+# ---------------------------------------------------------
+with tab2:
+    st.subheader("Performance Metrics")
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Expected Return", f"{performance['expected_return']:.2%}")
+    col2.metric("Volatility", f"{performance['volatility']:.2%}")
+    col3.metric("Sharpe Ratio", f"{performance['sharpe']:.2f}")
+
+# ---------------------------------------------------------
+# Risk
+# ---------------------------------------------------------
+with tab3:
+    st.subheader("Risk & Drawdown")
+    st.line_chart(drawdown_df)
+
+# ---------------------------------------------------------
+# Sectors
+# ---------------------------------------------------------
+with tab4:
+    st.subheader("Sector Exposure")
+    sector_df = pd.DataFrame.from_dict(sector_weights, orient="index", columns=["Weight"])
+    st.bar_chart(sector_df)
+
+# ---------------------------------------------------------
+# Fundamentals
+# ---------------------------------------------------------
+with tab5:
+    st.subheader("Fundamentals")
+
+    fundamentals_df = pd.DataFrame(fundamentals).T.drop("full_prices", errors="ignore")
+    st.dataframe(fundamentals_df)
+
+    st.subheader("Fundamentals Ranking")
+
+    def score_fundamentals(row):
+        score = 0
+        if row.get("gross_margins"): score += row["gross_margins"] * 10
+        if row.get("profit_margins"): score += row["profit_margins"] * 10
+        if row.get("revenue"): score += (row["revenue"] / 1e9)
+        if row.get("PE"): score += max(0, 50 - row["PE"])
+        if row.get("PB"): score += max(0, 20 - row["PB"])
+        if row.get("DividendYield"): score += row["DividendYield"] * 100
+        return score
+
+    fundamentals_df["score"] = fundamentals_df.apply(score_fundamentals, axis=1)
+    ranked_df = fundamentals_df.sort_values("score", ascending=False)
+    st.dataframe(ranked_df[["score"]])
+
+    st.subheader("AI Fundamentals Commentary")
+
+    def generate_fundamentals_commentary(ranked_df):
+        lines = []
+        tickers_sorted = ranked_df.index.tolist()
+        if not tickers_sorted:
+            return "No fundamentals available."
+
+        best = tickers_sorted[0]
+        worst = tickers_sorted[-1]
+
+        best_row = ranked_df.loc[best]
+        best_reasons = []
+        if best_row.get("gross_margins"):
+            best_reasons.append("strong gross margins")
+        if best_row.get("profit_margins"):
+            best_reasons.append("solid profitability")
+        if best_row.get("revenue"):
+            best_reasons.append("healthy revenue base")
+        if best_row.get("PE") and best_row["PE"] < 25:
+            best_reasons.append("reasonable valuation")
+        if best_row.get("DividendYield"):
+            best_reasons.append("added income from dividends")
+        best_reason_text = ", ".join(best_reasons) if best_reasons else "overall stronger fundamentals"
+        lines.append(f"**{best}** ranks as the strongest fundamental name in the group, supported by {best_reason_text}.")
+
+        if len(tickers_sorted) > 2:
+            middle = tickers_sorted[1:-1]
+            for t in middle:
+                row = ranked_df.loc[t]
+                mid_reasons = []
+                if row.get("gross_margins"):
+                    mid_reasons.append("solid margins")
+                if row.get("profit_margins"):
+                    mid_reasons.append("healthy profitability")
+                if row.get("revenue"):
+                    mid_reasons.append("stable revenue")
+                if row.get("PE") and row["PE"] < 40:
+                    mid_reasons.append("fair valuation")
+                reason_text = ", ".join(mid_reasons) if mid_reasons else "balanced fundamentals"
+                lines.append(f"**{t}** shows {reason_text}, placing it in the middle of the group.")
+
+        worst_row = ranked_df.loc[worst]
+        worst_reasons = []
+        if worst_row.get("gross_margins") and worst_row["gross_margins"] < 0.2:
+            worst_reasons.append("thin margins")
+        if worst_row.get("profit_margins") and worst_row["profit_margins"] < 0.1:
+            worst_reasons.append("weak profitability")
+        if worst_row.get("PE") and worst_row["PE"] > 50:
+            worst_reasons.append("elevated valuation")
+        if worst_row.get("PB") and worst_row["PB"] > 10:
+            worst_reasons.append("rich price-to-book ratio")
+        worst_reason_text = ", ".join(worst_reasons) if worst_reasons else "weaker fundamentals overall"
+        lines.append(f"**{worst}** ranks lowest, driven by {worst_reason_text}.")
+        return "\n\n".join(lines)
+
+    st.markdown(generate_fundamentals_commentary(ranked_df))
+
+    st.subheader("Commentary")
+    commentary = [f"- **{ticker}**: score {row['score']:.1f}" for ticker, row in ranked_df.iterrows()]
+    st.markdown("\n".join(commentary))
+
+# ---------------------------------------------------------
+# Weights
+# ---------------------------------------------------------
+with tab6:
+    st.subheader("Weights")
+    weights_df = pd.DataFrame({"Ticker": tickers, "Weight": weights})
+    st.dataframe(weights_df)
+
+# ---------------------------------------------------------
+# AI Commentary
+# ---------------------------------------------------------
+with tab7:
+    st.subheader("AI Portfolio Commentary")
+
+    perf = model.get("performance", {})
+    fundamentals_model = model.get("fundamentals", {})
+    tickers_model = model.get("tickers", tickers)
+    drawdown_model = model.get("drawdown", drawdown_df)
+    sector_weights_model = model.get("sector_weights", sector_weights)
+    mc = model.get("monte_carlo")
+
+    if not perf or perf.get("expected_return") is None:
+        st.warning("Not enough data to generate commentary.")
+    else:
+        er = perf["expected_return"]
+        vol = perf["volatility"]
+        sharpe = perf["sharpe"]
+
+        if isinstance(drawdown_model, pd.DataFrame) and not drawdown_model.empty:
+            max_dd = float(drawdown_model["Drawdown"].min())
+        else:
+            max_dd = None
+        max_dd_text = f"{max_dd:.2%}" if isinstance(max_dd, (int, float, np.floating)) else "N/A"
+
+        sector_text = ""
+        if sector_weights_model:
+            sector_text = ", ".join([f"{s}: {w:.1%}" for s, w in sector_weights_model.items()])
+
+        fund_summary = []
+        for t in tickers_model:
+            f = fundamentals_model.get(t, {})
+            fund_summary.append({
+                "Ticker": t,
+                "PE": f.get("PE"),
+                "PB": f.get("PB"),
+                "Dividend Yield": f.get("DividendYield"),
+                "Beta": f.get("beta"),
+            })
+        fund_df = pd.DataFrame(fund_summary)
+
+        grade = "C"
+        if sharpe > 1.2 and er > 0.12:
+            grade = "A"
+        elif sharpe > 0.8 and er > 0.08:
+            grade = "B"
+        elif sharpe < 0.3 or er < 0.03:
+            grade = "D"
+
+        if vol < 0.12:
+            risk_bucket = "Low Risk"
+        elif vol < 0.20:
+            risk_bucket = "Moderate Risk"
+        else:
+            risk_bucket = "High Risk"
+
+        mc_comment = ""
+        if mc is not None and isinstance(mc, pd.DataFrame) and not mc.empty:
+            final_vals = mc.iloc[-1]
+            p5 = np.percentile(final_vals, 5)
+            p50 = np.percentile(final_vals, 50)
+            p95 = np.percentile(final_vals, 95)
+            mc_comment = (
+                f"Simulations show a **5% worst-case outcome of {p5:.2f}x**, "
+                f"a **median outcome of {p50:.2f}x**, and a **best-case outcome of {p95:.2f}x**."
+            )
+
+        st.markdown("### Portfolio Overview")
+        st.write(
+            f"""
+        **Portfolio Grade:** {grade}  
+        **Risk Bucket:** {risk_bucket}  
+        **Expected Annual Return:** {er:.2%}  
+        **Annualized Volatility:** {vol:.2%}  
+        **Sharpe Ratio:** {sharpe:.2f}  
+        **Max Drawdown:** {max_dd_text}  
+        """
+        )
+
+        st.markdown("---")
+        st.markdown("### AI Commentary")
+
+        if er > 0.15:
+            st.write("• Strong expected returns suggest meaningful upside potential.")
+        elif er > 0.05:
+            st.write("• Expected returns are moderate and consistent with balanced equity exposure.")
+        else:
+            st.write("• Expected returns appear muted, likely due to defensive or low-growth names.")
+
+        if vol > 0.25:
+            st.write("• Volatility is high, indicating exposure to high-beta or momentum stocks.")
+        elif vol > 0.15:
+            st.write("• Volatility is moderate, typical for diversified portfolios.")
+        else:
+            st.write("• Volatility is low, suggesting defensive or mega-cap concentration.")
+
+        if sharpe > 1.0:
+            st.write("• Strong Sharpe ratio indicates efficient risk-adjusted performance.")
+        elif sharpe > 0.5:
+            st.write("• Sharpe ratio is acceptable but could be improved.")
+        else:
+            st.write("• Weak Sharpe ratio suggests the portfolio may not be compensated for its risk.")
+
+        if isinstance(max_dd, (int, float, np.floating)):
+            if max_dd < -0.40:
+                st.write("• Deep drawdowns indicate vulnerability during market stress.")
+            elif max_dd < -0.20:
+                st.write("• Drawdowns are moderate and typical for equities.")
+            else:
+                st.write("• Shallow drawdowns indicate strong downside resilience.")
+
+        if sector_text:
+            st.markdown("### Sector Exposure")
+            st.write(f"**Sector Weights:** {sector_text}")
+            if "Technology" in sector_weights_model and sector_weights_model["Technology"] > 0.45:
+                st.write("• Heavy concentration in Technology increases sensitivity to interest rates.")
+
+        if mc_comment:
+            st.markdown("### Monte Carlo Outlook")
+            st.write(mc_comment)
+
+        st.markdown("### AI Buy / Hold / Sell Signals")
+
+        signals = []
+        for _, row in fund_df.iterrows():
+            t = row["Ticker"]
+            pe = row["PE"] or 0
+            pb = row["PB"] or 0
+            dy = row["Dividend Yield"] or 0
+            beta = row["Beta"] or 0
+            momentum = momentum_dict.get(t, 0)
+
+            score = 0
+            conviction = 0
+
+            if 0 < pe < 40:
+                score += 1
+                conviction += 20
+            if 0 < pb < 8:
+                score += 1
+                conviction += 15
+            if dy and dy > 0.005:
+                score += 1
+                conviction += 15
+            if beta and beta < 1.3:
+                score += 1
+                conviction += 20
+            if momentum > 0:
+                score += 1
+                conviction += 30
+
+            if score >= 4:
+                rating = "Buy"
+            elif score >= 2:
+                rating = "Hold"
+            else:
+                rating = "Sell"
+
+            conviction = min(100, max(0, conviction))
+
+            signals.append({
+                "Ticker": t,
+                "PE": pe,
+                "PB": pb,
+                "DividendYield": dy,
+                "Beta": beta,
+                "Momentum": momentum,
+                "Score": score,
+                "Conviction": conviction,
+                "Rating": rating
+            })
+
+        signals_df = pd.DataFrame(signals)
+        st.dataframe(signals_df)
+
+        st.markdown("### AI Signal Summary")
+        buys = signals_df[signals_df["Rating"] == "Buy"]["Ticker"].tolist()
+        holds = signals_df[signals_df["Rating"] == "Hold"]["Ticker"].tolist()
+        sells = signals_df[signals_df["Rating"] == "Sell"]["Ticker"].tolist()
+
+        if buys:
+            st.write(f"• **Buy signals:** {', '.join(buys)} show strong valuation and risk-adjusted characteristics.")
+        if holds:
+            st.write(f"• **Hold signals:** {', '.join(holds)} appear fairly valued with balanced fundamentals.")
+        if sells:
+            st.write(f"• **Sell signals:** {', '.join(sells)} exhibit weaker fundamentals or elevated risk.")
+
+        st.markdown("### AI Portfolio-Level Signal")
+        buy_count = len(buys)
+        sell_count = len(sells)
+
+        if buy_count > sell_count:
+            portfolio_signal = "Buy"
+            st.success("**AI Portfolio Signal: BUY** — The portfolio shows strong aggregate fundamentals.")
+        elif sell_count > buy_count:
+            portfolio_signal = "Sell"
+            st.error("**AI Portfolio Signal: SELL** — The portfolio shows broad fundamental weakness.")
+        else:
+            portfolio_signal = "Hold"
+            st.warning("**AI Portfolio Signal: HOLD** — Mixed signals across the portfolio.")
+
+        st.markdown("### AI Commentary on Signals")
+        if portfolio_signal == "Buy":
+            st.write(
+                "The portfolio demonstrates broad fundamental strength, with multiple tickers showing "
+                "attractive valuation, healthy risk profiles, and supportive momentum."
+            )
+        elif portfolio_signal == "Sell":
+            st.write(
+                "The portfolio exhibits widespread fundamental weakness. Several names show elevated risk, "
+                "poor valuation, or weak momentum. Rebalancing may be warranted."
+            )
+        else:
+            st.write(
+                "The portfolio presents a balanced but indecisive signal profile. Monitoring key metrics "
+                "and maintaining diversification is recommended."
+            )
+
+# ---------------------------------------------------------
+# Buy Analysis
+# ---------------------------------------------------------
+with tab8:
+    st.subheader("Buy / Hold / Sell Analysis")
+
+    if not run_button:
+        st.info("Run Analysis to generate buy analysis.")
+    else:
+        buy_results = run_buy_analysis(tickers, fundamentals, prices)
+
+        numeric_cols = ["PE", "PB", "DividendYield", "Momentum", "Risk", "Score"]
+        for col in numeric_cols:
+            if col in buy_results.columns:
+                buy_results[col] = buy_results[col].fillna(0)
+
+        def rating_color(val):
+            if val == "Buy":
+                return "🟢 Buy"
+            elif val == "Hold":
+                return "🟡 Hold"
+            else:
+                return "🔴 Sell"
+
+        buy_results["RatingColored"] = buy_results["Rating"].apply(rating_color)
+
+        st.dataframe(
+            buy_results[
+                ["Ticker", "Momentum", "Risk", "PE", "PB", "DividendYield", "Score", "RatingColored"]
+            ]
+        )
+
+        st.subheader("AI Buy Analysis Commentary")
+
+        def generate_buy_commentary(df):
+            if df.empty:
+                return "No buy analysis available."
+            lines = []
+            best = df.sort_values("Score", ascending=False).iloc[0]
+            lines.append(
+                f"**{best['Ticker']}** leads the group with a score of {best['Score']}. "
+                f"Momentum ({best['Momentum']:.2f}) and valuation (PE={best['PE']:.1f}, PB={best['PB']:.1f}) "
+                f"support its relative strength."
+            )
+            worst = df.sort_values("Score", ascending=True).iloc[0]
+            lines.append(
+                f"**{worst['Ticker']}** ranks weakest with a score of {worst['Score']}. "
+                f"Drivers include softer momentum ({worst['Momentum']:.2f}) and less favorable valuation metrics."
+            )
+            mids = df.sort_values("Score", ascending=False).iloc[1:-1]
+            for _, row in mids.iterrows():
+                lines.append(
+                    f"**{row['Ticker']}** shows a balanced profile with a score of {row['Score']}."
+                )
+            return "\n\n".join(lines)
+
+        st.markdown(generate_buy_commentary(buy_results))
+
+        import plotly.graph_objects as go
+
+        st.subheader("Fundamentals Radar Chart")
+        radar_cols = ["PE", "PB", "DividendYield", "Momentum", "Risk"]
+        fig = go.Figure()
+        for _, row in buy_results.iterrows():
+            fig.add_trace(go.Scatterpolar(
+                r=[row[c] for c in radar_cols],
+                theta=radar_cols,
+                fill='toself',
+                name=row["Ticker"]
+            ))
+        fig.update_layout(
+            polar=dict(radialaxis=dict(visible=True)),
+            showlegend=True,
+            height=500
+        )
+        st.plotly_chart(fig, use_container_width=True)
+
+        st.subheader("Top Strengths & Weaknesses")
+
+        def strengths_weaknesses(row):
+            strengths, weaknesses = [], []
+            strengths.append("Positive momentum") if row["Momentum"] > 0 else weaknesses.append("Weak momentum")
+            strengths.append("Low volatility") if row["Risk"] < 0.30 else weaknesses.append("High volatility")
+            strengths.append("Reasonable PE ratio") if 0 < row["PE"] < 30 else weaknesses.append("Stretched PE ratio")
+            strengths.append("Healthy PB ratio") if 0 < row["PB"] < 5 else weaknesses.append("Rich PB ratio")
+            strengths.append("Dividend support") if row["DividendYield"] > 0.01 else weaknesses.append("Low or no dividend")
+            return strengths, weaknesses
+
+        for _, row in buy_results.iterrows():
+            st.markdown(f"### {row['Ticker']}")
+            strengths, weaknesses = strengths_weaknesses(row)
+            st.markdown("**Strengths:**")
+            for s in strengths:
+                st.markdown(f"- {s}")
+            st.markdown("**Weaknesses:**")
+            for w in weaknesses:
+                st.markdown(f"- {w}")
+            st.markdown("---")
+
+# ---------------------------------------------------------
+# Optimizer
+# ---------------------------------------------------------
+@st.cache_data(show_spinner=True)
+def run_optimizer_cached(returns, cov):
+    return run_optimizer(returns, cov)
+
+with tab9:
+    st.subheader("Optimizer & Monte Carlo")
+
+    if not run_button:
+        st.info("Run Analysis to generate optimizer and Monte Carlo results.")
+    else:
+        opt_results = run_optimizer_cached(returns, cov)
+        st.success("Optimization complete!")
+        st.write(opt_results)
+
+        mc_df = run

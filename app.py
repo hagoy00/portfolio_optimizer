@@ -898,7 +898,7 @@ with tab9:
             "Ticker": opt_results["tickers"],
             "Weight": ew["weights"]
         })
-        st.dataframe(ew_df)
+        st.dataframe(ew_df, key="ew_df") #st.dataframe(ew_df)
 
         # -----------------------------
         # Minimum Volatility Portfolio
@@ -913,7 +913,7 @@ with tab9:
             "Ticker": opt_results["tickers"],
             "Weight": mv["weights"]
         })
-        st.dataframe(mv_df)
+        st.dataframe(mv_df, key="mv_df")   #st.dataframe(mv_df)
 
         # -----------------------------
         # Maximum Sharpe Portfolio
@@ -928,11 +928,12 @@ with tab9:
             "Ticker": opt_results["tickers"],
             "Weight": ms["weights"]
         })
-        st.dataframe(ms_df)
+        st.dataframe(ms_df, key="ms_df")  #st.dataframe(ms_df)
 
         # -----------------------------
         # Monte Carlo Simulation
         # -----------------------------
         st.markdown("### Monte Carlo Simulation")
         mc_df = run_monte_carlo_simulation(returns, mc_sims, mc_horizon)
-        st.line_chart(mc_df)
+        st.line_chart(mc_df, key="mc_simulation")
+        #st.line_chart(mc_df)

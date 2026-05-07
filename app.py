@@ -141,7 +141,16 @@ sector_weights = compute_sector_weights(weights, tickers)
 # RUN OPTIMIZER (for AI model)
 # ---------------------------------------------------------
 # Uses returns + cov, consistent with your optimizer_core
-model = run_optimizer(returns, cov)
+#model = run_optimizer(returns, cov)
+model = {
+    "performance": performance,
+    "fundamentals": fundamentals,
+    "tickers": tickers,
+    "drawdown": drawdown_df,
+    "sector_weights": sector_weights,
+    "monte_carlo": None,
+    "momentum": {},
+}
 
 # ---------------------------------------------------------
 # Tabs

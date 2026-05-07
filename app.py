@@ -238,7 +238,11 @@ with tab2:
     st.area_chart(dd)
 
     st.markdown("### Distribution of Daily Returns")
-    st.bar_chart(port_ret.hist(bins=40).to_frame())
+
+    hist_data = port_ret.dropna()
+    hist_df = pd.DataFrame({"Returns": hist_data})
+    st.bar_chart(hist_df)
+
 
 # ---------------------------------------------------------
 # Risk

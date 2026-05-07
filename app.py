@@ -47,6 +47,19 @@ div[data-testid="stAppViewContainer"] {
 """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
+# Safe value cleaner (prevents None spam)
+# ---------------------------------------------------------
+def safe_val(x):
+    if x in [None, "None", "nan", "NaN"]:
+        return None
+    try:
+        if float(x) == 0:
+            return None
+    except:
+        pass
+    return x
+
+# ---------------------------------------------------------
 # Sidebar inputs
 # ---------------------------------------------------------
 st.sidebar.header("Configuration")
@@ -187,34 +200,14 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
 # Overview
 # ---------------------------------------------------------
 with tab1:
-
-    def safe_val(x):
-    if x in [None, "None", "nan", "NaN"]:
-        return None
-    try:
-        if float(x) == 0:
-            return None
-    except:
-        pass
-    return x
     st.markdown("<h2 style='color:#1E90FF;'>Optimizer Dashboard Report</h2>", unsafe_allow_html=True)
     st.subheader("Overview")
     st.dataframe(prices.tail())
+
+
 # ---------------------------------------------------------
 # Performance Tab (Upgraded Institutional Version)
 # ---------------------------------------------------------
-# ---------------------------------------------------------
-# Safe value cleaner (prevents None spam)
-# ---------------------------------------------------------
-def safe_val(x):
-    if x in [None, "None", "nan", "NaN"]:
-        return None
-    try:
-        if float(x) == 0:
-            return None
-    except:
-        pass
-    return x
 with tab2:
     st.subheader("Performance Metrics")
 
@@ -260,7 +253,6 @@ with tab2:
     st.area_chart(dd)
 
     st.markdown("### Distribution of Daily Returns")
-
     hist_data = port_ret.dropna()
     hist_df = pd.DataFrame({"Returns": hist_data})
     st.bar_chart(hist_df)
@@ -269,57 +261,23 @@ with tab2:
 # ---------------------------------------------------------
 # Risk
 # ---------------------------------------------------------
-# ---------------------------------------------------------
-# Safe value cleaner (prevents None spam)
-# ---------------------------------------------------------
-def safe_val(x):
-    if x in [None, "None", "nan", "NaN"]:
-        return None
-    try:
-        if float(x) == 0:
-            return None
-    except:
-        pass
-    return x
 with tab3:
     st.subheader("Risk & Drawdown")
     st.line_chart(drawdown_df)
 
+
 # ---------------------------------------------------------
 # Sectors
 # ---------------------------------------------------------
-# ---------------------------------------------------------
-# Safe value cleaner (prevents None spam)
-# ---------------------------------------------------------
-def safe_val(x):
-    if x in [None, "None", "nan", "NaN"]:
-        return None
-    try:
-        if float(x) == 0:
-            return None
-    except:
-        pass
-    return x
 with tab4:
     st.subheader("Sector Exposure")
     sector_df = pd.DataFrame.from_dict(sector_weights, orient="index", columns=["Weight"])
     st.bar_chart(sector_df)
 
+
 # ---------------------------------------------------------
 # Fundamentals
 # ---------------------------------------------------------
-# ---------------------------------------------------------
-# Safe value cleaner (prevents None spam)
-# ---------------------------------------------------------
-def safe_val(x):
-    if x in [None, "None", "nan", "NaN"]:
-        return None
-    try:
-        if float(x) == 0:
-            return None
-    except:
-        pass
-    return x
 with tab5:
     st.subheader("Fundamentals")
 
@@ -407,37 +365,15 @@ with tab5:
 # ---------------------------------------------------------
 # Weights
 # ---------------------------------------------------------
-# ---------------------------------------------------------
-# Safe value cleaner (prevents None spam)
-# ---------------------------------------------------------
-def safe_val(x):
-    if x in [None, "None", "nan", "NaN"]:
-        return None
-    try:
-        if float(x) == 0:
-            return None
-    except:
-        pass
-    return x
 with tab6:
     st.subheader("Weights")
     weights_df = pd.DataFrame({"Ticker": tickers, "Weight": weights})
     st.dataframe(weights_df)
+
+
 # ---------------------------------------------------------
 # AI Commentary
 # ---------------------------------------------------------
-# ---------------------------------------------------------
-# Safe value cleaner (prevents None spam)
-# ---------------------------------------------------------
-def safe_val(x):
-    if x in [None, "None", "nan", "NaN"]:
-        return None
-    try:
-        if float(x) == 0:
-            return None
-    except:
-        pass
-    return x
 with tab7:
     st.subheader("AI Portfolio Commentary")
 
@@ -691,21 +627,10 @@ with tab7:
             "and maintaining diversification is recommended."
         )
 
+
 # ---------------------------------------------------------
 # Buy Analysis (Clean, Corrected, Institutional Version)
 # ---------------------------------------------------------
-# ---------------------------------------------------------
-# Safe value cleaner (prevents None spam)
-# ---------------------------------------------------------
-def safe_val(x):
-    if x in [None, "None", "nan", "NaN"]:
-        return None
-    try:
-        if float(x) == 0:
-            return None
-    except:
-        pass
-    return x
 with tab8:
     st.subheader("Buy / Hold / Sell Analysis")
 
@@ -813,24 +738,139 @@ with tab8:
 
             st.markdown("---")
 
+    st.markdown("### AI Commentary on Signals")
+    if portfolio_signal == "Buy":
+        st.write(
+            "The portfolio demonstrates broad fundamental strength, with multiple tickers showing "
+            "attractive valuation, healthy risk profiles, and supportive momentum."
+        )
+    elif portfolio_signal == "Sell":
+        st.write(
+            "The portfolio exhibits widespread fundamental weakness. Several names show elevated risk, "
+            "poor valuation, or weak momentum. Rebalancing may be warranted."
+        )
+    else:
+        st.write(
+            "The portfolio presents a balanced but indecisive signal profile. Monitoring key metrics "
+            "and maintaining diversification is recommended."
+        )
+
+# ---------------------------------------------------------
+# Buy Analysis (Clean, Corrected, Institutional Version)
+# ---------------------------------------------------------
+with tab8:
+    st.subheader("Buy / Hold / Sell Analysis")
+
+    if not run_button:
+        st.info("Run Analysis to generate buy analysis.")
+    else:
+        buy_results = run_buy_analysis(tickers, fundamentals, prices)
+
+        # Clean missing values
+        numeric_cols = ["PE", "PB", "DividendYield", "Momentum", "Risk", "Score"]
+        for col in numeric_cols:
+            if col in buy_results.columns:
+                buy_results[col] = buy_results[col].apply(safe_val)
+
+        # Rating colors
+        def rating_color(val):
+            return {"Buy": "🟢 Buy", "Hold": "🟡 Hold", "Sell": "🔴 Sell"}[val]
+
+        buy_results["RatingColored"] = buy_results["Rating"].apply(rating_color)
+
+        st.dataframe(
+            buy_results[
+                ["Ticker", "Momentum", "Risk", "PE", "PB", "DividendYield", "Score", "RatingColored"]
+            ]
+        )
+
+        # Commentary
+        st.subheader("AI Buy Analysis Commentary")
+
+        def generate_buy_commentary(df):
+            if df.empty:
+                return "No buy analysis available."
+            lines = []
+            best = df.sort_values("Score", ascending=False).iloc[0]
+            lines.append(f"**{best['Ticker']}** leads with a score of {best['Score']}.")
+            worst = df.sort_values("Score", ascending=True).iloc[0]
+            lines.append(f"**{worst['Ticker']}** ranks weakest with a score of {worst['Score']}.")
+            return "\n\n".join(lines)
+
+        st.markdown(generate_buy_commentary(buy_results))
+
+        # Radar Chart
+        import plotly.graph_objects as go
+        st.subheader("Fundamentals Radar Chart")
+        radar_cols = ["PE", "PB", "DividendYield", "Momentum", "Risk"]
+        fig = go.Figure()
+        for _, row in buy_results.iterrows():
+            fig.add_trace(go.Scatterpolar(
+                r=[row[c] if row[c] is not None else 0 for c in radar_cols],
+                theta=radar_cols,
+                fill='toself',
+                name=row["Ticker"]
+            ))
+        fig.update_layout(polar=dict(radialaxis=dict(visible=True)), showlegend=True, height=500)
+        st.plotly_chart(fig, use_container_width=True)
+
+        # Strengths & Weaknesses
+        st.subheader("Top Strengths & Weaknesses")
+
+        def strengths_weaknesses(row):
+            strengths, weaknesses = [], []
+
+            # Momentum
+            if row["Momentum"] and row["Momentum"] > 0:
+                strengths.append("Positive momentum")
+            else:
+                weaknesses.append("Weak momentum")
+
+            # Volatility
+            if row["Risk"] and row["Risk"] < 0.30:
+                strengths.append("Low volatility")
+            else:
+                weaknesses.append("High volatility")
+
+            # Valuation
+            if row["PE"] and row["PE"] > 40:
+                weaknesses.append("Stretched PE ratio")
+            elif row["PE"]:
+                strengths.append("Reasonable PE ratio")
+
+            if row["PB"] and row["PB"] > 8:
+                weaknesses.append("Rich PB ratio")
+            elif row["PB"]:
+                strengths.append("Healthy PB ratio")
+
+            # Dividend
+            if row["DividendYield"] and row["DividendYield"] > 0.01:
+                strengths.append("Dividend support")
+            else:
+                weaknesses.append("Low or no dividend")
+
+            return strengths, weaknesses
+
+        for _, row in buy_results.iterrows():
+            st.markdown(f"### {row['Ticker']}")
+            strengths, weaknesses = strengths_weaknesses(row)
+
+            st.markdown("**Strengths:**")
+            for s in strengths:
+                st.markdown(f"- {s}")
+
+            st.markmarkdown("**Weaknesses:**")
+            for w in weaknesses:
+                st.markdown(f"- {w}")
+
+            st.markdown("---")
+
 # ---------------------------------------------------------
 # Optimizer
 # ---------------------------------------------------------
 @st.cache_data(show_spinner=True)
 def run_optimizer_cached(returns, cov):
     return run_optimizer(returns, cov)
-# ---------------------------------------------------------
-# Safe value cleaner (prevents None spam)
-# ---------------------------------------------------------
-def safe_val(x):
-    if x in [None, "None", "nan", "NaN"]:
-        return None
-    try:
-        if float(x) == 0:
-            return None
-    except:
-        pass
-    return x
 
 with tab9:
     st.subheader("Optimizer & Monte Carlo")
@@ -892,4 +932,3 @@ with tab9:
         st.markdown("### Monte Carlo Simulation")
         mc_df = run_monte_carlo_simulation(returns, mc_sims, mc_horizon)
         st.line_chart(mc_df)
-

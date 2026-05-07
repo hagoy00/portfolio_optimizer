@@ -125,40 +125,33 @@ def compute_beta_vs_spy(prices, ticker):
 
     return beta
 
-# ---------------------------------------------------------
-# MONTE CARLO SIMULATION ENGINE (REQUIRED BY app.py)
-# ---------------------------------------------------------
-
-import pandas as pd
 import numpy as np
+import pandas as pd
 
 def run_monte_carlo_simulation(returns, sims=500, horizon=252):
     """
-    Simple Monte Carlo simulation using:
-    - Historical mean
-    - Historical volatility
-    - Geometric Brownian Motion (GBM)
+    Returns a DataFrame where each column is one simulation path.
     """
+    if returns is None or returns.empty:
+        return pd.DataFrame()
 
-    # Portfolio returns (equal weight)
-    n = len(returns.columns)
-    weights = np.array([1/n] * n)
-    port_ret = returns.dot(weights)
+    mu = returns.mean()
+    cov = returns.cov()
 
-    mu = port_ret.mean()
-    sigma = port_ret.std()
+    # Cholesky decomposition
+    chol = np.linalg.cholesky(cov)
 
     # Simulations
-    simulations = []
-
+    sim_paths = []
     for _ in range(sims):
-        prices = [1.0]
-        for _ in range(horizon):
-            drift = mu - 0.5 * sigma**2
-            shock = sigma * np.random.normal()
-            prices.append(prices[-1] * np.exp(drift + shock))
-        simulations.append(prices)
+        rand = np.random.normal(size=(horizon, len(returns.columns)))
+        shocks = rand @ chol.T
+        daily_returns = mu.values + shocks
+        path = (1 + daily_returns).cumprod(axis=0)
+        portfolio_path = path.mean(axis=1)
+        sim_paths.append(portfolio_path)
 
-    df = pd.DataFrame(simulations).T
-    df.index.name = "Day"
+    # Convert to DataFrame
+    df = pd.DataFrame(sim_paths).T
+    df.columns = [f"Sim_{i+1}" for i in range(sims)]
     return df

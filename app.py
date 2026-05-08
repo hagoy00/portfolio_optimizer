@@ -718,6 +718,7 @@ with tab9:
     if not run_button:
         st.info("Run Analysis to generate optimizer and Monte Carlo results.")
     else:
+
         # -----------------------------
         # Run Optimizer
         # -----------------------------

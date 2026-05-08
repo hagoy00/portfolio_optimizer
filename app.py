@@ -14,7 +14,6 @@ import plotly.graph_objects as go
 # Page config + sticky header
 # ---------------------------------------------------------
 st.set_page_config(page_title="Portfolio Optimizer Dashboard", layout="wide")
-
 st.markdown("""
 <style>
 
@@ -35,7 +34,7 @@ st.markdown("""
 }
 
 .main .block-container {
-    padding-top: 80px !important;
+    padding-top: 60px !important;
 }
 
 div[data-testid="stAppViewContainer"] {

@@ -17,25 +17,29 @@ st.set_page_config(page_title="Portfolio Optimizer Dashboard", layout="wide")
 st.markdown("""
 <style>
 
+# FIXED TOP TITLE BAR
 .fixed-title {
     position: fixed;
     top: 0;
     left: 0;
-    width: 100%;
+    right: 0;
+
     background-color: white;
-    padding: 14px 24px;
-    font-size: 30px;
+    padding: 16px 28px;
+
+    font-size: 32px;
     font-weight: 700;
     color: #007BFF;
+
     border-bottom: 1px solid #E5E5E5;
-    z-index: 9999;
-    line-height: 1.2;
     box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+
+    z-index: 9999;
 }
 
-/* FIX: correct padding so titles are visible */
-.main .block-container {
-    padding-top: 60px !important;
+/* FIX: Correct padding so content is not hidden */
+div[data-testid="stAppViewContainer"] > .main .block-container {
+    padding-top: 90px !important;
 }
 
 </style>

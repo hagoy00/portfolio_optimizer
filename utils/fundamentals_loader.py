@@ -21,7 +21,7 @@ def load_fundamentals(tickers):
                 "PE": safe_get(info.get("trailingPE")),
                 "PB": safe_get(info.get("priceToBook")),
                 "DividendYield": safe_get(info.get("dividendYield")),
-                
+
                 # Profitability
                 "EPS": safe_get(info.get("trailingEps")),
                 "ROE": safe_get(info.get("returnOnEquity")),
@@ -33,7 +33,7 @@ def load_fundamentals(tickers):
                 "Sector": info.get("sector") or "Unknown",
             }
 
-        except Exception as e:
+        except Exception:
             fundamentals[t] = {
                 "PE": None,
                 "PB": None,

@@ -106,6 +106,44 @@ if cov is None or cov.empty:
     st.error("Covariance matrix is empty.")
     st.stop()
 
+# ---------------------------------------------------------
+# Build model dictionary
+# ---------------------------------------------------------
+model = {}
+model["tickers"] = tickers
+model["prices"] = prices
+model["returns"] = returns
+model["cov"] = cov
+
+# Equal weights for now
+weights = np.array([1 / len(tickers)] * len(tickers))
+model["weights"] = weights
+
+# ---------------------------------------------------------
+# FIX #1 — Load fundamentals and store in model
+# ---------------------------------------------------------
+fundamentals = load_fundamentals(tickers)
+model["fundamentals"] = fundamentals
+
+# ---------------------------------------------------------
+# Build model dictionary
+# ---------------------------------------------------------
+model = {}
+model["tickers"] = tickers
+model["prices"] = prices
+model["returns"] = returns
+model["cov"] = cov
+
+# Equal weights for now
+weights = np.array([1 / len(tickers)] * len(tickers))
+model["weights"] = weights
+
+# ---------------------------------------------------------
+# FIX #1 — Load fundamentals and store in model
+# ---------------------------------------------------------
+fundamentals = load_fundamentals(tickers)
+model["fundamentals"] = fundamentals
+
 weights = np.array([1 / len(tickers)] * len(tickers))
 fundamentals = load_fundamentals(tickers)
 

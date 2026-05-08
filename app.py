@@ -14,6 +14,7 @@ import plotly.graph_objects as go
 # Page config + sticky header
 # ---------------------------------------------------------
 st.set_page_config(page_title="Portfolio Optimizer Dashboard", layout="wide")
+
 st.markdown("""
 <style>
 
@@ -24,9 +25,9 @@ st.markdown("""
     right: 0;
 
     background-color: white;
-    padding: 18px 30px;
+    padding: 20px 32px;
 
-    font-size: 40px;        /* Bigger title */
+    font-size: 42px;        /* Bigger */
     font-weight: 900;       /* Extra bold */
     color: #1E90FF;         /* Light blue */
     letter-spacing: 0.5px;
@@ -39,13 +40,14 @@ st.markdown("""
 
 /* Correct spacing so content is visible below sticky title */
 div[data-testid="stAppViewContainer"] > .main .block-container {
-    padding-top: 110px !important;
+    padding-top: 130px !important;
 }
 
 </style>
 
 <div class="fixed-title">Portfolio Optimizer Dashboard</div>
 """, unsafe_allow_html=True)
+
 # ---------------------------------------------------------
 # Safe value cleaner
 # ---------------------------------------------------------
@@ -739,33 +741,47 @@ with tab9:
         })
         st.dataframe(ew_df, key="ew_df")
 
-        # -----------------------------
-        # Minimum Volatility Portfolio
-        # -----------------------------
-        st.markdown("### Minimum Volatility Portfolio")
-        mv = opt_results["min_volatility"]
-        st.write(f"**Expected Return:** {mv['expected_return']:.2%}")
-        st.write(f"**Volatility:** {mv['volatility']:.2%}")
-        st.write(f"**Sharpe Ratio:** {mv['sharpe']:.2f}")
+        with tab9:
+    st.subheader("Optimizer")
 
-        mv_df = pd.DataFrame({
+    if not run_button:
+        st.info("Run Analysis to generate optimizer results.")
+    else:
+        # Run optimizer
+        opt_results = run_optimizer_cached(returns, cov)
+        st.success("Optimization complete!")
+
+        # Max Sharpe Portfolio
+        st.markdown("### Maximum Sharpe Portfolio")
+        ms = opt_results["max_sharpe"]
+        st.write(f"**Expected Return:** {ms['expected_return']:.2%}")
+        st.write(f"**Volatility:** {ms['volatility']:.2%}")
+        st.write(f"**Sharpe Ratio:** {ms['sharpe']:.2f}")
+
+        ms_df = pd.DataFrame({
             "Ticker": opt_results["tickers"],
-            "Weight": mv["weights"]
+            "Weight": ms["weights"]
         })
-        st.dataframe(mv_df, key="mv_df")
+        st.dataframe(ms_df, key="ms_df")
 
-      st.markdown("### Correlation Heatmap")
+        # -----------------------------
+        # Correlation Heatmap (ONLY HERE)
+        # -----------------------------
+        st.markdown("### Correlation Heatmap")
 
-corr = returns.corr()
+        corr = returns.corr()
 
-fig = go.Figure(data=go.Heatmap(
-    z=corr.values,
-    x=corr.columns,
-    y=corr.columns,
-    colorscale="RdBu",
-    zmin=-1,
-    zmax=1
-))
+        fig = go.Figure(data=go.Heatmap(
+            z=corr.values,
+            x=corr.columns,
+            y=corr.columns,
+            colorscale="RdBu",
+            zmin=-1,
+            zmax=1
+        ))
 
-fig.update_layout(height=500)
-st.plotly_chart(fig, use_container_width=True)
+        fig.update_layout(height=500)
+        st.plotly_chart(fig, use_container_width=True)
+
+        
+        

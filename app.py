@@ -126,26 +126,52 @@ fundamentals = load_fundamentals(tickers)
 model["fundamentals"] = fundamentals
 
 # ---------------------------------------------------------
-# Build model dictionary
+# Compute portfolio performance
 # ---------------------------------------------------------
-model = {}
-model["tickers"] = tickers
-model["prices"] = prices
-model["returns"] = returns
-model["cov"] = cov
+portfolio_returns = returns.mean(axis=1)
+expected_return = portfolio_returns.mean() * 252
+volatility = portfolio_returns.std() * np.sqrt(252)
+sharpe = expected_return / volatility if volatility > 0 else 0
 
-# Equal weights for now
-weights = np.array([1 / len(tickers)] * len(tickers))
-model["weights"] = weights
+model["performance"] = {
+    "expected_return": expected_return,
+    "volatility": volatility,
+    "sharpe": sharpe,
+}
 
 # ---------------------------------------------------------
-# FIX #1 — Load fundamentals and store in model
+# Drawdown
 # ---------------------------------------------------------
-fundamentals = load_fundamentals(tickers)
-model["fundamentals"] = fundamentals
+cum = (1 + portfolio_returns).cumprod()
+running_max = cum.cummax()
+drawdown = (cum - running_max) / running_max
+model["drawdown"] = pd.DataFrame({"Drawdown": drawdown})
 
-weights = np.array([1 / len(tickers)] * len(tickers))
-fundamentals = load_fundamentals(tickers)
+# ---------------------------------------------------------
+# Sector weights
+# ---------------------------------------------------------
+try:
+    sector_weights = compute_sector_weights(tickers)
+except:
+    sector_weights = {}
+model["sector_weights"] = sector_weights
+
+# ---------------------------------------------------------
+# Monte Carlo
+# ---------------------------------------------------------
+mc_df = run_monte_carlo_simulation(
+    initial_value=1,
+    mu=expected_return,
+    sigma=volatility,
+    days=252,
+    num_simulations=200
+)
+model["monte_carlo"] = mc_df
+# ---------------------------------------------------------
+# Momentum (21‑day average return)
+# ---------------------------------------------------------
+momentum = returns.tail(21).mean()
+model["momentum"] = momentum
 
 # ---------------------------------------------------------
 # Drawdown

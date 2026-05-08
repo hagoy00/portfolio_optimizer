@@ -1007,8 +1007,6 @@ mc_df = run_monte_carlo_simulation(returns, mc_sims, mc_horizon)
 if mc_df is None or mc_df.empty:
     st.error("Monte Carlo simulation failed.")
 else:
-    st.write("MC TYPE:", type(mc_df))
-    st.write("MC SHAPE:", getattr(mc_df, "shape", None))
-    st.write("MC HEAD:", mc_df.head() if hasattr(mc_df, "head") else mc_df)
+    
     st.line_chart(mc_df, key="mc_simulation")
     df.index = range(len(df))

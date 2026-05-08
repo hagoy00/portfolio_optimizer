@@ -24,22 +24,21 @@ st.markdown("""
     right: 0;
 
     background-color: white;
-    padding: 22px 34px;
-
-    font-size: 44px;        /* Bigger */
+    padding: 10px 24px;     /* LOWER HEIGHT */
+    
+    font-size: 34px;        /* Slightly smaller but still big */
     font-weight: 900;       /* Extra bold */
     color: #1E90FF;         /* Light blue */
-    letter-spacing: 0.5px;
 
-    border-bottom: 2px solid #E5E5E5;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    border-bottom: 1px solid #E5E5E5;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
 
     z-index: 9999;
 }
 
-/* Correct spacing so content is visible below sticky title */
+/* FIX: reduce top padding so slider titles show */
 div[data-testid="stAppViewContainer"] > .main .block-container {
-    padding-top: 140px !important;
+    padding-top: 90px !important;
 }
 
 </style>

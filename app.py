@@ -274,9 +274,12 @@ with tab5:
     st.subheader("Fundamentals")
 
     fundamentals_df = pd.DataFrame(fundamentals).T.drop("full_prices", errors="ignore")
+    fundamentals_df = fundamentals_df.fillna(0)   # <--- ADD THIS LINE
+
     # Do NOT show Sector here (S2 choice)
     fundamentals_display = fundamentals_df.drop(columns=["Sector"], errors="ignore")
     st.dataframe(fundamentals_display)
+
 
     st.subheader("Fundamentals Ranking")
 

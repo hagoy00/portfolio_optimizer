@@ -715,12 +715,11 @@ def run_optimizer_cached(returns, cov):
     return run_optimizer(returns, cov)
 
 with tab9:
-    st.subheader("Optimizer & Monte Carlo")
+    st.subheader("Optimizer")
 
     if not run_button:
-        st.info("Run Analysis to generate optimizer and Monte Carlo results.")
+        st.info("Run Analysis to generate optimizer results.")
     else:
-
         # -----------------------------
         # Run Optimizer
         # -----------------------------
@@ -742,17 +741,9 @@ with tab9:
         })
         st.dataframe(ew_df, key="ew_df")
 
-        with tab9:
-    st.subheader("Optimizer")
-
-    if not run_button:
-        st.info("Run Analysis to generate optimizer results.")
-    else:
-        # Run optimizer
-        opt_results = run_optimizer_cached(returns, cov)
-        st.success("Optimization complete!")
-
+        # -----------------------------
         # Max Sharpe Portfolio
+        # -----------------------------
         st.markdown("### Maximum Sharpe Portfolio")
         ms = opt_results["max_sharpe"]
         st.write(f"**Expected Return:** {ms['expected_return']:.2%}")
@@ -768,7 +759,7 @@ with tab9:
         # -----------------------------
         # Correlation Heatmap (ONLY HERE)
         # -----------------------------
-st.markdown("### Correlation Heatmap")
+        st.markdown("### Correlation Heatmap")
 
         corr = returns.corr()
 

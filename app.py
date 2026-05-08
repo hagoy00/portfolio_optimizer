@@ -718,9 +718,15 @@ with tab9:
     if not run_button:
         st.info("Run Analysis to generate optimizer and Monte Carlo results.")
     else:
+        # -----------------------------
+        # Run Optimizer
+        # -----------------------------
         opt_results = run_optimizer_cached(returns, cov)
         st.success("Optimization complete!")
 
+        # -----------------------------
+        # Equal Weight Portfolio
+        # -----------------------------
         st.markdown("### Equal Weight Portfolio")
         ew = opt_results["equal_weight"]
         st.write(f"**Expected Return:** {ew['expected_return']:.2%}")
@@ -733,6 +739,9 @@ with tab9:
         })
         st.dataframe(ew_df, key="ew_df")
 
+        # -----------------------------
+        # Minimum Volatility Portfolio
+        # -----------------------------
         st.markdown("### Minimum Volatility Portfolio")
         mv = opt_results["min_volatility"]
         st.write(f"**Expected Return:** {mv['expected_return']:.2%}")
@@ -745,6 +754,9 @@ with tab9:
         })
         st.dataframe(mv_df, key="mv_df")
 
+        # -----------------------------
+        # Maximum Sharpe Portfolio
+        # -----------------------------
         st.markdown("### Maximum Sharpe Portfolio")
         ms = opt_results["max_sharpe"]
         st.write(f"**Expected Return:** {ms['expected_return']:.2%}")
@@ -757,14 +769,16 @@ with tab9:
         })
         st.dataframe(ms_df, key="ms_df")
 
-        st.markdown("### Monte Carlo Simulation")
+        # -----------------------------
+        # Monte Carlo Simulation
+        # -----------------------------
         st.markdown("### Monte Carlo Simulation")
 
-# Run Monte Carlo fresh inside tab9
-mc_df = run_monte_carlo_simulation(returns, mc_sims, mc_horizon)
+        # Run Monte Carlo fresh inside tab9
+        mc_df = run_monte_carlo_simulation(returns, mc_sims, mc_horizon)
 
-if isinstance(mc_df, pd.DataFrame) and not mc_df.empty:
-    st.line_chart(mc_df, key="mc_simulation")
-else:
-    st.error("Monte Carlo simulation returned no data.")
+        if isinstance(mc_df, pd.DataFrame) and not mc_df.empty:
+            st.line_chart(mc_df, key="mc_simulation")
+        else:
+            st.error("Monte Carlo simulation returned no data.")
 

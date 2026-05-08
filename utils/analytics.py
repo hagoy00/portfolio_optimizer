@@ -12,7 +12,7 @@ def build_portfolio_model(prices):
     - daily returns
     - covariance matrix
     - optimized weights (equal-weight for now)
-    - performance metrics (expected return, volatility, Sharpe) 
+    - performance metrics (expected return, volatility, Sharpe)
     """
 
     # Daily returns
@@ -62,6 +62,7 @@ def build_sector_weights(weights, tickers):
 
     return sectors
 
+
 # ---------------------------------------------------------
 # Compute drawdown series
 # ---------------------------------------------------------
@@ -74,13 +75,8 @@ def compute_drawdown(series):
         - peak
         - drawdown
     """
-    # Ensure Series
     series = series.astype(float)
-
-    # Compute running peak
     peak = series.cummax()
-
-    # Compute drawdown
     drawdown = (series - peak) / peak
 
     return pd.DataFrame({
@@ -100,55 +96,62 @@ def compute_beta_vs_spy(prices, ticker):
         beta (float)
     """
 
-    # Extract close prices
     close = prices.xs("Close", level=1, axis=1)
 
     if ticker not in close.columns:
         return None
 
-    # Download SPY benchmark
     spy = yf.download("SPY", start=close.index.min(), end=close.index.max(), progress=False)
     spy_ret = spy["Adj Close"].pct_change().dropna()
 
-    # Ticker returns
     ret = close[ticker].pct_change().dropna()
 
-    # Align dates
     df = pd.concat([ret, spy_ret], axis=1).dropna()
     df.columns = ["asset", "spy"]
 
-    # Covariance / variance formula
     cov = df.cov().iloc[0, 1]
     var = df["spy"].var()
 
     beta = cov / var if var != 0 else 0
-
     return beta
 
+
+# ---------------------------------------------------------
+# Monte Carlo Simulation (Corrected & Stable)
+# ---------------------------------------------------------
 def run_monte_carlo_simulation(returns, sims=500, horizon=252):
     """
+    Runs a Monte Carlo simulation using historical returns.
     Returns a DataFrame where each column is one simulation path.
     """
+
+    # Guard clause
     if returns is None or returns.empty:
         return pd.DataFrame()
 
     mu = returns.mean()
     cov = returns.cov()
 
-    # Cholesky decomposition
-    chol = np.linalg.cholesky(cov)
+    # Safe Cholesky decomposition
+    try:
+        chol = np.linalg.cholesky(cov)
+    except np.linalg.LinAlgError:
+        eigvals, eigvecs = np.linalg.eigh(cov)
+        eigvals[eigvals < 0] = 0
+        chol = eigvecs @ np.diag(np.sqrt(eigvals))
 
-    # Simulations
     sim_paths = []
+    n_assets = len(returns.columns)
+
     for _ in range(sims):
-        rand = np.random.normal(size=(horizon, len(returns.columns)))
+        rand = np.random.normal(size=(horizon, n_assets))
         shocks = rand @ chol.T
         daily_returns = mu.values + shocks
         path = (1 + daily_returns).cumprod(axis=0)
         portfolio_path = path.mean(axis=1)
         sim_paths.append(portfolio_path)
 
-    # Convert to DataFrame
     df = pd.DataFrame(sim_paths).T
     df.columns = [f"Sim_{i+1}" for i in range(sims)]
+
     return df

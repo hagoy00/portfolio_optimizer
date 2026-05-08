@@ -767,4 +767,8 @@ with tab9:
         if mc_df is None or mc_df.empty:
             st.error("Monte Carlo simulation failed.")
         else:
+            if isinstance(mc_df, pd.DataFrame) and not mc_df.empty:
             st.line_chart(mc_df, key="mc_simulation")
+        else:
+            st.error("Monte Carlo simulation returned no data.")
+            #st.line_chart(mc_df, key="mc_simulation")

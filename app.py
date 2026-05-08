@@ -174,11 +174,6 @@ momentum_dict = compute_momentum_series(returns)
 fundamentals = load_fundamentals(tickers)
 
 # ---------------------------------------------------------
-# Monte Carlo (global, used in model + tab9)
-# ---------------------------------------------------------
-mc_df = run_monte_carlo_simulation(returns, mc_sims, mc_horizon)
-
-# ---------------------------------------------------------
 # Model for AI commentary
 # ---------------------------------------------------------
 model = {
@@ -764,11 +759,13 @@ with tab9:
         st.dataframe(ms_df, key="ms_df")
 
         st.markdown("### Monte Carlo Simulation")
-        if mc_df is None or mc_df.empty:
-            st.error("Monte Carlo simulation failed.")
-        else:
-            if isinstance(mc_df, pd.DataFrame) and not mc_df.empty:
-            st.line_chart(mc_df, key="mc_simulation")
-        else:
-            st.error("Monte Carlo simulation returned no data.")
-            #st.line_chart(mc_df, key="mc_simulation")
+        st.markdown("### Monte Carlo Simulation")
+
+# Run Monte Carlo fresh inside tab9
+mc_df = run_monte_carlo_simulation(returns, mc_sims, mc_horizon)
+
+if isinstance(mc_df, pd.DataFrame) and not mc_df.empty:
+    st.line_chart(mc_df, key="mc_simulation")
+else:
+    st.error("Monte Carlo simulation returned no data.")
+

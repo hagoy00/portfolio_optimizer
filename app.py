@@ -33,19 +33,16 @@ st.markdown("""
     box-shadow: 0 2px 6px rgba(0,0,0,0.08);
 }
 
-/* FIX: reduce padding so titles and sliders are visible */
+/* FIX: correct padding so titles are visible */
 .main .block-container {
     padding-top: 60px !important;
-}
-
-div[data-testid="stAppViewContainer"] {
-    overflow: visible !important;
 }
 
 </style>
 
 <div class="fixed-title">Portfolio Optimizer Dashboard</div>
 """, unsafe_allow_html=True)
+
 
 # ---------------------------------------------------------
 # Safe value cleaner

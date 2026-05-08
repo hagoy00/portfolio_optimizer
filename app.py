@@ -603,7 +603,8 @@ with tab7:
         score = 0
         conviction = 0
 
-        if pe and 0 < pe < 40:
+        if pe is not None and pe > 0 and pe < 40:
+        #if pe and 0 < pe < 40:
             score += 1
             conviction += 20
         if pb and 0 < pb < 8:

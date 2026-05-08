@@ -778,6 +778,7 @@ with tab9:
         # Run Monte Carlo fresh inside tab9
         mc_df = run_monte_carlo_simulation(returns, mc_sims, mc_horizon)
 
-        if isinstance(mc_df, pd.DataFrame) and not mc_df.empty:  
+        if isinstance(mc_df, pd.DataFrame) and not mc_df.empty:
+            pass
         else:
             st.error("Monte Carlo simulation returned no data.")

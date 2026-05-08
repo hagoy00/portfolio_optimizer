@@ -17,7 +17,6 @@ st.set_page_config(page_title="Portfolio Optimizer Dashboard", layout="wide")
 st.markdown("""
 <style>
 
-# FIXED TOP TITLE BAR
 .fixed-title {
     position: fixed;
     top: 0;
@@ -25,29 +24,28 @@ st.markdown("""
     right: 0;
 
     background-color: white;
-    padding: 16px 28px;
+    padding: 18px 30px;
 
-    font-size: 32px;
-    font-weight: 700;
-    color: #007BFF;
+    font-size: 40px;        /* Bigger title */
+    font-weight: 900;       /* Extra bold */
+    color: #1E90FF;         /* Light blue */
+    letter-spacing: 0.5px;
 
-    border-bottom: 1px solid #E5E5E5;
+    border-bottom: 2px solid #E5E5E5;
     box-shadow: 0 2px 6px rgba(0,0,0,0.08);
 
     z-index: 9999;
 }
 
-/* FIX: Correct padding so content is not hidden */
+/* Correct spacing so content is visible below sticky title */
 div[data-testid="stAppViewContainer"] > .main .block-container {
-    padding-top: 90px !important;
+    padding-top: 110px !important;
 }
 
 </style>
 
 <div class="fixed-title">Portfolio Optimizer Dashboard</div>
 """, unsafe_allow_html=True)
-
-
 # ---------------------------------------------------------
 # Safe value cleaner
 # ---------------------------------------------------------
@@ -756,21 +754,7 @@ with tab9:
         })
         st.dataframe(mv_df, key="mv_df")
 
-        # -----------------------------
-        # Maximum Sharpe Portfolio
-        # -----------------------------
-        st.markdown("### Maximum Sharpe Portfolio")
-        ms = opt_results["max_sharpe"]
-        st.write(f"**Expected Return:** {ms['expected_return']:.2%}")
-        st.write(f"**Volatility:** {ms['volatility']:.2%}")
-        st.write(f"**Sharpe Ratio:** {ms['sharpe']:.2f}")
-
-        ms_df = pd.DataFrame({
-            "Ticker": opt_results["tickers"],
-            "Weight": ms["weights"]
-        })
-        st.dataframe(ms_df, key="ms_df")
-st.markdown("### Correlation Heatmap")
+      st.markdown("### Correlation Heatmap")
 
 corr = returns.corr()
 
@@ -785,6 +769,3 @@ fig = go.Figure(data=go.Heatmap(
 
 fig.update_layout(height=500)
 st.plotly_chart(fig, use_container_width=True)
-
-
-

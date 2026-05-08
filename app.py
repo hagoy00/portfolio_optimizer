@@ -781,4 +781,3 @@ with tab9:
             st.line_chart(mc_df, key="mc_simulation")
         else:
             st.error("Monte Carlo simulation returned no data.")
-

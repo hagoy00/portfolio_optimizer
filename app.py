@@ -182,7 +182,7 @@ model = {
     "tickers": tickers,
     "drawdown": drawdown_df,
     "sector_weights": sector_weights,
-    "monte_carlo": mc_df,
+    #"monte_carlo": mc_df,
     "momentum": momentum_dict,
 }
 

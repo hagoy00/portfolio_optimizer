@@ -160,13 +160,12 @@ model["sector_weights"] = sector_weights
 # Monte Carlo
 # ---------------------------------------------------------
 mc_df = run_monte_carlo_simulation(
-    initial_value=1,
-    mu=expected_return,
-    sigma=volatility,
-    days=252,
-    num_simulations=200
+    returns,
+    sims=200,
+    horizon=252
 )
 model["monte_carlo"] = mc_df
+
 # ---------------------------------------------------------
 # Momentum (21‑day average return)
 # ---------------------------------------------------------

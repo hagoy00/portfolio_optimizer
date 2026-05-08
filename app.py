@@ -365,11 +365,10 @@ with tab5:
 # ---------------------------------------------------------
 # Weights
 # ---------------------------------------------------------
-#with tab6:
-    #st.subheader("Weights")
-    #weights_df = pd.DataFrame({"Ticker": tickers, "Weight": weights})
-    #st.dataframe(weights_df)
-
+with tab6:
+    st.subheader("Weights")
+    weights_df = pd.DataFrame({"Ticker": tickers, "Weight": weights})
+    st.dataframe(weights_df)
 
 # ---------------------------------------------------------
 # AI Commentary

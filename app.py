@@ -33,12 +33,11 @@ st.markdown("""
     box-shadow: 0 2px 6px rgba(0,0,0,0.08);
 }
 
-/* FIX: Reduce padding so slider titles are visible */
+/* FIX: reduce padding so titles and sliders are visible */
 .main .block-container {
     padding-top: 60px !important;
 }
 
-/* Keep container scroll behavior normal */
 div[data-testid="stAppViewContainer"] {
     overflow: visible !important;
 }

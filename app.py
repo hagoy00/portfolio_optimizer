@@ -779,6 +779,6 @@ with tab9:
         mc_df = run_monte_carlo_simulation(returns, mc_sims, mc_horizon)
 
         if isinstance(mc_df, pd.DataFrame) and not mc_df.empty:
-            #st.line_chart(mc_df, key="mc_simulation")
+          
         else:
             st.error("Monte Carlo simulation returned no data.")

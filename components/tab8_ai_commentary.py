@@ -15,6 +15,9 @@ def render_ai_commentary_tab(tab, prices, model):
         sector_weights = model.get("sector_weights", None)
         mc = model.get("monte_carlo")
 
+        # ---------------------------------------------------------
+        # Validate performance
+        # ---------------------------------------------------------
         if not perf or perf.get("expected_return") is None:
             st.warning("Not enough data to generate commentary.")
             return
@@ -23,7 +26,9 @@ def render_ai_commentary_tab(tab, prices, model):
         vol = perf["volatility"]
         sharpe = perf["sharpe"]
 
-        # ---- Drawdown ----
+        # ---------------------------------------------------------
+        # Drawdown
+        # ---------------------------------------------------------
         dd = drawdown_df
         if isinstance(dd, pd.DataFrame) and not dd.empty:
             dd_series = dd["Drawdown"]
@@ -37,141 +42,85 @@ def render_ai_commentary_tab(tab, prices, model):
             else "N/A"
         )
 
-        # ---- Sector Exposure ----
-        sector_text = ""
-        if sector_weights is not None:
-            sector_text = ", ".join(
-                [f"{s}: {w:.1%}" for s, w in sector_weights.items()]
-            )
-
-        # ---- Fundamentals Table ----
-        fund_summary = []
-for t in tickers:
-    f = fundamentals.get(t, {})
-    fund_summary.append({
-        "Ticker": t,
-        "PE": f.get("pe"),
-        "PS": f.get("ps"),
-        "PB": f.get("pb"),
-        "Dividend Yield": f.get("dividend_yield"),
-        "Beta": f.get("beta"),
-        "EPS": f.get("eps"),
-        "Sector": f.get("sector"),
-        "Rating": f.get("recommendation"),
-        "Target Price": f.get("target_mean_price"),
-        "Gross Margins": f.get("gross_margins"),
-        "Profit Margins": f.get("profit_margins"),
-        "Revenue": f.get("revenue"),
-    })
-fund_df = pd.DataFrame(fund_summary)
-       
-        # ---- Portfolio Grade ----
-        grade = "C"
-        if sharpe > 1.2 and er > 0.12:
-            grade = "A"
-        elif sharpe > 0.8 and er > 0.08:
-            grade = "B"
-        elif sharpe < 0.3 or er < 0.03:
-            grade = "D"
-
-        # ---- Risk Bucket ----
-        if vol < 0.12:
-            risk_bucket = "Low Risk"
-        elif vol < 0.20:
-            risk_bucket = "Moderate Risk"
+        # ---------------------------------------------------------
+        # Monte Carlo Summary
+        # ---------------------------------------------------------
+        if mc is not None and not mc.empty:
+            mc_mean = mc.iloc[-1].mean()
+            mc_p10 = mc.iloc[-1].quantile(0.10)
+            mc_p90 = mc.iloc[-1].quantile(0.90)
         else:
-            risk_bucket = "High Risk"
+            mc_mean = mc_p10 = mc_p90 = None
 
-        # ---- Monte Carlo ----
-        mc_comment = ""
-        if mc is not None and isinstance(mc, pd.DataFrame) and not mc.empty:
-            final_vals = mc.iloc[-1]
-            p5 = np.percentile(final_vals, 5)
-            p50 = np.percentile(final_vals, 50)
-            p95 = np.percentile(final_vals, 95)
+        # ---------------------------------------------------------
+        # Fundamentals Table (FIX #3 APPLIED)
+        # ---------------------------------------------------------
+        fund_summary = []
+        for t in tickers:
+            f = fundamentals.get(t, {})
 
-            mc_comment = (
-                f"Simulations show a **5% worst-case outcome of {p5:.2f}x**, "
-                f"a **median outcome of {p50:.2f}x**, and a **best-case outcome of {p95:.2f}x**."
-            )
+            fund_summary.append({
+                "Ticker": t,
+                "PE": f.get("pe"),
+                "PB": f.get("pb"),
+                "PS": f.get("ps"),
+                "Forward PE": f.get("forward_pe"),
+                "Dividend Yield": f.get("dividend_yield"),
+                "Beta": f.get("beta"),
+                "EPS": f.get("eps"),
+                "Sector": f.get("sector"),
+                "Gross Margins": f.get("gross_margins"),
+                "Profit Margins": f.get("profit_margins"),
+                "Revenue": f.get("revenue"),
+                "Rating": f.get("recommendation"),
+                "Target Price": f.get("target_mean_price"),
+            })
 
-        # ---- Display Metrics ----
-        st.markdown("###  Portfolio Overview")
+        fund_df = pd.DataFrame(fund_summary)
 
-        st.write(
-            f"""
-        **Portfolio Grade:** {grade}  
-        **Risk Bucket:** {risk_bucket}  
-        **Expected Annual Return:** {er:.2%}  
-        **Annualized Volatility:** {vol:.2%}  
-        **Sharpe Ratio:** {sharpe:.2f}  
-        **Max Drawdown:** {max_dd_text}  
-        """
+        st.subheader("Fundamentals Overview")
+        st.dataframe(fund_df, use_container_width=True)
+
+        # ---------------------------------------------------------
+        # AI Commentary Section
+        # ---------------------------------------------------------
+        st.subheader("AI‑Generated Commentary")
+
+        commentary = []
+
+        # Performance commentary
+        commentary.append(
+            f"Your portfolio shows an expected annual return of **{er:.2%}** "
+            f"with volatility of **{vol:.2%}**, resulting in a Sharpe ratio of **{sharpe:.2f}**."
         )
 
-        st.markdown("---")
+        # Drawdown commentary
+        commentary.append(
+            f"The maximum historical drawdown observed is **{max_dd_text}**, "
+            "indicating the worst peak‑to‑trough decline during the period."
+        )
 
-        # ---- AI Commentary ----
-        st.markdown("### AI Commentary")
+        # Monte Carlo commentary
+        if mc_mean is not None:
+            commentary.append(
+                f"Monte Carlo simulations project an average ending value of **{mc_mean:.2f}**, "
+                f"with a 10th percentile outcome of **{mc_p10:.2f}** and a 90th percentile outcome of **{mc_p90:.2f}**."
+            )
 
-        # Return Commentary
-        if er > 0.15:
-            st.write("• Strong expected returns suggest meaningful upside potential.")
-        elif er > 0.05:
-            st.write("• Expected returns are moderate and consistent with balanced equity exposure.")
-        else:
-            st.write("• Expected returns appear muted, likely due to defensive or low-growth names.")
+        # Sector commentary
+        if sector_weights:
+            top_sector = max(sector_weights, key=sector_weights.get)
+            commentary.append(
+                f"Your largest sector exposure is **{top_sector}**, "
+                f"representing **{sector_weights[top_sector]:.2%}** of the portfolio."
+            )
 
-        # Volatility Commentary
-        if vol > 0.25:
-            st.write("• Volatility is high, indicating exposure to high-beta or momentum stocks.")
-        elif vol > 0.15:
-            st.write("• Volatility is moderate, typical for diversified portfolios.")
-        else:
-            st.write("• Volatility is low, suggesting defensive or mega-cap concentration.")
+        # Fundamentals commentary
+        commentary.append(
+            "Fundamentals across your holdings have been analyzed, including valuation ratios, "
+            "profitability margins, revenue levels, and analyst sentiment."
+        )
 
-        # Sharpe Commentary
-        if sharpe > 1.0:
-            st.write("• Strong Sharpe ratio indicates efficient risk-adjusted performance.")
-        elif sharpe > 0.5:
-            st.write("• Sharpe ratio is acceptable but could be improved.")
-        else:
-            st.write("• Weak Sharpe ratio suggests the portfolio may not be compensated for its risk.")
-
-        # Drawdown Commentary
-        if isinstance(max_dd, (int, float, np.floating)):
-            if max_dd < -0.40:
-                st.write("• Deep drawdowns indicate vulnerability during market stress.")
-            elif max_dd < -0.20:
-                st.write("• Drawdowns are moderate and typical for equities.")
-            else:
-                st.write("• Shallow drawdowns indicate strong downside resilience.")
-
-        # Sector Commentary
-        if sector_text:
-            st.markdown("### Sector Exposure")
-            st.write(f"**Sector Weights:** {sector_text}")
-
-            if (
-                sector_weights is not None
-                and "Technology" in sector_weights
-                and sector_weights["Technology"] > 0.45
-            ):
-                st.write("• Heavy concentration in Technology increases sensitivity to interest rates.")
-
-        # Monte Carlo Commentary
-        if mc_comment:
-            st.markdown("### Monte Carlo Outlook")
-            st.write(mc_comment)
-
-        # ---- Buy/Hold/Sell Scoring ----
-        st.markdown("### AI Buy / Hold / Sell Signals")
-
-        signals = []
-        for _, row in fund_df.iterrows():
-            score = 0
-            t = row["Ticker"]
-
-            # Valuation
-            if row["PE"] and row["PE"] < 15:
-                score
+        # Display commentary
+        for line in commentary:
+            st.write("• " + line)

@@ -55,26 +55,15 @@ def render_ai_commentary_tab(tab, prices, model):
         # ---------------------------------------------------------
         # Fundamentals Table (FIX #3 APPLIED)
         # ---------------------------------------------------------
-        fund_summary = []
-        for t in tickers:
-            f = fundamentals.get(t, {})
-
-            fund_summary.append({
-                "Ticker": t,
-                "PE": f.get("pe"),
-                "PB": f.get("pb"),
-                "PS": f.get("ps"),
-                "Forward PE": f.get("forward_pe"),
-                "Dividend Yield": f.get("dividend_yield"),
-                "Beta": f.get("beta"),
-                "EPS": f.get("eps"),
-                "Sector": f.get("sector"),
-                "Gross Margins": f.get("gross_margins"),
-                "Profit Margins": f.get("profit_margins"),
-                "Revenue": f.get("revenue"),
-                "Rating": f.get("recommendation"),
-                "Target Price": f.get("target_mean_price"),
-            })
+fund_summary.append({
+    "Ticker": t,
+    "PE": f.get("PE"),
+    "PB": f.get("PB"),
+    "Dividend Yield": f.get("DividendYield"),
+    "EPS": f.get("EPS"),
+    "ROE": f.get("ROE"),
+    "Debt to Equity": f.get("DebtToEquity"),
+})
 
         fund_df = pd.DataFrame(fund_summary)
 

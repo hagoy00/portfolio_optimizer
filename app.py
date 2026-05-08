@@ -712,7 +712,7 @@ with tab8:
 def run_optimizer_cached(returns, cov):
     return run_optimizer(returns, cov)
 
-with tab9:
+with tab9
     st.subheader("Optimizer & Monte Carlo")
 
     if not run_button:

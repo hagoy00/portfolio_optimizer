@@ -14,7 +14,6 @@ import plotly.graph_objects as go
 # Page config + sticky header
 # ---------------------------------------------------------
 st.set_page_config(page_title="Portfolio Optimizer Dashboard", layout="wide")
-
 st.markdown("""
 <style>
 
@@ -25,9 +24,9 @@ st.markdown("""
     right: 0;
 
     background-color: white;
-    padding: 20px 32px;
+    padding: 22px 34px;
 
-    font-size: 42px;        /* Bigger */
+    font-size: 44px;        /* Bigger */
     font-weight: 900;       /* Extra bold */
     color: #1E90FF;         /* Light blue */
     letter-spacing: 0.5px;
@@ -40,7 +39,7 @@ st.markdown("""
 
 /* Correct spacing so content is visible below sticky title */
 div[data-testid="stAppViewContainer"] > .main .block-container {
-    padding-top: 130px !important;
+    padding-top: 140px !important;
 }
 
 </style>
@@ -763,7 +762,7 @@ with tab9:
         # -----------------------------
         # Correlation Heatmap (ONLY HERE)
         # -----------------------------
-          st.markdown("### Correlation Heatmap")
+st.markdown("### Correlation Heatmap")
 
         corr = returns.corr()
 

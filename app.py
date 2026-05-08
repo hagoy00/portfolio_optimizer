@@ -591,34 +591,42 @@ with tab7:
     # -----------------------------
     st.markdown("### AI Buy / Hold / Sell Signals")
 
-    signals = []
-    for _, row in fund_df.iterrows():
-        t = row["Ticker"]
-        pe = row["PE"]
-        pb = row["PB"]
-        dy = row["Dividend Yield"]
-        beta = row["Beta"]
-        momentum = momentum_dict.get(t, 0)
+signals = []
+for _, row in fund_df.iterrows():
+    t = row["Ticker"]
+    pe = row["PE"]
+    pb = row["PB"]
+    dy = row["Dividend Yield"]
+    beta = row["Beta"]
+    momentum = momentum_dict.get(t, 0)
 
-        score = 0
-        conviction = 0
+    score = 0
+    conviction = 0
 
-        if pe is not None and pe > 0 and pe < 40:
-        #if pe and 0 < pe < 40:
-            score += 1
-            conviction += 20
-        if pb and 0 < pb < 8:
-            score += 1
-            conviction += 15
-        if dy and dy > 0.005:
-            score += 1
-            conviction += 15
-        if beta and beta < 1.3:
-            score += 1
-            conviction += 20
-        if momentum > 0:
-            score += 1
-            conviction += 30
+    # PE scoring
+    if pe is not None and pe > 0 and pe < 40:
+        score += 1
+        conviction += 20
+
+    # PB scoring
+    if pb is not None and pb > 0 and pb < 8:
+        score += 1
+        conviction += 15
+
+    # Dividend Yield scoring
+    if dy is not None and dy > 0.005:
+        score += 1
+        conviction += 15
+
+    # Beta scoring
+    if beta is not None and beta < 1.3:
+        score += 1
+        conviction += 20
+
+    # Momentum scoring
+    if momentum is not None and momentum > 0:
+        score += 1
+        conviction += 30
 
         rating = "Buy" if score >= 4 else "Hold" if score >= 2 else "Sell"
         conviction = min(100, max(0, conviction))

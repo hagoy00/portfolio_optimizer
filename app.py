@@ -205,7 +205,6 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
 # Overview
 # ---------------------------------------------------------
 with tab1:
-    st.markdown("<h2 style='color:#1E90FF;'>Optimizer Dashboard Report</h2>", unsafe_allow_html=True)
     st.subheader("Overview")
     st.dataframe(prices.tail())
 

@@ -767,7 +767,7 @@ with tab9:
         # -----------------------------
         # Correlation Heatmap (ONLY HERE)
         # -----------------------------
-        st.markdown("### Correlation Heatmap")
+          st.markdown("### Correlation Heatmap")
 
         corr = returns.corr()
 
@@ -782,6 +782,3 @@ with tab9:
 
         fig.update_layout(height=500)
         st.plotly_chart(fig, use_container_width=True)
-
-        
-        

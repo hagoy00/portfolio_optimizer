@@ -661,7 +661,7 @@ with tab8:
 
         st.subheader("Top Strengths & Weaknesses")
 
-        def strengths_weaknesses(row):
+def strengths_weaknesses(row):
     strengths, weaknesses = [], []
 
     if row["Momentum"] and row["Momentum"] > 0:
@@ -699,6 +699,12 @@ for _, row in buy_results.iterrows():
     st.markdown("**Strengths:**")
     for s in strengths:
         st.markdown(f"- {s}")
+
+    st.markdown("**Weaknesses:**")
+    for w in weaknesses:
+        st.markdown(f"- {w}")
+
+    st.markdown("---")
 
 
 # ---------------------------------------------------------

@@ -44,7 +44,6 @@ div[data-testid="stAppViewContainer"] > .main .block-container {
 
 <div class="fixed-title">Portfolio Optimizer Dashboard</div>
 """, unsafe_allow_html=True)
-
 # ---------------------------------------------------------
 # Safe value cleaner
 # ---------------------------------------------------------

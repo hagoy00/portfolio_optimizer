@@ -24,11 +24,11 @@ st.markdown("""
     right: 0;
 
     background-color: white;
-    padding: 10px 24px;     /* LOWER HEIGHT */
-    
-    font-size: 34px;        /* Slightly smaller but still big */
-    font-weight: 900;       /* Extra bold */
-    color: #1E90FF;         /* Light blue */
+    padding: 10px 24px;
+
+    font-size: 34px;
+    font-weight: 900;
+    color: #1E90FF;
 
     border-bottom: 1px solid #E5E5E5;
     box-shadow: 0 1px 4px rgba(0,0,0,0.08);
@@ -36,7 +36,6 @@ st.markdown("""
     z-index: 9999;
 }
 
-/* FIX: reduce top padding so slider titles show */
 div[data-testid="stAppViewContainer"] > .main .block-container {
     padding-top: 90px !important;
 }

@@ -770,9 +770,6 @@ with tab9:
             "Weight": ms["weights"]
         })
         st.dataframe(ms_df, key="ms_df")
-# -----------------------------
-# Correlation Heatmap
-# -----------------------------
 st.markdown("### Correlation Heatmap")
 
 corr = returns.corr()
@@ -788,5 +785,6 @@ fig = go.Figure(data=go.Heatmap(
 
 fig.update_layout(height=500)
 st.plotly_chart(fig, use_container_width=True)
+
 
 

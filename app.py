@@ -1008,3 +1008,4 @@ if mc_df is None or mc_df.empty:
     st.error("Monte Carlo simulation failed.")
 else:
     st.line_chart(mc_df, key="mc_simulation")
+    df.index = range(len(df))

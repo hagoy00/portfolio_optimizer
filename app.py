@@ -766,16 +766,23 @@ with tab9:
             "Weight": ms["weights"]
         })
         st.dataframe(ms_df, key="ms_df")
+# -----------------------------
+# Correlation Heatmap
+# -----------------------------
+st.markdown("### Correlation Heatmap")
 
-        # -----------------------------
-        # Monte Carlo Simulation
-        # -----------------------------
-        st.markdown("### Monte Carlo Simulation")
+corr = returns.corr()
 
-        # Run Monte Carlo fresh inside tab9
-        mc_df = run_monte_carlo_simulation(returns, mc_sims, mc_horizon)
+fig = go.Figure(data=go.Heatmap(
+    z=corr.values,
+    x=corr.columns,
+    y=corr.columns,
+    colorscale="RdBu",
+    zmin=-1,
+    zmax=1
+))
 
-        if isinstance(mc_df, pd.DataFrame) and not mc_df.empty:
-            pass
-        else:
-            st.error("Monte Carlo simulation returned no data.")
+fig.update_layout(height=500)
+st.plotly_chart(fig, use_container_width=True)
+
+

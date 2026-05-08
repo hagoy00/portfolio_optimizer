@@ -8,6 +8,9 @@ def render_ai_commentary_tab(tab, prices, model):
 
         st.subheader("AI Portfolio Commentary")
 
+        # ---------------------------------------------------------
+        # Load model components
+        # ---------------------------------------------------------
         perf = model.get("performance", {})
         fundamentals = model.get("fundamentals", {})
         tickers = model.get("tickers", [])
@@ -29,10 +32,8 @@ def render_ai_commentary_tab(tab, prices, model):
         # ---------------------------------------------------------
         # Drawdown
         # ---------------------------------------------------------
-        dd = drawdown_df
-        if isinstance(dd, pd.DataFrame) and not dd.empty:
-            dd_series = dd["Drawdown"]
-            max_dd = float(dd_series.min())
+        if isinstance(drawdown_df, pd.DataFrame) and not drawdown_df.empty:
+            max_dd = float(drawdown_df["Drawdown"].min())
         else:
             max_dd = None
 
@@ -45,7 +46,7 @@ def render_ai_commentary_tab(tab, prices, model):
         # ---------------------------------------------------------
         # Monte Carlo Summary
         # ---------------------------------------------------------
-        if mc is not None and not mc.empty:
+        if isinstance(mc, pd.DataFrame) and not mc.empty:
             mc_mean = mc.iloc[-1].mean()
             mc_p10 = mc.iloc[-1].quantile(0.10)
             mc_p90 = mc.iloc[-1].quantile(0.90)
@@ -53,17 +54,21 @@ def render_ai_commentary_tab(tab, prices, model):
             mc_mean = mc_p10 = mc_p90 = None
 
         # ---------------------------------------------------------
-        # Fundamentals Table (FIX #3 APPLIED)
+        # Fundamentals Table (Corrected Keys)
         # ---------------------------------------------------------
-fund_summary.append({
-    "Ticker": t,
-    "PE": f.get("PE"),
-    "PB": f.get("PB"),
-    "Dividend Yield": f.get("DividendYield"),
-    "EPS": f.get("EPS"),
-    "ROE": f.get("ROE"),
-    "Debt to Equity": f.get("DebtToEquity"),
-})
+        fund_summary = []
+        for t in tickers:
+            f = fundamentals.get(t, {})
+
+            fund_summary.append({
+                "Ticker": t,
+                "PE": f.get("PE"),
+                "PB": f.get("PB"),
+                "Dividend Yield": f.get("DividendYield"),
+                "EPS": f.get("EPS"),
+                "ROE": f.get("ROE"),
+                "Debt to Equity": f.get("DebtToEquity"),
+            })
 
         fund_df = pd.DataFrame(fund_summary)
 
@@ -107,7 +112,7 @@ fund_summary.append({
         # Fundamentals commentary
         commentary.append(
             "Fundamentals across your holdings have been analyzed, including valuation ratios, "
-            "profitability margins, revenue levels, and analyst sentiment."
+            "profitability metrics, and balance‑sheet strength."
         )
 
         # Display commentary

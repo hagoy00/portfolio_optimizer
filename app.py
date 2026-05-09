@@ -202,6 +202,21 @@ weights = np.array(weights)
 
 # === REQUIRED INPUTS BEFORE PORTFOLIO METRICS ===
 
+# 1. Compute returns
+returns_df = prices.pct_change().dropna()
+
+# 2. Convert weights to numpy
+weights = np.array(weights)
+
+# 3. Annualized expected returns
+expected_returns = returns_df.mean() * 252
+
+# 4. Annualized covariance matrix
+cov_matrix = returns_df.cov() * 252
+
+
+# === REQUIRED INPUTS BEFORE PORTFOLIO METRICS ===
+
 # 1. Compute returns (must exist before expected_returns)
 returns_df = prices.pct_change().dropna()
 
@@ -215,49 +230,43 @@ expected_returns = returns_df.mean() * 252
 cov_matrix = returns_df.cov() * 252
 
 # === PORTFOLIO METRICS (MUST BE ABOVE ALL TABS) ===
+
 w = weights
 er = expected_returns.values
-
-# Ensure weights and expected_returns are NumPy arrays
-
-w = np.array(weights)
-er = np.array(expected_returns)
 
 # Expected annual return
 portfolio_expected_return = float((w * er).sum())
 
 # Portfolio volatility
-portfolio_volatility = float(np.sqrt(w.T @ cov_matrix @ w))
+portfolio_volatility = float(np.sqrt(w.T @ cov_matrix.values @ w))
 
-# Sharpe ratio (simple, risk-free = 0)
-portfolio_sharpe = portfolio_expected_return / portfolio_volatility if portfolio_volatility > 0 else 0.0
+# Sharpe ratio
+portfolio_sharpe = (
+    portfolio_expected_return / portfolio_volatility
+    if portfolio_volatility > 0 else 0.0
+)
 
 # Portfolio returns series (for drawdown)
-# returns_df: DataFrame of asset returns with same column order as weights
 portfolio_returns = returns_df.values @ w
 
 cum_returns = (1 + portfolio_returns).cumprod()
 running_max = np.maximum.accumulate(cum_returns)
 max_drawdown = float(((cum_returns - running_max) / running_max).min())
 
-# Portfolio beta (weighted average of asset betas)
+# Portfolio beta
 portfolio_beta = float((w * np.array(beta)).sum())
 
-# Simple diversification score (0–10)
+# Diversification score
 diversification_score = float(10 - (w**2).sum() * 10)
 diversification_score = max(0.0, min(10.0, diversification_score))
 
-# === RISK CONTRIBUTION (FOR PIE CHART) ===
-
-# Marginal contribution to risk (MCTR)
-mctr = cov_matrix @ w
+# === RISK CONTRIBUTION ===
+mctr = cov_matrix.values @ w
 mctr = mctr / portfolio_volatility if portfolio_volatility > 0 else mctr * 0
 
-# Risk contribution (normalized to 1.0)
 risk_contribution = w * mctr
 if risk_contribution.sum() != 0:
     risk_contribution = risk_contribution / risk_contribution.sum()
-
 # ---------------------------------------------------------
 # Tabs
 # ---------------------------------------------------------
@@ -271,12 +280,8 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
     "AI Commentary",
     "Buy Analysis",
     "Optimizer"
-])
 
-# ---------------------------------------------------------
-# Overview
-# ---------------------------------------------------------
-# ---------------------------------------------------------
+    # ---------------------------------------------------------
 # Overview
 # ---------------------------------------------------------
 with tab1:
@@ -285,39 +290,27 @@ with tab1:
     st.subheader("Key Portfolio Insights")
 
     col1, col2, col3 = st.columns(3)
-
     with col1:
         st.metric("Expected Annual Return", f"{portfolio_expected_return:.2%}")
-
     with col2:
         st.metric("Annual Volatility", f"{portfolio_volatility:.2%}")
-
     with col3:
         st.metric("Sharpe Ratio", f"{portfolio_sharpe:.2f}")
 
     col4, col5, col6 = st.columns(3)
-
     with col4:
         st.metric("Max Drawdown", f"{max_drawdown:.2%}")
-
     with col5:
         st.metric("Beta vs SPY", f"{portfolio_beta:.2f}")
-
     with col6:
         st.metric("Diversification Score", f"{diversification_score:.1f}/10")
 
     st.subheader("Risk Contribution Breakdown")
-
     fig, ax = plt.subplots(figsize=(6, 6))
-    ax.pie(
-        risk_contribution,
-        labels=tickers,
-        autopct="%1.1f%%",
-        startangle=90
-    )
+    ax.pie(risk_contribution, labels=tickers, autopct="%1.1f%%", startangle=90)
     ax.axis("equal")
-
     st.pyplot(fig)
+
 # ---------------------------------------------------------
 # Performance Tab
 # ---------------------------------------------------------

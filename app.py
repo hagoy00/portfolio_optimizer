@@ -32,7 +32,7 @@ st.markdown("""
     z-index: 9999;
 }
 
-/* ⭐ UPDATED FOR NEW STREAMLIT VERSIONS */
+/* ⭐ UPDATED FOR NEW STREAMLIT DOM STRUCTURE */
 div[data-testid="stAppViewContainer"] .block-container {
     padding-top: 120px !important;
 }

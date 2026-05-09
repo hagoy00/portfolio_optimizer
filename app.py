@@ -15,7 +15,7 @@ import plotly.graph_objects as go
 # ---------------------------------------------------------
 st.set_page_config(page_title="Portfolio Optimizer Dashboard", layout="wide")
 
-# 1️⃣ Sticky Title (must be here)
+# Sticky title
 st.markdown("""
 <style>
 .fixed-title {
@@ -40,15 +40,14 @@ div[data-testid="stAppViewContainer"] > .main .block-container {
 <div class="fixed-title">Portfolio Optimizer Dashboard</div>
 """, unsafe_allow_html=True)
 
-# 2️⃣ NOW DEFINE YOUR TABS
+# ⭐ SPACER MUST BE HERE (before tabs)
+st.markdown("<div style='height:70px'></div>", unsafe_allow_html=True)
+
+# Tabs
 tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
     "Overview", "Prices", "Returns", "Risk", "Fundamentals",
     "Ranking", "Monte Carlo", "Buy Analysis", "Optimizer"
 ])
-
-# 3️⃣ NOW ADD THE SPACER (THIS IS THE SECRET)
-st.markdown("<br><br><br>", unsafe_allow_html=True)
-
 # ---------------------------------------------------------
 # Safe value cleaner
 # ---------------------------------------------------------

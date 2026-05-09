@@ -199,6 +199,58 @@ model = {
     "momentum": momentum_dict,
 }
 
+# === PORTFOLIO METRICS (MUST BE ABOVE ALL TABS) ===
+
+# Ensure weights and expected_returns are NumPy arrays
+w = np.array(weights)
+er = np.array(expected_returns)
+
+# Expected annual return
+portfolio_expected_return = float((w * er).sum())
+
+# Portfolio volatility
+portfolio_volatility = float(np.sqrt(w.T @ cov_matrix @ w))
+
+# Sharpe ratio (simple, risk-free = 0)
+portfolio_sharpe = portfolio_expected_return / portfolio_volatility if portfolio_volatility > 0 else 0.0
+
+# Portfolio returns series (for drawdown)
+# returns_df: DataFrame of asset returns with same column order as weights
+portfolio_returns = returns_df.values @ w
+
+cum_returns = (1 + portfolio_returns).cumprod()
+running_max = np.maximum.accumulate(cum_returns)
+max_drawdown = float(((cum_returns - running_max) / running_max).min())
+
+# Portfolio beta (weighted average of asset betas)
+portfolio_beta = float((w * np.array(beta)).sum())
+
+# Simple diversification score (0–10)
+diversification_score = float(10 - (w**2).sum() * 10)
+diversification_score = max(0.0, min(10.0, diversification_score))
+
+# === RISK CONTRIBUTION (FOR PIE CHART) ===
+
+# Marginal contribution to risk (MCTR)
+mctr = cov_matrix @ w
+mctr = mctr / portfolio_volatility if portfolio_volatility > 0 else mctr * 0
+
+# Risk contribution (normalized to 1.0)
+risk_contribution = w * mctr
+if risk_contribution.sum() != 0:
+    risk_contribution = risk_contribution / risk_contribution.sum()
+st.metric("Expected Annual Return", f"{portfolio_expected_return:.2%}")
+st.metric("Annual Volatility", f"{portfolio_volatility:.2%}")
+st.metric("Sharpe Ratio", f"{portfolio_sharpe:.2f}")
+st.metric("Max Drawdown", f"{max_drawdown:.2%}")
+st.metric("Beta vs SPY", f"{portfolio_beta:.2f}")
+st.metric("Diversification Score", f"{diversification_score:.1f}/10")
+
+fig, ax = plt.subplots(figsize=(6, 6))
+ax.pie(risk_contribution, labels=tickers, autopct="%1.1f%%", startangle=90)
+ax.axis("equal")
+st.pyplot(fig)
+
 # ---------------------------------------------------------
 # Tabs
 # ---------------------------------------------------------

@@ -45,6 +45,9 @@ div[data-testid="stAppViewContainer"] > .main .block-container {
 <div class="fixed-title">Portfolio Optimizer Dashboard</div>
 """, unsafe_allow_html=True)
 
+# ⭐ ADD THIS SPACER — THIS MAKES THE TITLE VISIBLE
+st.markdown("<br><br><br>", unsafe_allow_html=True)
+
 # ---------------------------------------------------------
 # Safe value cleaner
 # ---------------------------------------------------------

@@ -239,17 +239,6 @@ mctr = mctr / portfolio_volatility if portfolio_volatility > 0 else mctr * 0
 risk_contribution = w * mctr
 if risk_contribution.sum() != 0:
     risk_contribution = risk_contribution / risk_contribution.sum()
-st.metric("Expected Annual Return", f"{portfolio_expected_return:.2%}")
-st.metric("Annual Volatility", f"{portfolio_volatility:.2%}")
-st.metric("Sharpe Ratio", f"{portfolio_sharpe:.2f}")
-st.metric("Max Drawdown", f"{max_drawdown:.2%}")
-st.metric("Beta vs SPY", f"{portfolio_beta:.2f}")
-st.metric("Diversification Score", f"{diversification_score:.1f}/10")
-
-fig, ax = plt.subplots(figsize=(6, 6))
-ax.pie(risk_contribution, labels=tickers, autopct="%1.1f%%", startangle=90)
-ax.axis("equal")
-st.pyplot(fig)
 
 # ---------------------------------------------------------
 # Tabs

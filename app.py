@@ -28,7 +28,7 @@ st.markdown("""
     padding: 12px 28px;
 
     font-size: 36px;
-    font-weight: 900;
+    font-weight: 500;
     color: #1E90FF;
 
     border-bottom: 1px solid #E5E5E5;

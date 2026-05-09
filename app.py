@@ -224,7 +224,6 @@ portfolio_sharpe = (
     portfolio_expected_return / portfolio_volatility
     if portfolio_volatility > 0 else 0.0
 )
-
 # Portfolio returns series (for drawdown)
 portfolio_returns = returns_df.values @ w
 

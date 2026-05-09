@@ -14,7 +14,6 @@ import plotly.graph_objects as go
 # Page config + sticky header
 # ---------------------------------------------------------
 st.set_page_config(page_title="Portfolio Optimizer Dashboard", layout="wide")
-
 st.markdown("""
 <style>
 
@@ -25,14 +24,14 @@ st.markdown("""
     right: 0;
 
     background-color: white;
-    padding: 12px 28px;
+    padding: 8px 20px;
 
-    font-size: 36px;
-    font-weight: 500;
+    font-size: 26px;
+    font-weight: 900;
     color: #1E90FF;
 
     border-bottom: 1px solid #E5E5E5;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.10);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.10);
 
     z-index: 9999;
 }
@@ -42,15 +41,16 @@ div[data-testid="stAppViewContainer"] {
     background-color: transparent !important;
 }
 
-/* Push content down so title is visible */
+/* ⭐ Push content down so title is visible */
 div[data-testid="stAppViewContainer"] .block-container {
-    padding-top: 120px !important;
+    padding-top: 80px !important;
 }
 
 </style>
 
 <div class="fixed-title">Portfolio Optimizer Dashboard</div>
 """, unsafe_allow_html=True)
+
 # ---------------------------------------------------------
 # Safe value cleaner
 # ---------------------------------------------------------

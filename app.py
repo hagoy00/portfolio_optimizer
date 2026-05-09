@@ -244,6 +244,19 @@ with col5:
 with col6:
     st.metric("Diversification Score", f"{diversification_score:.1f}/10")
 
+st.subheader("Risk Contribution Breakdown")
+
+fig, ax = plt.subplots(figsize=(6, 6))
+ax.pie(
+    risk_contribution,
+    labels=tickers,
+    autopct="%1.1f%%",
+    startangle=90
+)
+ax.axis("equal")
+
+st.pyplot(fig)
+
 # ---------------------------------------------------------
 # Performance Tab
 # ---------------------------------------------------------

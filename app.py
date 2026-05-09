@@ -14,38 +14,39 @@ import plotly.graph_objects as go
 # Page config + sticky header
 # ---------------------------------------------------------
 st.set_page_config(page_title="Portfolio Optimizer Dashboard", layout="wide")
+
+# 1️⃣ Sticky Title (must be here)
 st.markdown("""
 <style>
-
 .fixed-title {
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
-
     background-color: white;
     padding: 10px 24px;
-
     font-size: 34px;
     font-weight: 900;
     color: #1E90FF;
-
     border-bottom: 1px solid #E5E5E5;
     box-shadow: 0 1px 4px rgba(0,0,0,0.08);
-
     z-index: 9999;
 }
-
 div[data-testid="stAppViewContainer"] > .main .block-container {
     padding-top: 90px !important;
 }
-
 </style>
 
 <div class="fixed-title">Portfolio Optimizer Dashboard</div>
 """, unsafe_allow_html=True)
 
-# ⭐ ADD THIS SPACER — THIS MAKES THE TITLE VISIBLE
+# 2️⃣ NOW DEFINE YOUR TABS
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
+    "Overview", "Prices", "Returns", "Risk", "Fundamentals",
+    "Ranking", "Monte Carlo", "Buy Analysis", "Optimizer"
+])
+
+# 3️⃣ NOW ADD THE SPACER (THIS IS THE SECRET)
 st.markdown("<br><br><br>", unsafe_allow_html=True)
 
 # ---------------------------------------------------------

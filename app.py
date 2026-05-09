@@ -194,27 +194,6 @@ model = {
     "sector_weights": sector_weights,
     "momentum": momentum_dict,
 }
-
-# === REQUIRED INPUTS BEFORE PORTFOLIO METRICS ===
-expected_returns = returns_df.mean() * 252
-cov_matrix = returns_df.cov() * 252
-weights = np.array(weights)
-
-# === REQUIRED INPUTS BEFORE PORTFOLIO METRICS ===
-
-# 1. Compute returns
-returns_df = prices.pct_change().dropna()
-
-# 2. Convert weights to numpy
-weights = np.array(weights)
-
-# 3. Annualized expected returns
-expected_returns = returns_df.mean() * 252
-
-# 4. Annualized covariance matrix
-cov_matrix = returns_df.cov() * 252
-
-
 # === REQUIRED INPUTS BEFORE PORTFOLIO METRICS ===
 
 # 1. Compute returns (must exist before expected_returns)
@@ -267,6 +246,7 @@ mctr = mctr / portfolio_volatility if portfolio_volatility > 0 else mctr * 0
 risk_contribution = w * mctr
 if risk_contribution.sum() != 0:
     risk_contribution = risk_contribution / risk_contribution.sum()
+
 # ---------------------------------------------------------
 # Tabs
 # ---------------------------------------------------------

@@ -401,6 +401,30 @@ with tab6:
     st.subheader("Weights")
     weights_df = pd.DataFrame({"Ticker": tickers, "Weight": weights})
     st.dataframe(weights_df)
+col1, col2 = st.columns([1, 1.5])
+
+with col1:
+    weight = st.slider(
+        f"{ticker} Weight",
+        min_value=0.0,
+        max_value=1.0,
+        value=current_weights[ticker],
+        step=0.01,
+        key=f"slider_{ticker}"
+    )
+
+with col2:
+    st.markdown(f"""
+    **Expected Return:** {expected_returns[ticker]:.2%}  
+    **Volatility:** {volatility[ticker]:.2%}  
+    **Sharpe Ratio:** {sharpe[ticker]:.2f}  
+    **Beta:** {beta[ticker]:.2f}  
+    **Correlation to Portfolio:** {correlation_to_portfolio[ticker]:.2f}  
+    **Marginal Contribution to Risk (MCTR):** {mctr[ticker]:.3f}  
+    **Sector:** {sector_map[ticker]}  
+    **Fundamental Score:** {fundamental_score[ticker]}  
+    **Ranking Score:** {ranking_score[ticker]}  
+    """)
 
 # ---------------------------------------------------------
 # AI Commentary + Signals

@@ -23,12 +23,12 @@ st.markdown("""
     left: 0;
     right: 0;
 
-    background-color: white;
-    padding: 8px 20px;
+    background-color: white;   /* clean white bar */
+    padding: 10px 20px;
 
     font-size: 26px;
     font-weight: 900;
-    color: #1E90FF;
+    color: #1E90FF;            /* DodgerBlue */
 
     border-bottom: 1px solid #E5E5E5;
     box-shadow: 0 1px 4px rgba(0,0,0,0.10);
@@ -36,12 +36,12 @@ st.markdown("""
     z-index: 9999;
 }
 
-/* ⭐ Remove the white overlay that hides the title */
+/* Remove Streamlit's white overlay */
 div[data-testid="stAppViewContainer"] {
     background-color: transparent !important;
 }
 
-/* ⭐ Push content down so title is visible */
+/* Push content down so title is not overlapped */
 div[data-testid="stAppViewContainer"] .block-container {
     padding-top: 80px !important;
 }

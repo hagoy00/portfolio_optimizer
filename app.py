@@ -44,6 +44,7 @@ div[data-testid="stAppViewContainer"] > .main .block-container {
 
 <div class="fixed-title">Portfolio Optimizer Dashboard</div>
 """, unsafe_allow_html=True)
+
 # ---------------------------------------------------------
 # Safe value cleaner
 # ---------------------------------------------------------
@@ -661,51 +662,49 @@ with tab8:
 
         st.subheader("Top Strengths & Weaknesses")
 
-def strengths_weaknesses(row):
-    strengths, weaknesses = [], []
+        def strengths_weaknesses(row):
+            strengths, weaknesses = [], []
 
-    if row["Momentum"] and row["Momentum"] > 0:
-        strengths.append("Positive momentum")
-    else:
-        weaknesses.append("Weak momentum")
+            if row["Momentum"] and row["Momentum"] > 0:
+                strengths.append("Positive momentum")
+            else:
+                weaknesses.append("Weak momentum")
 
-    if row["Risk"] and row["Risk"] < 0.30:
-        strengths.append("Low volatility")
-    else:
-        weaknesses.append("High volatility")
+            if row["Risk"] and row["Risk"] < 0.30:
+                strengths.append("Low volatility")
+            else:
+                weaknesses.append("High volatility")
 
-    if row["PE"] and row["PE"] > 40:
-        weaknesses.append("Stretched PE ratio")
-    elif row["PE"]:
-        strengths.append("Reasonable PE ratio")
+            if row["PE"] and row["PE"] > 40:
+                weaknesses.append("Stretched PE ratio")
+            elif row["PE"]:
+                strengths.append("Reasonable PE ratio")
 
-    if row["PB"] and row["PB"] > 8:
-        weaknesses.append("Rich PB ratio")
-    elif row["PB"]:
-        strengths.append("Healthy PB ratio")
+            if row["PB"] and row["PB"] > 8:
+                weaknesses.append("Rich PB ratio")
+            elif row["PB"]:
+                strengths.append("Healthy PB ratio")
 
-    if row["DividendYield"] and row["DividendYield"] > 0.01:
-        strengths.append("Dividend support")
-    else:
-        weaknesses.append("Low or no dividend")
+            if row["DividendYield"] and row["DividendYield"] > 0.01:
+                strengths.append("Dividend support")
+            else:
+                weaknesses.append("Low or no dividend")
 
-    return strengths, weaknesses
+            return strengths, weaknesses
 
+        for _, row in buy_results.iterrows():
+            st.markdown(f"### {row['Ticker']}")
+            strengths, weaknesses = strengths_weaknesses(row)
 
-for _, row in buy_results.iterrows():
-    st.markdown(f"### {row['Ticker']}")
-    strengths, weaknesses = strengths_weaknesses(row)
+            st.markdown("**Strengths:**")
+            for s in strengths:
+                st.markdown(f"- {s}")
 
-    st.markdown("**Strengths:**")
-    for s in strengths:
-        st.markdown(f"- {s}")
+            st.markdown("**Weaknesses:**")
+            for w in weaknesses:
+                st.markdown(f"- {w}")
 
-    st.markdown("**Weaknesses:**")
-    for w in weaknesses:
-        st.markdown(f"- {w}")
-
-    st.markdown("---")
-
+            st.markdown("---")
 
 # ---------------------------------------------------------
 # Optimizer + Monte Carlo

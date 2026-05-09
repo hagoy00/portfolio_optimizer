@@ -200,6 +200,20 @@ expected_returns = returns_df.mean() * 252
 cov_matrix = returns_df.cov() * 252
 weights = np.array(weights)
 
+# === REQUIRED INPUTS BEFORE PORTFOLIO METRICS ===
+
+# 1. Compute returns (must exist before expected_returns)
+returns_df = prices.pct_change().dropna()
+
+# 2. Convert weights to numpy
+weights = np.array(weights)
+
+# 3. Annualized expected returns
+expected_returns = returns_df.mean() * 252
+
+# 4. Annualized covariance matrix
+cov_matrix = returns_df.cov() * 252
+
 # === PORTFOLIO METRICS (MUST BE ABOVE ALL TABS) ===
 w = weights
 er = expected_returns.values

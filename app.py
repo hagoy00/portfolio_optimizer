@@ -23,12 +23,12 @@ st.markdown("""
     left: 0;
     right: 0;
 
-    background-color: white;   /* clean white bar */
+    background-color: white;
     padding: 10px 20px;
 
-    font-size: 26px;
+    font-size: 28px;
     font-weight: 900;
-    color: #1E90FF;            /* DodgerBlue */
+    color: #1E90FF;
 
     border-bottom: 1px solid #E5E5E5;
     box-shadow: 0 1px 4px rgba(0,0,0,0.10);
@@ -36,12 +36,17 @@ st.markdown("""
     z-index: 9999;
 }
 
+/* Remove Streamlit's skinny white header bar */
+header[data-testid="stHeader"] {
+    display: none !important;
+}
+
 /* Remove Streamlit's white overlay */
 div[data-testid="stAppViewContainer"] {
     background-color: transparent !important;
 }
 
-/* Push content down so title is not overlapped */
+/* Push content down so title is visible */
 div[data-testid="stAppViewContainer"] .block-container {
     padding-top: 80px !important;
 }

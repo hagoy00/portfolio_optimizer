@@ -15,7 +15,6 @@ import plotly.graph_objects as go
 # ---------------------------------------------------------
 st.set_page_config(page_title="Portfolio Optimizer Dashboard", layout="wide")
 
-# Sticky title
 st.markdown("""
 <style>
 .fixed-title {
@@ -32,22 +31,15 @@ st.markdown("""
     box-shadow: 0 1px 4px rgba(0,0,0,0.08);
     z-index: 9999;
 }
-div[data-testid="stAppViewContainer"] > .main .block-container {
-    padding-top: 90px !important;
+
+/* ⭐ UPDATED FOR NEW STREAMLIT VERSIONS */
+div[data-testid="stAppViewContainer"] .block-container {
+    padding-top: 120px !important;
 }
 </style>
 
 <div class="fixed-title">Portfolio Optimizer Dashboard</div>
 """, unsafe_allow_html=True)
-
-# ⭐ SPACER MUST BE HERE (before tabs)
-st.markdown("<div style='height:70px'></div>", unsafe_allow_html=True)
-
-# Tabs
-tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
-    "Overview", "Prices", "Returns", "Risk", "Fundamentals",
-    "Ranking", "Monte Carlo", "Buy Analysis", "Optimizer"
-])
 # ---------------------------------------------------------
 # Safe value cleaner
 # ---------------------------------------------------------

@@ -186,22 +186,28 @@ momentum_dict = compute_momentum_series(returns)
 # ---------------------------------------------------------
 fundamentals = load_fundamentals(tickers)
 
-# ---------------------------------------------------------
-# Model for AI commentary
-# ---------------------------------------------------------
+fundamentals = load_fundamentals(tickers)
+
 model = {
     "performance": performance,
     "fundamentals": fundamentals,
     "tickers": tickers,
     "drawdown": drawdown_df,
     "sector_weights": sector_weights,
-    #"monte_carlo": mc_df,
     "momentum": momentum_dict,
 }
 
+# === REQUIRED INPUTS BEFORE PORTFOLIO METRICS ===
+expected_returns = returns_df.mean() * 252
+cov_matrix = returns_df.cov() * 252
+weights = np.array(weights)
+
 # === PORTFOLIO METRICS (MUST BE ABOVE ALL TABS) ===
+w = weights
+er = expected_returns.values
 
 # Ensure weights and expected_returns are NumPy arrays
+
 w = np.array(weights)
 er = np.array(expected_returns)
 

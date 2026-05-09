@@ -23,6 +23,8 @@ st.markdown("""
     left: 0;
     right: 0;
 
+    margin-top: 20px;
+
     background-color: white;
     padding: 10px 20px;
 
@@ -30,25 +32,27 @@ st.markdown("""
     font-weight: 900;
     color: #1E90FF;
 
+    text-align: center;   /* ⭐ CENTER THE TITLE */
+
     border-bottom: 1px solid #E5E5E5;
     box-shadow: 0 1px 4px rgba(0,0,0,0.10);
 
     z-index: 9999;
 }
 
-/* Remove Streamlit's skinny white header bar */
+/* Remove Streamlit header */
 header[data-testid="stHeader"] {
     display: none !important;
 }
 
-/* Remove Streamlit's white overlay */
+/* Remove white overlay */
 div[data-testid="stAppViewContainer"] {
     background-color: transparent !important;
 }
 
-/* Push content down so title is visible */
+/* Push content down */
 div[data-testid="stAppViewContainer"] .block-container {
-    padding-top: 80px !important;
+    padding-top: 100px !important;
 }
 
 </style>

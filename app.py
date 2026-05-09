@@ -186,8 +186,6 @@ momentum_dict = compute_momentum_series(returns)
 # ---------------------------------------------------------
 fundamentals = load_fundamentals(tickers)
 
-fundamentals = load_fundamentals(tickers)
-
 model = {
     "performance": performance,
     "fundamentals": fundamentals,

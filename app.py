@@ -17,25 +17,31 @@ st.set_page_config(page_title="Portfolio Optimizer Dashboard", layout="wide")
 
 st.markdown("""
 <style>
+
 .fixed-title {
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
+
     background-color: white;
-    padding: 10px 24px;
-    font-size: 34px;
+    padding: 12px 28px;
+
+    font-size: 36px;
     font-weight: 900;
     color: #1E90FF;
+
     border-bottom: 1px solid #E5E5E5;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.10);
+
     z-index: 9999;
 }
 
-/* ⭐ UPDATED FOR NEW STREAMLIT DOM STRUCTURE */
-div[data-testid="stAppViewContainer"] .block-container {
-    padding-top: 120px !important;
+/* ⭐ THIS IS THE CORRECT CONTAINER FOR YOUR STREAMLIT VERSION */
+div[data-testid="stAppViewContainer"] > div:nth-child(1) {
+    margin-top: 110px !important;
 }
+
 </style>
 
 <div class="fixed-title">Portfolio Optimizer Dashboard</div>

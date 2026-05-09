@@ -37,9 +37,14 @@ st.markdown("""
     z-index: 9999;
 }
 
-/* ⭐ THIS IS THE CORRECT CONTAINER FOR YOUR STREAMLIT VERSION */
-div[data-testid="stAppViewContainer"] > div:nth-child(1) {
-    margin-top: 110px !important;
+/* ⭐ Remove the white overlay that hides the title */
+div[data-testid="stAppViewContainer"] {
+    background-color: transparent !important;
+}
+
+/* Push content down so title is visible */
+div[data-testid="stAppViewContainer"] .block-container {
+    padding-top: 120px !important;
 }
 
 </style>

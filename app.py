@@ -191,9 +191,20 @@ def compute_sector_weights(weights_vec, tickers_list):
     df = pd.DataFrame({"Ticker": tickers_list, "Weight": weights_vec, "Sector": sectors})
     return df.groupby("Sector")["Weight"].sum
 # ---------------------------------------------------------
-# FUNDAMENTALS PIPELINE (MUST BE BEFORE TABS)
+# RETURN PIPELINE
 # ---------------------------------------------------------
+returns_df = prices.pct_change().dropna()
+valid_tickers = list(returns_df.columns)
+w = np.array(weights)
+expected_returns = returns_df.mean() * 252
+er = expected_returns.values
+cov_matrix = returns_df.cov() * 252
+portfolio_returns = returns_df[valid_tickers].values @ w
+portfolio_volatility = np.sqrt(w.T @ cov_matrix.values @ w)
 
+# ---------------------------------------------------------
+# FUNDAMENTALS PIPELINE (STEP 3 GOES HERE)
+# ---------------------------------------------------------
 try:
     fundamentals = load_fundamentals(valid_tickers, full_prices=prices)
 except Exception as e:
@@ -201,9 +212,10 @@ except Exception as e:
     fundamentals = {t: {} for t in valid_tickers}
 
 # ---------------------------------------------------------
-# Tabs
+# TABS START HERE
 # ---------------------------------------------------------
-tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([...])
+
     "Overview",
     "Performance",
     "Risk",

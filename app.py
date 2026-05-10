@@ -266,7 +266,7 @@ with tab2:
     st.subheader("Performance Metrics")
 
     # Use aligned portfolio returns
-    ret = pd.Series(portfolio_returns)
+    ret = pd.Series(portfolio_returns, name="Portfolio Return")
 
     # Cumulative return
     cum_ret = (1 + ret).cumprod()
@@ -288,13 +288,15 @@ with tab2:
     max_dd = dd.min()
 
     # Display metrics
-    st.metric("Expected Return", f"{mu:.2%}")
-    st.metric("Volatility", f"{vol:.2%}")
-    st.metric("Sharpe Ratio", f"{sharpe_local:.2f}")
-    st.metric("Sortino Ratio", f"{sortino:.2f}")
-    st.metric("Calmar Ratio", f"{calmar:.2f}")
-    st.metric("Max Drawdown", f"{max_dd:.2%}")
+    colA, colB, colC, colD, colE, colF = st.columns(6)
+    colA.metric("Expected Return", f"{mu:.2%}")
+    colB.metric("Volatility", f"{vol:.2%}")
+    colC.metric("Sharpe Ratio", f"{sharpe_local:.2f}")
+    colD.metric("Sortino Ratio", f"{sortino:.2f}")
+    colE.metric("Calmar Ratio", f"{calmar:.2f}")
+    colF.metric("Max Drawdown", f"{max_dd:.2%}")
 
+    # Charts
     st.markdown("### Cumulative Return")
     st.line_chart(cum_ret)
 
@@ -305,21 +307,14 @@ with tab2:
     st.line_chart(rolling_sharpe)
 
     st.markdown("### Drawdown")
-    st.line_chart(dd)
-
-    st.markdown("### Rolling 30-Day Volatility")
-    st.line_chart(rolling_vol)
-
-    st.markdown("### Rolling 30-Day Sharpe Ratio")
-    st.line_chart(rolling_sharpe)
-
-    st.markdown("### Drawdown")
     st.area_chart(dd)
 
     st.markdown("### Distribution of Daily Returns")
-    hist_data = port_ret.dropna()
-    hist_df = pd.DataFrame({"Returns": hist_data})
-    st.bar_chart(hist_df)
+    hist_data = pd.Series(portfolio_returns).dropna()
+    fig, ax = plt.subplots()
+    ax.hist(hist_data, bins=40, alpha=0.7)
+    ax.set_title("Histogram of Daily Returns")
+    st.pyplot(fig)
 
 # ---------------------------------------------------------
 # Risk

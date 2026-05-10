@@ -191,9 +191,6 @@ def compute_sector_weights(weights_vec, tickers_list):
     df = pd.DataFrame({"Ticker": tickers_list, "Weight": weights_vec, "Sector": sectors})
     return df.groupby("Sector")["Weight"].sum
 
-
-
-
 # ---------------------------------------------------------
 # RETURN PIPELINE (MUST BE BEFORE TABS)
 # ---------------------------------------------------------
@@ -227,7 +224,6 @@ portfolio_returns = returns_df[valid_tickers].values @ w
 
 # 7. Portfolio volatility
 portfolio_volatility = np.sqrt(w.T @ cov_matrix.values @ w)
-
 
 # ---------------------------------------------------------
 # FUNDAMENTALS PIPELINE (STEP 3 GOES HERE)
@@ -368,6 +364,9 @@ with tab2:
 # ---------------------------------------------------------
 # Risk Tab
 # ---------------------------------------------------------
+# ---------------------------------------------------------
+# TAB 3 — RISK & DRAWDOWN ANALYSIS
+# ---------------------------------------------------------
 with tab3:
     st.subheader("Risk & Drawdown Analysis")
 
@@ -419,6 +418,26 @@ with tab3:
     ax.legend()
     st.pyplot(fig)
 
+    # ---------------------------------------------------------
+    # SAFE RISK CONTRIBUTION (NO NEGATIVES, NO CRASHES)
+    # ---------------------------------------------------------
+    marginal_risk = cov_matrix.values @ w
+    portfolio_var = w.T @ marginal_risk
+
+    risk_contribution = (w * marginal_risk) / portfolio_var
+    risk_contribution = np.clip(risk_contribution, 0, None)
+
+    if risk_contribution.sum() > 0:
+        risk_contribution = risk_contribution / risk_contribution.sum()
+    else:
+        risk_contribution = np.array([1 / len(valid_tickers)] * len(valid_tickers))
+
+    # === Risk Contribution Pie Chart ===
+    st.markdown("### Risk Contribution Breakdown")
+    fig2, ax2 = plt.subplots()
+    ax2.pie(risk_contribution, labels=valid_tickers, autopct="%1.1f%%", startangle=90)
+    ax2.axis("equal")
+    st.pyplot(fig2)
 
 # ---------------------------------------------------------
 # Sectors

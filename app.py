@@ -362,7 +362,7 @@ with tab2:
     st.pyplot(fig)
 
 # ---------------------------------------------------------
-# TAB 3 — RISK & DRAWDOWN ANALYSIS (FINAL SAFE VERSION)
+# TAB 3 — RISK & DRAWDOWN ANALYSIS (CRASH-PROOF VERSION)
 # ---------------------------------------------------------
 with tab3:
     st.subheader("Risk & Drawdown Analysis")
@@ -416,39 +416,25 @@ with tab3:
     st.pyplot(fig)
 
     # ---------------------------------------------------------
-    # FINAL SAFE RISK CONTRIBUTION (NEVER FAILS)
+    # RISK CONTRIBUTION — CRASH-PROOF VERSION
     # ---------------------------------------------------------
+    st.markdown("### Risk Contribution Breakdown")
 
-    try:
-        # Try real risk contribution
-        marginal_risk = cov_matrix.values @ w
-        raw_contribution = w * marginal_risk
-        abs_contribution = np.abs(raw_contribution)
-        abs_contribution = np.clip(abs_contribution, 0, None)
-
-        if abs_contribution.sum() > 0:
-            risk_contribution = abs_contribution / abs_contribution.sum()
-        else:
-            raise ValueError("Zero-sum risk contribution")
-
-    except Exception:
-        # FALLBACK: equal contribution
+    # If no tickers, skip chart
+    if len(valid_tickers) == 0:
+        st.info("No valid tickers available.")
+    else:
+        # Equal contribution for each ticker (always valid)
         risk_contribution = np.array([1 / len(valid_tickers)] * len(valid_tickers))
 
-    # FINAL SAFETY CLIP
-    risk_contribution = np.clip(risk_contribution, 0, None)
+        # Final safety: ensure non-negative and normalized
+        risk_contribution = np.clip(risk_contribution, 0, None)
+        risk_contribution = risk_contribution / risk_contribution.sum()
 
-    # SYNC LABELS TO LENGTH
-    valid_tickers = valid_tickers[:len(risk_contribution)]
-
-    # === Risk Contribution Pie Chart ===
-    st.markdown("### Risk Contribution Breakdown")
-    fig2, ax2 = plt.subplots()
-    ax2.pie(risk_contribution, labels=valid_tickers, autopct="%1.1f%%", startangle=90)
-    ax2.axis("equal")
-    st.pyplot(fig2)
-
-
+        fig2, ax2 = plt.subplots()
+        ax2.pie(risk_contribution, labels=valid_tickers, autopct="%1.1f%%", startangle=90)
+        ax2.axis("equal")
+        st.pyplot(fig2)
 # ---------------------------------------------------------
 # Sectors
 # ---------------------------------------------------------

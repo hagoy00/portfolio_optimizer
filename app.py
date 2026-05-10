@@ -423,26 +423,41 @@ with tab3:
     ax.legend()
     st.pyplot(fig)
 
+    
     # ---------------------------------------------------------
-    # RISK CONTRIBUTION — CRASH-PROOF VERSION
-    # ---------------------------------------------------------
-    st.markdown("### Risk Contribution Breakdown")
+# RISK CONTRIBUTION — CRASH‑PROOF VERSION
+# ---------------------------------------------------------
+st.markdown("### Risk Contribution Breakdown")
 
-    # If no tickers, skip chart
-    if len(valid_tickers) == 0:
-        st.info("No valid tickers available.")
+# If no tickers, skip chart
+if len(valid_tickers) == 0:
+    st.info("No valid tickers available.")
+else:
+    # Equal contribution for each ticker (always valid)
+    n = len(valid_tickers)
+    risk_contribution = np.array([1.0 / n] * n, dtype=float)
+
+    # Final safety: ensure non-negative and normalized
+    risk_contribution = np.clip(risk_contribution, 0, None)
+    total = risk_contribution.sum()
+    if total == 0 or np.isnan(total):
+        risk_contribution = np.array([1.0 / n] * n, dtype=float)
     else:
-        # Equal contribution for each ticker (always valid)
-        risk_contribution = np.array([1 / len(valid_tickers)] * len(valid_tickers))
+        risk_contribution = risk_contribution / total
 
-        # Final safety: ensure non-negative and normalized
-        risk_contribution = np.clip(risk_contribution, 0, None)
-        risk_contribution = risk_contribution / risk_contribution.sum()
+    # ⭐ CRITICAL FIX: force labels to match wedge count
+    valid_tickers = valid_tickers[:len(risk_contribution)]
 
-        fig2, ax2 = plt.subplots()
-        ax2.pie(risk_contribution, labels=valid_tickers, autopct="%1.1f%%", startangle=90)
-        ax2.axis("equal")
-        st.pyplot(fig2)
+    # Render pie chart
+    fig2, ax2 = plt.subplots()
+    ax2.pie(
+        risk_contribution,
+        labels=valid_tickers,
+        autopct="%1.1f%%",
+        startangle=90
+    )
+    ax2.axis("equal")
+    st.pyplot(fig2)
 # ---------------------------------------------------------
 # Sectors
 # ---------------------------------------------------------

@@ -1,50 +1,45 @@
+
 import yfinance as yf
 
-def safe_get(value):
-    try:
-        if value in [None, "None", "nan", "NaN"]:
-            return None
-        return float(value)
-    except:
-        return None
-
-#def load_fundamentals(tickers):
 def load_fundamentals(tickers, full_prices=None):
+    """
+    Load fundamentals for each ticker.
+    full_prices is optional but required by Buy Analysis and Commentary.
+    """
+
     fundamentals = {}
 
     for t in tickers:
         try:
-            stock = yf.Ticker(t)
-            info = stock.info
+            yf_t = yf.Ticker(t)
+            info = yf_t.info
 
             fundamentals[t] = {
-                # Core valuation
-                "PE": safe_get(info.get("trailingPE")),
-                "PB": safe_get(info.get("priceToBook")),
-                "DividendYield": safe_get(info.get("dividendYield")),
-
-                # Profitability
-                "EPS": safe_get(info.get("trailingEps")),
-                "ROE": safe_get(info.get("returnOnEquity")),
-                "DebtToEquity": safe_get(info.get("debtToEquity")),
-
-                # A2 Enhancements
-                "Beta": safe_get(info.get("beta")),
-                "MarketCap": safe_get(info.get("marketCap")),
-                "Sector": info.get("sector") or "Unknown",
+                "PE": info.get("trailingPE"),
+                "PB": info.get("priceToBook"),
+                "EPS": info.get("trailingEps"),
+                "ROE": info.get("returnOnEquity"),
+                "DividendYield": info.get("dividendYield"),
+                "DebtToEquity": info.get("debtToEquity"),
+                "Beta": info.get("beta"),
+                "Sector": info.get("sector"),
+                "MarketCap": info.get("marketCap"),
+                "full_prices": full_prices[t] if full_prices is not None and t in full_prices else None
             }
 
         except Exception:
+            # Fail gracefully — never break the app
             fundamentals[t] = {
                 "PE": None,
                 "PB": None,
-                "DividendYield": None,
                 "EPS": None,
                 "ROE": None,
+                "DividendYield": None,
                 "DebtToEquity": None,
                 "Beta": None,
+                "Sector": None,
                 "MarketCap": None,
-                "Sector": "Unknown",
+                "full_prices": full_prices[t] if full_prices is not None and t in full_prices else None
             }
 
     return fundamentals

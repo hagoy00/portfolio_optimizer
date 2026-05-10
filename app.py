@@ -243,9 +243,14 @@ with col6:
 
     st.subheader("Risk Contribution Breakdown")
     fig, ax = plt.subplots(figsize=(6, 6))
-    ax.pie(risk_contribution, labels=tickers, autopct="%1.1f%%", startangle=90)
-    ax.axis("equal")
-    st.pyplot(fig)
+    ax.pie(
+    risk_contribution,
+    labels=valid_tickers,   # <-- FIXED
+    autopct="%1.1f%%",
+    startangle=90
+)
+ax.axis("equal")
+st.pyplot(fig)
 
 # ---------------------------------------------------------
 # Performance Tab

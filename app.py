@@ -210,7 +210,22 @@ with tab1:
     st.dataframe(prices.tail())
     st.subheader("Key Portfolio Insights")
 
-    col1, col2, col3 = st.columns(3)
+  # === Advanced risk metrics ===
+mctr = cov_matrix.values @ w
+mctr = mctr / portfolio_volatility if portfolio_volatility > 0 else mctr * 0
+
+risk_contribution = w * mctr
+if risk_contribution.sum() != 0:
+    risk_contribution = risk_contribution / risk_contribution.sum()
+
+# --- Portfolio Beta (safe fallback) ---
+try:
+    portfolio_beta = float((w * np.array(beta)).sum())
+except:
+    portfolio_beta = 0.0
+
+# === UI Metrics ===
+col1, col2, col3 = st.columns(3)
 with col1:
     st.metric("Expected Annual Return", f"{portfolio_expected_return:.2%}")
 with col2:
@@ -225,6 +240,7 @@ with col5:
     st.metric("Beta vs SPY", f"{portfolio_beta:.2f}")
 with col6:
     st.metric("Diversification Score", f"{diversification_score:.1f}/10")
+
     st.subheader("Risk Contribution Breakdown")
     fig, ax = plt.subplots(figsize=(6, 6))
     ax.pie(risk_contribution, labels=tickers, autopct="%1.1f%%", startangle=90)

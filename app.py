@@ -245,10 +245,10 @@ with col5:
 with col6:
     st.metric("Diversification Score", f"{diversification_score:.1f}/10")
     st.subheader("Risk Contribution Breakdown")
-    fig, ax = plt.subplots(figsize=(6, 6))
-    ax.pie(
+fig, ax = plt.subplots(figsize=(6, 6))
+ax.pie(
     risk_contribution,
-    labels=valid_tickers,   # <-- FIXED
+    labels=valid_tickers,   # <-- MUST MATCH w, er, cov_matrix
     autopct="%1.1f%%",
     startangle=90
 )

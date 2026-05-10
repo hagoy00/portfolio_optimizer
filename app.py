@@ -256,60 +256,62 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
 ])
 
 # ---------------------------------------------------------
-# Overview
+# TAB 1 — OVERVIEW
 # ---------------------------------------------------------
 with tab1:
-    st.subheader("Overview")
-    st.dataframe(prices.tail())
-    st.subheader("Key Portfolio Insights")
+    st.subheader("Portfolio Overview")
 
-# === Advanced risk metrics ===
-mctr = cov_matrix.values @ w
-mctr = mctr / portfolio_volatility if portfolio_volatility > 0 else mctr * 0
+    # --- FIRST ROW OF METRICS (col1, col2, col3) ---
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Annual Return", f"{annual_return:.2%}")
+    with col2:
+        st.metric("Volatility", f"{portfolio_volatility:.2%}")
+    with col3:
+        st.metric("Sharpe Ratio", f"{sharpe_ratio:.2f}")
 
-risk_contribution = w * mctr
+    # --- SECOND ROW OF METRICS (col4, col5, col6) ---
+    col4, col5, col6 = st.columns(3)
+    with col4:
+        st.metric("Max Drawdown", f"{max_drawdown:.2%}")
+    with col5:
+        st.metric("Beta vs SPY", f"{portfolio_beta:.2f}")
+    with col6:
+        st.metric("Diversification Score", f"{diversification_score:.1f}/10")
 
-# --- Fix NaN or zero-sum risk contribution ---
-if np.isnan(risk_contribution).any() or risk_contribution.sum() == 0:
-    # fallback: equal contribution
-    risk_contribution = np.array([1 / len(valid_tickers)] * len(valid_tickers))
-else:
-    risk_contribution = risk_contribution / risk_contribution.sum()
+    # ---------------------------------------------------------
+    # RISK CONTRIBUTION PIE CHART — CRASH‑PROOF VERSION
+    # ---------------------------------------------------------
+    st.subheader("Risk Contribution Breakdown")
 
-# --- Portfolio Beta (safe fallback) ---
-try:
-    portfolio_beta = float((w * np.array(beta)).sum())
-except:
-    portfolio_beta = 0.0
+    if len(valid_tickers) == 0:
+        st.info("No valid tickers available.")
+    else:
+        # Equal contribution for each ticker (always valid)
+        n = len(valid_tickers)
+        risk_contribution = np.array([1.0 / n] * n, dtype=float)
 
-# --- Diversification Score ---
-diversification_score = float(10 - (w**2).sum() * 10)
-diversification_score = max(0.0, min(10.0, diversification_score))
+        # Safety: ensure non-negative and normalized
+        risk_contribution = np.clip(risk_contribution, 0, None)
+        total = risk_contribution.sum()
+        if total == 0 or np.isnan(total):
+            risk_contribution = np.array([1.0 / n] * n, dtype=float)
+        else:
+            risk_contribution = risk_contribution / total
 
-# === UI Metrics ===
-col1, col2, col3 = st.columns(3)
-with col1:
-    st.metric("Expected Annual Return", f"{portfolio_expected_return:.2%}")
-with col2:
-    st.metric("Annual Volatility", f"{portfolio_volatility:.2%}")
-with col3:
-    st.metric("Sharpe Ratio", f"{portfolio_sharpe:.2f}")
+        # Force labels to match wedge count
+        valid_tickers = valid_tickers[:len(risk_contribution)]
 
-col4, col5, col6 = st.columns(3)
-with col4:
-    st.metric("Max Drawdown", f"{max_drawdown:.2%}")
-with col5:
-    st.metric("Beta vs SPY", f"{portfolio_beta:.2f}")
-with col6:
-    st.metric("Diversification Score", f"{diversification_score:.1f}/10")
-
-# --- Move pie chart OUTSIDE the columns ---
-st.subheader("Risk Contribution Breakdown")
-fig, ax = plt.subplots(figsize=(6, 6))
-ax.pie(risk_contribution, labels=valid_tickers, autopct="%1.1f%%", startangle=90)
-ax.axis("equal")
-st.pyplot(fig)
-
+        # Render pie chart
+        fig, ax = plt.subplots(figsize=(6, 6))
+        ax.pie(
+            risk_contribution,
+            labels=valid_tickers,
+            autopct="%1.1f%%",
+            startangle=90
+        )
+        ax.axis("equal")
+        st.pyplot(fig)
 # ---------------------------------------------------------
 # Performance Tab
 # ---------------------------------------------------------

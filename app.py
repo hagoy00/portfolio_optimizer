@@ -190,17 +190,37 @@ def compute_sector_weights(weights_vec, tickers_list):
     sectors = [sector_map.get(t, "Other") for t in tickers_list]
     df = pd.DataFrame({"Ticker": tickers_list, "Weight": weights_vec, "Sector": sectors})
     return df.groupby("Sector")["Weight"].sum
+
+
+
+
 # ---------------------------------------------------------
-# RETURN PIPELINE
+# RETURN PIPELINE (MUST BE BEFORE TABS)
 # ---------------------------------------------------------
+
+# 1. Compute returns_df from prices
 returns_df = prices.pct_change().dropna()
+
+# 2. Align tickers to returns_df
 valid_tickers = list(returns_df.columns)
+
+# 3. Rebuild weights to match valid_tickers
+weights = [weights_dict[t] for t in valid_tickers] if 'weights_dict' in locals() else [1/len(valid_tickers)] * len(valid_tickers)
 w = np.array(weights)
+
+# 4. Expected returns (annualized)
 expected_returns = returns_df.mean() * 252
 er = expected_returns.values
+
+# 5. Covariance matrix (annualized)
 cov_matrix = returns_df.cov() * 252
+
+# 6. Portfolio returns series
 portfolio_returns = returns_df[valid_tickers].values @ w
+
+# 7. Portfolio volatility
 portfolio_volatility = np.sqrt(w.T @ cov_matrix.values @ w)
+
 
 # ---------------------------------------------------------
 # FUNDAMENTALS PIPELINE (STEP 3 GOES HERE)

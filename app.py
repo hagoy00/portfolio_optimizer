@@ -194,6 +194,15 @@ model = {
     "sector_weights": sector_weights,
     "momentum": momentum_dict,
 }
+# Align expected returns with weights
+valid_tickers = list(returns_df.columns)
+
+# Filter weights to match available tickers
+w = np.array([weights[t] for t in valid_tickers])
+
+# Recompute expected returns only for valid tickers
+er = returns_df[valid_tickers].mean().values * 252
+
 # === REQUIRED INPUTS BEFORE PORTFOLIO METRICS ===
 
 # 1. Compute returns (must exist before expected_returns)

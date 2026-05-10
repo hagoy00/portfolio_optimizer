@@ -362,9 +362,6 @@ with tab2:
     st.pyplot(fig)
 
 # ---------------------------------------------------------
-# Risk Tab
-# ---------------------------------------------------------
-# ---------------------------------------------------------
 # TAB 3 — RISK & DRAWDOWN ANALYSIS
 # ---------------------------------------------------------
 with tab3:
@@ -419,6 +416,30 @@ with tab3:
     st.pyplot(fig)
 
     # ---------------------------------------------------------
+    # FINAL SAFE RISK CONTRIBUTION (ABSOLUTE CONTRIBUTIONS)
+    # ---------------------------------------------------------
+    marginal_risk = cov_matrix.values @ w
+    raw_contribution = w * marginal_risk
+    abs_contribution = np.abs(raw_contribution)
+
+    # Normalize to sum to 1
+    if abs_contribution.sum() > 0:
+        risk_contribution = abs_contribution / abs_contribution.sum()
+    else:
+        risk_contribution = np.array([1 / len(valid_tickers)] * len(valid_tickers))
+
+    # === Risk Contribution Pie Chart ===
+    st.markdown("### Risk Contribution Breakdown")
+
+    # Sync labels to contribution length (prevents ValueError)
+    valid_tickers = valid_tickers[:len(risk_contribution)]
+
+    fig2, ax2 = plt.subplots()
+    ax2.pie(risk_contribution, labels=valid_tickers, autopct="%1.1f%%", startangle=90)
+    ax2.axis("equal")
+    st.pyplot(fig2)
+    
+# ---------------------------------------------------------
 # FINAL SAFE RISK CONTRIBUTION (ABSOLUTE CONTRIBUTIONS)
 # ---------------------------------------------------------
 

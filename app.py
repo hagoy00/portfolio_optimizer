@@ -328,8 +328,16 @@ with tab3:
 # ---------------------------------------------------------
 with tab4:
     st.subheader("Sector Exposure")
+
+    # Recompute sector weights here
+    try:
+        sector_weights = compute_sector_weights(valid_tickers, fundamentals)
+    except:
+        sector_weights = {t: 0 for t in valid_tickers}
+
     sector_df = pd.DataFrame.from_dict(sector_weights, orient="index", columns=["Weight"])
     st.bar_chart(sector_df)
+
 
 # ---------------------------------------------------------
 # Fundamentals

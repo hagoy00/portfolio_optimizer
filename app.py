@@ -234,6 +234,24 @@ cov_matrix = returns_df.cov() * 252
 
 w = weights
 er = expected_returns.values
+# --- Align tickers, weights, and expected returns ---
+
+# Step 1: Determine which tickers actually have data
+valid_tickers = list(returns.columns)
+
+# Step 2: Rebuild weights dict using ONLY valid tickers
+weights_dict = dict(zip(tickers, weights))
+
+# Step 3: Build aligned weight vector
+w = np.array([weights_dict[t] for t in valid_tickers])
+
+# Step 4: Compute expected returns ONLY for valid tickers
+er = returns[valid_tickers].mean().values * 252
+
+# Step 5: Safety check
+if len(w) != len(er):
+    st.error(f"Shape mismatch: weights={len(w)}, expected_returns={len(er)}")
+    st.stop()
 
 # Expected annual return
 portfolio_expected_return = float((w * er).sum())

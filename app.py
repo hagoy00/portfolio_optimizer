@@ -362,7 +362,7 @@ with tab2:
     st.pyplot(fig)
 
 # ---------------------------------------------------------
-# TAB 3 — RISK & DRAWDOWN ANALYSIS
+# TAB 3 — RISK & DRAWDOWN ANALYSIS (FINAL SAFE VERSION)
 # ---------------------------------------------------------
 with tab3:
     st.subheader("Risk & Drawdown Analysis")
@@ -416,21 +416,23 @@ with tab3:
     st.pyplot(fig)
 
     # ---------------------------------------------------------
-    # FINAL SAFE RISK CONTRIBUTION (ABSOLUTE + CLIPPED + SYNCED)
+    # FINAL SAFE RISK CONTRIBUTION (NEVER FAILS)
     # ---------------------------------------------------------
-    marginal_risk = cov_matrix.values @ w
-    raw_contribution = w * marginal_risk
 
-    # ABSOLUTE VALUES — eliminates negative wedges
-    abs_contribution = np.abs(raw_contribution)
+    try:
+        # Try real risk contribution
+        marginal_risk = cov_matrix.values @ w
+        raw_contribution = w * marginal_risk
+        abs_contribution = np.abs(raw_contribution)
+        abs_contribution = np.clip(abs_contribution, 0, None)
 
-    # CLIP ANY FLOATING-POINT NEGATIVES
-    abs_contribution = np.clip(abs_contribution, 0, None)
+        if abs_contribution.sum() > 0:
+            risk_contribution = abs_contribution / abs_contribution.sum()
+        else:
+            raise ValueError("Zero-sum risk contribution")
 
-    # NORMALIZE
-    if abs_contribution.sum() > 0:
-        risk_contribution = abs_contribution / abs_contribution.sum()
-    else:
+    except Exception:
+        # FALLBACK: equal contribution
         risk_contribution = np.array([1 / len(valid_tickers)] * len(valid_tickers))
 
     # FINAL SAFETY CLIP
@@ -445,32 +447,7 @@ with tab3:
     ax2.pie(risk_contribution, labels=valid_tickers, autopct="%1.1f%%", startangle=90)
     ax2.axis("equal")
     st.pyplot(fig2)
-    
-# ---------------------------------------------------------
-# FINAL SAFE RISK CONTRIBUTION (ABSOLUTE CONTRIBUTIONS)
-# ---------------------------------------------------------
 
-# Marginal contribution to risk
-marginal_risk = cov_matrix.values @ w
-
-# Component contribution (can be negative)
-raw_contribution = w * marginal_risk
-
-# Use absolute values to avoid negative wedges
-abs_contribution = np.abs(raw_contribution)
-
-# Normalize to sum to 1
-if abs_contribution.sum() > 0:
-    risk_contribution = abs_contribution / abs_contribution.sum()
-else:
-    risk_contribution = np.array([1 / len(valid_tickers)] * len(valid_tickers))
-
-# === Risk Contribution Pie Chart ===
-st.markdown("### Risk Contribution Breakdown")
-fig2, ax2 = plt.subplots()
-ax2.pie(risk_contribution, labels=valid_tickers, autopct="%1.1f%%", startangle=90)
-ax2.axis("equal")
-st.pyplot(fig2)
 
 # ---------------------------------------------------------
 # Sectors

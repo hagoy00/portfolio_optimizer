@@ -317,11 +317,59 @@ with tab2:
     st.pyplot(fig)
 
 # ---------------------------------------------------------
-# Risk
+# Risk Tab
 # ---------------------------------------------------------
 with tab3:
-    st.subheader("Risk & Drawdown")
-    st.line_chart(drawdown_df)
+    st.subheader("Risk & Drawdown Analysis")
+
+    # Use aligned portfolio returns
+    ret = pd.Series(portfolio_returns, name="Portfolio Return")
+
+    # === Drawdown ===
+    cum_ret = (1 + ret).cumprod()
+    running_max = cum_ret.cummax()
+    drawdown = (cum_ret - running_max) / running_max
+    max_dd = drawdown.min()
+
+    # === Rolling Volatility ===
+    rolling_vol = ret.rolling(30).std() * np.sqrt(252)
+
+    # === Portfolio Beta (vs SPY) ===
+    try:
+        portfolio_beta = float((w * np.array(beta)).sum())
+    except:
+        portfolio_beta = 0.0
+
+    # === Value at Risk (95%) ===
+    var_95 = np.percentile(ret.dropna(), 5)
+
+    # === Conditional VaR (CVaR) ===
+    cvar_95 = ret[ret <= var_95].mean() if len(ret[ret <= var_95]) > 0 else 0
+
+    # === Display Metrics ===
+    colA, colB, colC, colD = st.columns(4)
+    colA.metric("Max Drawdown", f"{max_dd:.2%}")
+    colB.metric("Rolling Vol (30d)", f"{rolling_vol.iloc[-1]:.2%}")
+    colC.metric("Beta vs SPY", f"{portfolio_beta:.2f}")
+    colD.metric("CVaR (95%)", f"{cvar_95:.2%}")
+
+    # === Drawdown Chart ===
+    st.markdown("### Drawdown")
+    st.area_chart(drawdown)
+
+    # === Rolling Volatility Chart ===
+    st.markdown("### Rolling Volatility (30-day)")
+    st.line_chart(rolling_vol)
+
+    # === VaR Distribution Chart ===
+    st.markdown("### Distribution of Daily Returns (for VaR)")
+    fig, ax = plt.subplots()
+    ax.hist(ret.dropna(), bins=40, alpha=0.7)
+    ax.axvline(var_95, color="red", linestyle="--", label=f"VaR 95%: {var_95:.2%}")
+    ax.set_title("Return Distribution with VaR")
+    ax.legend()
+    st.pyplot(fig)
+
 
 # ---------------------------------------------------------
 # Sectors

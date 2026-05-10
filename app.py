@@ -241,22 +241,7 @@ except Exception as e:
     fundamentals = {t: {} for t in valid_tickers}
 
 # ---------------------------------------------------------
-# TABS START HERE
-# ---------------------------------------------------------
-tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
-    "Overview",
-    "Performance",
-    "Risk",
-    "Sectors",
-    "Fundamentals",
-    "Weights",
-    "AI Commentary",
-    "Buy Analysis",
-    "Optimizer"
-])
-
-# ---------------------------------------------------------
-# METRICS FOR TAB 1 (Overview)
+# GLOBAL METRICS USED BY TAB 1, TAB 2, TAB 3
 # ---------------------------------------------------------
 
 # Annual return
@@ -278,8 +263,29 @@ running_max = cum_ret.cummax()
 drawdown = (cum_ret - running_max) / running_max
 max_drawdown = drawdown.min()
 
-# Diversification score (simple version)
+# Diversification score (simple placeholder)
 diversification_score = max(1, min(10, len(valid_tickers)))
+
+# Portfolio beta vs SPY
+try:
+    portfolio_beta = float((w * np.array(beta)).sum())
+except:
+    portfolio_beta = 0.0
+
+# ---------------------------------------------------------
+# TABS START HERE
+# ---------------------------------------------------------
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
+    "Overview",
+    "Performance",
+    "Risk",
+    "Sectors",
+    "Fundamentals",
+    "Weights",
+    "AI Commentary",
+    "Buy Analysis",
+    "Optimizer"
+])
 
 # ---------------------------------------------------------
 # TAB 1 — OVERVIEW

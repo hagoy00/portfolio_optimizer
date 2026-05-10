@@ -217,7 +217,12 @@ mctr = cov_matrix.values @ w
 mctr = mctr / portfolio_volatility if portfolio_volatility > 0 else mctr * 0
 
 risk_contribution = w * mctr
-if risk_contribution.sum() != 0:
+
+# --- Fix NaN or zero-sum risk contribution ---
+if np.isnan(risk_contribution).any() or risk_contribution.sum() == 0:
+    # fallback: equal contribution
+    risk_contribution = np.array([1 / len(valid_tickers)] * len(valid_tickers))
+else:
     risk_contribution = risk_contribution / risk_contribution.sum()
 
 # --- Portfolio Beta (safe fallback) ---

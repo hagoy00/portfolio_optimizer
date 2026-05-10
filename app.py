@@ -205,7 +205,14 @@ returns_df = prices.pct_change().dropna()
 valid_tickers = list(returns_df.columns)
 
 # 3. Rebuild weights to match valid_tickers
-weights = [weights_dict[t] for t in valid_tickers] if 'weights_dict' in locals() else [1/len(valid_tickers)] * len(valid_tickers)
+# 3. Rebuild weights to match valid_tickers safely
+if 'weights_dict' in locals():
+    weights = [weights_dict.get(t, 1/len(valid_tickers)) for t in valid_tickers]
+else:
+    weights = [1/len(valid_tickers)] * len(valid_tickers)
+
+w = np.array(weights)
+#weights = [weights_dict[t] for t in valid_tickers] if 'weights_dict' in locals() else [1/len(valid_tickers)] * len(valid_tickers)
 w = np.array(weights)
 
 # 4. Expected returns (annualized)

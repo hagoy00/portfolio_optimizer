@@ -210,7 +210,7 @@ with tab1:
     st.dataframe(prices.tail())
     st.subheader("Key Portfolio Insights")
 
-  # === Advanced risk metrics ===
+# === Advanced risk metrics ===
 mctr = cov_matrix.values @ w
 mctr = mctr / portfolio_volatility if portfolio_volatility > 0 else mctr * 0
 
@@ -223,6 +223,10 @@ try:
     portfolio_beta = float((w * np.array(beta)).sum())
 except:
     portfolio_beta = 0.0
+
+# --- Diversification Score ---
+diversification_score = float(10 - (w**2).sum() * 10)
+diversification_score = max(0.0, min(10.0, diversification_score))
 
 # === UI Metrics ===
 col1, col2, col3 = st.columns(3)
@@ -240,7 +244,6 @@ with col5:
     st.metric("Beta vs SPY", f"{portfolio_beta:.2f}")
 with col6:
     st.metric("Diversification Score", f"{diversification_score:.1f}/10")
-
     st.subheader("Risk Contribution Breakdown")
     fig, ax = plt.subplots(figsize=(6, 6))
     ax.pie(

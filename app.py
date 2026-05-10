@@ -192,39 +192,45 @@ def compute_sector_weights(weights_vec, tickers_list):
     return df.groupby("Sector")["Weight"].sum
 
 # ---------------------------------------------------------
-# RETURN PIPELINE (MUST BE BEFORE TABS)
+# REBUILD WEIGHTS SAFELY AFTER CLEANING TICKERS
 # ---------------------------------------------------------
 
-# 1. Compute returns_df from prices
+# 1. Compute returns_df
 returns_df = prices.pct_change().dropna()
 
-# 2. Align tickers to returns_df
+# 2. Extract valid tickers from returns_df
 valid_tickers = list(returns_df.columns)
 
-# 3. Rebuild weights to match valid_tickers
-# 3. Rebuild weights to match valid_tickers safely
+# 3. Rebuild weights_dict to match valid_tickers only
+clean_weights = {}
+
 if 'weights_dict' in locals():
-    weights = [weights_dict.get(t, 1/len(valid_tickers)) for t in valid_tickers]
+    for t in valid_tickers:
+        clean_weights[t] = weights_dict.get(t, 1 / len(valid_tickers))
 else:
-    weights = [1/len(valid_tickers)] * len(valid_tickers)
+    clean_weights = {t: 1 / len(valid_tickers) for t in valid_tickers}
 
-w = np.array(weights)
-#weights = [weights_dict[t] for t in valid_tickers] if 'weights_dict' in locals() else [1/len(valid_tickers)] * len(valid_tickers)
-w = np.array(weights)
+# 4. Convert to numpy array
+w = np.array([clean_weights[t] for t in valid_tickers], dtype=float)
 
-# 4. Expected returns (annualized)
+# 5. Normalize weights to sum to 1
+if w.sum() > 0:
+    w = w / w.sum()
+else:
+    w = np.array([1 / len(valid_tickers)] * len(valid_tickers))
+
+# 6. Expected returns (annualized)
 expected_returns = returns_df.mean() * 252
 er = expected_returns.values
 
-# 5. Covariance matrix (annualized)
+# 7. Covariance matrix (annualized)
 cov_matrix = returns_df.cov() * 252
 
-# 6. Portfolio returns series
+# 8. Portfolio returns series
 portfolio_returns = returns_df[valid_tickers].values @ w
 
-# 7. Portfolio volatility
+# 9. Portfolio volatility
 portfolio_volatility = np.sqrt(w.T @ cov_matrix.values @ w)
-
 # ---------------------------------------------------------
 # FUNDAMENTALS PIPELINE (STEP 3 GOES HERE)
 # ---------------------------------------------------------

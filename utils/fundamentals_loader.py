@@ -8,7 +8,8 @@ def safe_get(value):
     except:
         return None
 
-def load_fundamentals(tickers):
+#def load_fundamentals(tickers):
+def load_fundamentals(tickers, full_prices=None):
     fundamentals = {}
 
     for t in tickers:

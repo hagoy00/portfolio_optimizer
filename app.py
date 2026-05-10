@@ -107,24 +107,16 @@ mc_horizon = st.sidebar.slider("Monte Carlo Horizon (days)", 50, 500, 252)
 prices = load_price_data(tickers, start_date, end_date)
 returns = load_returns_data(tickers, start_date, end_date)
 
-# --- Validate price data ---
 if prices is None or prices.empty:
     st.error("Price data could not be loaded.")
     st.stop()
 
-# --- Validate returns data ---
 if returns is None or returns.empty:
-    st.error("Could not compute returns.")
+    st.error("Returns data could not be loaded.")
     st.stop()
 
 # Standardize naming
 returns_df = returns.copy()
-
-# --- Validate covariance ---
-cov = returns_df.cov()
-if cov is None or cov.empty:
-    st.error("Covariance matrix is empty.")
-    st.stop()
 
 # ---------------------------------------------------------
 # Equal-weight baseline
@@ -132,21 +124,14 @@ if cov is None or cov.empty:
 weights = np.array([1 / len(tickers)] * len(tickers))
 
 # ---------------------------------------------------------
-# Align tickers, weights, returns, cov
+# Align tickers, weights, returns, covariance
 # ---------------------------------------------------------
-# Only keep tickers that actually have return data
 valid_tickers = list(returns_df.columns)
 
-# Rebuild weights dict using original tickers
 weights_dict = dict(zip(tickers, weights))
-
-# Aligned weight vector (one weight per valid ticker)
 w = np.array([weights_dict[t] for t in valid_tickers])
 
-# Expected annual returns for valid tickers
 er = returns_df[valid_tickers].mean().values * 252
-
-# Annualized covariance matrix for valid tickers
 cov_matrix = returns_df[valid_tickers].cov() * 252
 
 # Safety checks
@@ -154,14 +139,13 @@ if len(w) != len(er):
     st.error(f"Shape mismatch: weights={len(w)}, expected_returns={len(er)}")
     st.stop()
 
-if cov_matrix.shape[0] != len(w) or cov_matrix.shape[1] != len(w):
-    st.error(f"Covariance matrix shape mismatch: cov={cov_matrix.shape}, weights={len(w)}")
+if cov_matrix.shape[0] != len(w):
+    st.error(f"Covariance mismatch: cov={cov_matrix.shape}, weights={len(w)}")
     st.stop()
 
 # ---------------------------------------------------------
-# Portfolio metrics (core)
+# Portfolio metrics
 # ---------------------------------------------------------
-# Portfolio returns series (for performance & drawdown)
 portfolio_returns = returns_df[valid_tickers].values @ w
 
 portfolio_expected_return = float(np.dot(w, er))
@@ -171,7 +155,7 @@ portfolio_sharpe = (
     if portfolio_volatility > 0 else 0.0
 )
 
-# Simple performance dict (used in model)
+# Performance dict for AI model
 expected_return = portfolio_returns.mean() * 252
 volatility = portfolio_returns.std() * np.sqrt(252)
 sharpe = expected_return / volatility if volatility > 0 else 0.0
@@ -192,7 +176,7 @@ drawdown_df = pd.DataFrame({"Drawdown": drawdown})
 max_drawdown = float(drawdown.min())
 
 # ---------------------------------------------------------
-# Sector weights (by ticker mapping)
+# Sector weights
 # ---------------------------------------------------------
 def compute_sector_weights(weights_vec, tickers_list):
     sector_map = {
@@ -203,62 +187,7 @@ def compute_sector_weights(weights_vec, tickers_list):
     }
     sectors = [sector_map.get(t, "Other") for t in tickers_list]
     df = pd.DataFrame({"Ticker": tickers_list, "Weight": weights_vec, "Sector": sectors})
-    return df.groupby("Sector")["Weight"].sum().to_dict()
-
-sector_weights = compute_sector_weights(w, valid_tickers)
-
-# ---------------------------------------------------------
-# Momentum for AI model
-# ---------------------------------------------------------
-def compute_momentum_series(returns_df, window=60):
-    momentum = {}
-    for t in returns_df.columns:
-        r = returns_df[t].dropna()
-        if len(r) >= window:
-            momentum[t] = float(r.tail(window).mean() * 252)
-        elif len(r) > 0:
-            momentum[t] = float(r.mean() * 252)
-        else:
-            momentum[t] = 0.0
-    return momentum
-
-momentum_dict = compute_momentum_series(returns_df[valid_tickers])
-
-# ---------------------------------------------------------
-# Fundamentals (Option A2)
-# ---------------------------------------------------------
-fundamentals = load_fundamentals(tickers)
-
-model = {
-    "performance": performance,
-    "fundamentals": fundamentals,
-    "tickers": valid_tickers,
-    "drawdown": drawdown_df,
-    "sector_weights": sector_weights,
-    "momentum": momentum_dict,
-}
-
-# ---------------------------------------------------------
-# Advanced risk metrics
-# ---------------------------------------------------------
-# Portfolio beta (only if you have `beta` aligned to valid_tickers)
-try:
-    portfolio_beta = float((w * np.array(beta)).sum())
-except Exception:
-    portfolio_beta = 0.0
-
-# Diversification score
-diversification_score = float(10 - (w**2).sum() * 10)
-diversification_score = max(0.0, min(10.0, diversification_score))
-
-# Marginal contribution to risk
-mctr = cov_matrix.values @ w
-mctr = mctr / portfolio_volatility if portfolio_volatility > 0 else mctr * 0
-
-risk_contribution = w * mctr
-if risk_contribution.sum() != 0:
-    risk_contribution = risk_contribution / risk_contribution.sum()
-
+    return df.groupby("Sector")["Weight"].sum
 # ---------------------------------------------------------
 # Tabs
 # ---------------------------------------------------------

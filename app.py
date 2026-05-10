@@ -419,25 +419,30 @@ with tab3:
     st.pyplot(fig)
 
     # ---------------------------------------------------------
-    # SAFE RISK CONTRIBUTION (NO NEGATIVES, NO CRASHES)
-    # ---------------------------------------------------------
-    marginal_risk = cov_matrix.values @ w
-    portfolio_var = w.T @ marginal_risk
+# FINAL SAFE RISK CONTRIBUTION (ABSOLUTE CONTRIBUTIONS)
+# ---------------------------------------------------------
 
-    risk_contribution = (w * marginal_risk) / portfolio_var
-    risk_contribution = np.clip(risk_contribution, 0, None)
+# Marginal contribution to risk
+marginal_risk = cov_matrix.values @ w
 
-    if risk_contribution.sum() > 0:
-        risk_contribution = risk_contribution / risk_contribution.sum()
-    else:
-        risk_contribution = np.array([1 / len(valid_tickers)] * len(valid_tickers))
+# Component contribution (can be negative)
+raw_contribution = w * marginal_risk
 
-    # === Risk Contribution Pie Chart ===
-    st.markdown("### Risk Contribution Breakdown")
-    fig2, ax2 = plt.subplots()
-    ax2.pie(risk_contribution, labels=valid_tickers, autopct="%1.1f%%", startangle=90)
-    ax2.axis("equal")
-    st.pyplot(fig2)
+# Use absolute values to avoid negative wedges
+abs_contribution = np.abs(raw_contribution)
+
+# Normalize to sum to 1
+if abs_contribution.sum() > 0:
+    risk_contribution = abs_contribution / abs_contribution.sum()
+else:
+    risk_contribution = np.array([1 / len(valid_tickers)] * len(valid_tickers))
+
+# === Risk Contribution Pie Chart ===
+st.markdown("### Risk Contribution Breakdown")
+fig2, ax2 = plt.subplots()
+ax2.pie(risk_contribution, labels=valid_tickers, autopct="%1.1f%%", startangle=90)
+ax2.axis("equal")
+st.pyplot(fig2)
 
 # ---------------------------------------------------------
 # Sectors

@@ -263,21 +263,29 @@ st.pyplot(fig)
 with tab2:
     st.subheader("Performance Metrics")
 
-    cum_ret = (1 + port_ret).cumprod()
+    # Use aligned portfolio returns
+    ret = pd.Series(portfolio_returns)
 
-    rolling_vol = port_ret.rolling(30).std() * np.sqrt(252)
-    rolling_sharpe = (port_ret.rolling(30).mean() * 252) / rolling_vol
+    # Cumulative return
+    cum_ret = (1 + ret).cumprod()
 
+    # Rolling metrics
+    rolling_vol = ret.rolling(30).std() * np.sqrt(252)
+    rolling_sharpe = (ret.rolling(30).mean() * 252) / rolling_vol
+
+    # Drawdown
     cum_max = cum_ret.cummax()
     dd = (cum_ret - cum_max) / cum_max
 
-    mu = port_ret.mean() * 252
-    vol = port_ret.std() * np.sqrt(252)
+    # Performance stats
+    mu = ret.mean() * 252
+    vol = ret.std() * np.sqrt(252)
     sharpe_local = mu / vol if vol > 0 else 0
-    sortino = (port_ret.mean() * 252) / (port_ret[port_ret < 0].std() * np.sqrt(252))
+    sortino = (ret.mean() * 252) / (ret[ret < 0].std() * np.sqrt(252)) if ret[ret < 0].std() > 0 else 0
     calmar = mu / abs(dd.min()) if dd.min() != 0 else 0
     max_dd = dd.min()
 
+    # Display metrics
     st.metric("Expected Return", f"{mu:.2%}")
     st.metric("Volatility", f"{vol:.2%}")
     st.metric("Sharpe Ratio", f"{sharpe_local:.2f}")
@@ -287,6 +295,15 @@ with tab2:
 
     st.markdown("### Cumulative Return")
     st.line_chart(cum_ret)
+
+    st.markdown("### Rolling Volatility (30-day)")
+    st.line_chart(rolling_vol)
+
+    st.markdown("### Rolling Sharpe Ratio (30-day)")
+    st.line_chart(rolling_sharpe)
+
+    st.markdown("### Drawdown")
+    st.line_chart(dd)
 
     st.markdown("### Rolling 30-Day Volatility")
     st.line_chart(rolling_vol)

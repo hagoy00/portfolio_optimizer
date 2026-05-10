@@ -110,6 +110,18 @@ returns = load_returns_data(tickers, start_date, end_date)
 if prices is None or prices.empty:
     st.error("Price data could not be loaded.")
     st.stop()
+# --- Validate price data ---
+if prices is None or prices.empty:
+    st.error("Price data could not be loaded.")
+    st.stop()
+
+# --- Validate returns data ---
+if returns is None or returns.empty:
+    st.error("Could not compute returns.")
+    st.stop()
+
+# Standardize naming
+returns_df = returns.copy()
 
 if returns is None or returns.empty:
     st.error("Could not compute returns.")

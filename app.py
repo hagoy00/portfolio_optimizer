@@ -210,7 +210,8 @@ model = {
 valid_tickers = list(returns_df.columns)
 
 # Filter weights to match available tickers
-w = np.array([weights[t] for t in valid_tickers])
+w = np.array([weights[i] for i in range(len(valid_tickers))])
+#w = np.array([weights[t] for t in valid_tickers])
 
 # Recompute expected returns only for valid tickers
 er = returns_df[valid_tickers].mean().values * 252

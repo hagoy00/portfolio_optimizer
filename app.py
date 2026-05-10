@@ -364,6 +364,8 @@ with tab2:
 # ---------------------------------------------------------
 # TAB 3 — RISK & DRAWDOWN ANALYSIS (CRASH-PROOF VERSION)
 # ---------------------------------------------------------
+st.write("DEBUG: Tab 3 is running")
+
 with tab3:
     st.subheader("Risk & Drawdown Analysis")
 

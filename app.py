@@ -256,6 +256,32 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
 ])
 
 # ---------------------------------------------------------
+# METRICS FOR TAB 1 (Overview)
+# ---------------------------------------------------------
+
+# Annual return
+annual_return = portfolio_returns.mean() * 252
+
+# Volatility
+portfolio_volatility = np.sqrt(w.T @ cov_matrix.values @ w)
+
+# Sharpe ratio
+sharpe_ratio = (
+    annual_return / portfolio_volatility
+    if portfolio_volatility > 0
+    else 0
+)
+
+# Max drawdown
+cum_ret = (1 + pd.Series(portfolio_returns)).cumprod()
+running_max = cum_ret.cummax()
+drawdown = (cum_ret - running_max) / running_max
+max_drawdown = drawdown.min()
+
+# Diversification score (simple version)
+diversification_score = max(1, min(10, len(valid_tickers)))
+
+# ---------------------------------------------------------
 # TAB 1 — OVERVIEW
 # ---------------------------------------------------------
 with tab1:

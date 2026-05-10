@@ -246,14 +246,11 @@ with col5:
     st.metric("Beta vs SPY", f"{portfolio_beta:.2f}")
 with col6:
     st.metric("Diversification Score", f"{diversification_score:.1f}/10")
-    st.subheader("Risk Contribution Breakdown")
+
+# --- Move pie chart OUTSIDE the columns ---
+st.subheader("Risk Contribution Breakdown")
 fig, ax = plt.subplots(figsize=(6, 6))
-ax.pie(
-    risk_contribution,
-    labels=valid_tickers,   # <-- MUST MATCH w, er, cov_matrix
-    autopct="%1.1f%%",
-    startangle=90
-)
+ax.pie(risk_contribution, labels=valid_tickers, autopct="%1.1f%%", startangle=90)
 ax.axis("equal")
 st.pyplot(fig)
 

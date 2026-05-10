@@ -191,6 +191,16 @@ def compute_sector_weights(weights_vec, tickers_list):
     df = pd.DataFrame({"Ticker": tickers_list, "Weight": weights_vec, "Sector": sectors})
     return df.groupby("Sector")["Weight"].sum
 # ---------------------------------------------------------
+# FUNDAMENTALS PIPELINE (MUST BE BEFORE TABS)
+# ---------------------------------------------------------
+
+try:
+    fundamentals = load_fundamentals(valid_tickers, full_prices=prices)
+except Exception as e:
+    st.warning(f"Could not load fundamentals: {e}")
+    fundamentals = {t: {} for t in valid_tickers}
+
+# ---------------------------------------------------------
 # Tabs
 # ---------------------------------------------------------
 tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([

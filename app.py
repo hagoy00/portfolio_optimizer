@@ -211,21 +211,20 @@ with tab1:
     st.subheader("Key Portfolio Insights")
 
     col1, col2, col3 = st.columns(3)
-    with col1:
-        st.metric("Expected Annual Return", f"{portfolio_expected_return:.2%}")
-    with col2:
-        st.metric("Annual Volatility", f"{portfolio_volatility:.2%}")
-    with col3:
-        st.metric("Sharpe Ratio", f"{portfolio_sharpe:.2f}")
+with col1:
+    st.metric("Expected Annual Return", f"{portfolio_expected_return:.2%}")
+with col2:
+    st.metric("Annual Volatility", f"{portfolio_volatility:.2%}")
+with col3:
+    st.metric("Sharpe Ratio", f"{portfolio_sharpe:.2f}")
 
-    col4, col5, col6 = st.columns(3)
-    with col4:
-        st.metric("Max Drawdown", f"{max_drawdown:.2%}")
-    with col5:
-        st.metric("Beta vs SPY", f"{portfolio_beta:.2f}")
-    with col6:
-        st.metric("Diversification Score", f"{diversification_score:.1f}/10")
-
+col4, col5, col6 = st.columns(3)
+with col4:
+    st.metric("Max Drawdown", f"{max_drawdown:.2%}")
+with col5:
+    st.metric("Beta vs SPY", f"{portfolio_beta:.2f}")
+with col6:
+    st.metric("Diversification Score", f"{diversification_score:.1f}/10")
     st.subheader("Risk Contribution Breakdown")
     fig, ax = plt.subplots(figsize=(6, 6))
     ax.pie(risk_contribution, labels=tickers, autopct="%1.1f%%", startangle=90)

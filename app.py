@@ -1,3 +1,4 @@
+import plotly.graph_objects as go
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -10,71 +11,12 @@ from utils.fundamentals_loader import load_fundamentals
 from utils.optimizer_core import run_optimizer
 from utils.buy_analysis import run_buy_analysis
 from utils.analytics import run_monte_carlo_simulation
-import plotly.graph_objects as go
+from datetime import datetime, timedelta
 
 # ---------------------------------------------------------
-# Page config + sticky header
+# Page config
 # ---------------------------------------------------------
 st.set_page_config(page_title="Portfolio Optimizer Dashboard", layout="wide")
-st.markdown("""
-<style>
-
-.fixed-title {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-
-    margin-top: 20px;
-
-    background-color: white;
-    padding: 10px 20px;
-
-    font-size: 28px;
-    font-weight: 900;
-    color: #1E90FF;
-
-    text-align: center;   /* ⭐ CENTER THE TITLE */
-
-    border-bottom: 1px solid #E5E5E5;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.10);
-
-    z-index: 9999;
-}
-
-/* Remove Streamlit header */
-header[data-testid="stHeader"] {
-    display: none !important;
-}
-
-/* Remove white overlay */
-div[data-testid="stAppViewContainer"] {
-    background-color: transparent !important;
-}
-
-/* Push content down */
-div[data-testid="stAppViewContainer"] .block-container {
-    padding-top: 100px !important;
-}
-
-</style>
-
-<div class="fixed-title">Portfolio Optimizer Dashboard</div>
-""", unsafe_allow_html=True)
-
-# ---------------------------------------------------------
-# Safe value cleaner
-# ---------------------------------------------------------
-def safe_val(x):
-    if x in [None, "None", "nan", "NaN"]:
-        return None
-    try:
-        if float(x) == 0:
-            return None
-    except:
-        pass
-    return x
-import yfinance as yf
 
 # ---------------------------------------------------------
 # Sidebar inputs
@@ -98,16 +40,12 @@ if start_date >= end_date:
     st.sidebar.error("Start date must be before end date.")
     st.stop()
 
-st.sidebar.subheader("Analysis Controls")
 run_button = st.sidebar.button("Run Analysis")
-
 mc_sims = st.sidebar.slider("Monte Carlo Simulations", 200, 3000, 500)
 mc_horizon = st.sidebar.slider("Monte Carlo Horizon (days)", 50, 500, 252)
 
-import yfinance as yf
-
 # ---------------------------------------------------------
-# Load Price Data (robust loader + SPY auto-include)
+# Robust Price Loader (handles all Yahoo formats)
 # ---------------------------------------------------------
 def load_price_data(tickers, start, end):
     try:
@@ -118,20 +56,13 @@ def load_price_data(tickers, start, end):
 
         # MultiIndex case
         if isinstance(raw.columns, pd.MultiIndex):
-            # Case: ('Adj Close', 'AAPL')
             if "Adj Close" in raw.columns.get_level_values(0):
                 adj = raw["Adj Close"]
-
-            # Case: ('AAPL', 'Adj Close')
             elif "Adj Close" in raw.columns.get_level_values(1):
                 adj = raw.xs("Adj Close", level=1, axis=1)
-
-            # Fallback to Close
             else:
                 adj = raw.xs("Close", level=1, axis=1)
-
         else:
-            # Single-level columns
             if "Adj Close" in raw.columns:
                 adj = raw["Adj Close"]
             elif "Close" in raw.columns:
@@ -139,7 +70,6 @@ def load_price_data(tickers, start, end):
             else:
                 return pd.DataFrame()
 
-        # Ensure DataFrame
         if isinstance(adj, pd.Series):
             adj = adj.to_frame()
 
@@ -180,7 +110,7 @@ if len(valid_tickers) == 0:
     st.stop()
 
 # ---------------------------------------------------------
-# Auto-detect Fundamentals (PE, PB, Beta, DivYield, MarketCap, Sector)
+# Auto Fundamentals Loader
 # ---------------------------------------------------------
 @st.cache_data
 def load_fundamentals_auto(tickers):
@@ -210,45 +140,35 @@ def load_fundamentals_auto(tickers):
 fundamentals = load_fundamentals_auto(valid_tickers)
 
 # ---------------------------------------------------------
-# Auto Sector Detection (no manual map needed)
+# Auto Sector Detection
 # ---------------------------------------------------------
 sector_map = {t: fundamentals[t].get("Sector", "Unknown") for t in valid_tickers}
 
 # ---------------------------------------------------------
-# PREP FOR METRICS
+# Global Metrics
 # ---------------------------------------------------------
 weights = np.array([1 / len(valid_tickers)] * len(valid_tickers))
 
-# ---------------------------------------------------------
-# PORTFOLIO METRICS (GLOBAL)
-# ---------------------------------------------------------
-try:
-    portfolio_returns = returns_df.dot(weights)
+portfolio_returns = returns_df.dot(weights)
+annual_return = portfolio_returns.mean() * 252
+annual_volatility = portfolio_returns.std() * np.sqrt(252)
+sharpe_ratio = annual_return / annual_volatility
+max_drawdown = (portfolio_returns.cummax() - portfolio_returns).max()
 
-    annual_return = portfolio_returns.mean() * 252
-    annual_volatility = portfolio_returns.std() * (252 ** 0.5)
-    sharpe_ratio = annual_return / annual_volatility
+corr_matrix = returns_df.corr()
+avg_corr = corr_matrix.where(~np.eye(corr_matrix.shape[0], dtype=bool)).mean().mean()
+diversification_score = max(0, min(10, (1 - avg_corr) * 10))
 
-    max_drawdown = (portfolio_returns.cummax() - portfolio_returns).max()
-
-    corr_matrix = returns_df.corr()
-    avg_corr = corr_matrix.where(~np.eye(corr_matrix.shape[0], dtype=bool)).mean().mean()
-    diversification_score = max(0, min(10, (1 - avg_corr) * 10))
-
-    if "SPY" in returns_df.columns:
-        spy_returns = returns_df["SPY"]
-        covariance = portfolio_returns.cov(spy_returns)
-        market_variance = spy_returns.var()
-        portfolio_beta = covariance / market_variance
-    else:
-        portfolio_beta = float("nan")
-
-except Exception as e:
-    st.error(f"Portfolio metrics failed: {e}")
-    st.stop()
+if "SPY" in returns_df.columns:
+    spy_returns = returns_df["SPY"]
+    covariance = portfolio_returns.cov(spy_returns)
+    market_variance = spy_returns.var()
+    portfolio_beta = covariance / market_variance
+else:
+    portfolio_beta = float("nan")
 
 # ---------------------------------------------------------
-# TABS START HERE
+# Tabs
 # ---------------------------------------------------------
 tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
     "Overview",

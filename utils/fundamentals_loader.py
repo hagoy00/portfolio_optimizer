@@ -1,34 +1,48 @@
-
 import yfinance as yf
+import numpy as np
 
-def load_fundamentals(tickers, full_prices=None):
+# ---------------------------------------------------------
+# Safe extraction helper
+# ---------------------------------------------------------
+def safe_get(value):
+    if value in [None, "None", "nan", "NaN"]:
+        return None
+    try:
+        return float(value)
+    except:
+        return value
+
+# ---------------------------------------------------------
+# Clean Fundamentals Loader
+# ---------------------------------------------------------
+def load_fundamentals(tickers):
     """
-    Load fundamentals for each ticker.
-    full_prices is optional but required by Buy Analysis and Commentary.
+    Clean, stable fundamentals loader.
+    Matches the structure expected by:
+    - Tab 5 (Fundamentals)
+    - Tab 7 (AI Commentary)
+    - Tab 8 (Buy Analysis)
     """
 
     fundamentals = {}
 
     for t in tickers:
         try:
-            yf_t = yf.Ticker(t)
-            info = yf_t.info
+            info = yf.Ticker(t).info
 
             fundamentals[t] = {
-                "PE": info.get("trailingPE"),
-                "PB": info.get("priceToBook"),
-                "EPS": info.get("trailingEps"),
-                "ROE": info.get("returnOnEquity"),
-                "DividendYield": info.get("dividendYield"),
-                "DebtToEquity": info.get("debtToEquity"),
-                "Beta": info.get("beta"),
-                "Sector": info.get("sector"),
-                "MarketCap": info.get("marketCap"),
-                "full_prices": full_prices[t] if full_prices is not None and t in full_prices else None
+                "PE": safe_get(info.get("trailingPE")),
+                "PB": safe_get(info.get("priceToBook")),
+                "EPS": safe_get(info.get("trailingEps")),
+                "ROE": safe_get(info.get("returnOnEquity")),
+                "DividendYield": safe_get(info.get("dividendYield")),
+                "DebtToEquity": safe_get(info.get("debtToEquity")),
+                "Beta": safe_get(info.get("beta")),
+                "Sector": info.get("sector", "Unknown"),
+                "MarketCap": safe_get(info.get("marketCap")),
             }
 
         except Exception:
-            # Fail gracefully — never break the app
             fundamentals[t] = {
                 "PE": None,
                 "PB": None,
@@ -37,9 +51,8 @@ def load_fundamentals(tickers, full_prices=None):
                 "DividendYield": None,
                 "DebtToEquity": None,
                 "Beta": None,
-                "Sector": None,
+                "Sector": "Unknown",
                 "MarketCap": None,
-                "full_prices": full_prices[t] if full_prices is not None and t in full_prices else None
             }
 
     return fundamentals

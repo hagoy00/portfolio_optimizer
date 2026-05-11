@@ -1,37 +1,69 @@
 import logging
 from logging.handlers import RotatingFileHandler
 import os
+import sys
 
 LOG_DIR = "logs"
 os.makedirs(LOG_DIR, exist_ok=True)
 
-def get_logger(name="portfolio_optimizer"):
+# =========================================================
+# GLOBAL LOGGER CACHE (prevents duplicate handlers)
+# =========================================================
+_LOGGER_CACHE = {}
+
+
+# =========================================================
+# CREATE LOGGER
+# =========================================================
+def get_logger(name="portfolio_optimizer", level=logging.INFO):
+    """
+    Institutional-grade logger:
+    - Rotating file logs
+    - Streamlit-safe console logs
+    - No duplicate handlers
+    - Works across all utils/modules
+    """
+
+    # Return cached logger if already created
+    if name in _LOGGER_CACHE:
+        return _LOGGER_CACHE[name]
+
     logger = logging.getLogger(name)
-    logger.setLevel(logging.INFO)
+    logger.setLevel(level)
+    logger.propagate = False  # Prevent double logging
 
-    if not logger.handlers:
+    # -----------------------------------------------------
+    # Prevent duplicate handlers
+    # -----------------------------------------------------
+    if len(logger.handlers) == 0:
 
-        # Console handler
-        ch = logging.StreamHandler()
-        ch.setLevel(logging.INFO)
+        # ============================
+        # Console Handler
+        # ============================
+        ch = logging.StreamHandler(sys.stdout)
+        ch.setLevel(level)
         ch_formatter = logging.Formatter(
             "%(asctime)s | %(levelname)s | %(message)s"
         )
         ch.setFormatter(ch_formatter)
+        logger.addHandler(ch)
 
-        # File handler (rotating)
+        # ============================
+        # Rotating File Handler
+        # ============================
         fh = RotatingFileHandler(
-            f"{LOG_DIR}/app.log",
+            os.path.join(LOG_DIR, "app.log"),
             maxBytes=2_000_000,
-            backupCount=5
+            backupCount=5,
+            encoding="utf-8"
         )
-        fh.setLevel(logging.INFO)
+        fh.setLevel(level)
         fh_formatter = logging.Formatter(
             "%(asctime)s | %(levelname)s | %(name)s | %(message)s"
         )
         fh.setFormatter(fh_formatter)
-
-        logger.addHandler(ch)
         logger.addHandler(fh)
 
+    # Cache logger
+    _LOGGER_CACHE[name] = logger
     return logger

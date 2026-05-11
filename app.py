@@ -344,7 +344,7 @@ with tab3:
     ax.legend()
     st.pyplot(fig)
 
-        # ---------------------------------------------------------
+    # ---------------------------------------------------------
     # RISK CONTRIBUTION — TRUE RISK-BASED VERSION
     # ---------------------------------------------------------
     st.markdown("### Risk Contribution Breakdown")
@@ -539,7 +539,7 @@ with tab5:
     commentary = [f"- **{ticker}**: score {row['score']:.1f}" for ticker, row in ranked_df.iterrows()]
     st.markdown("\n".join(commentary))
 # ---------------------------------------------------------
-# Weights
+# Tab 6 — Portfolio Weights (Corrected for New Architecture)
 # ---------------------------------------------------------
 with tab6:
     st.header("Portfolio Weights")
@@ -551,7 +551,10 @@ with tab6:
     # ---------------------------------------------------------
     # DEFAULT WEIGHTS (equal weight for all valid tickers)
     # ---------------------------------------------------------
-    weights_dict = {t: 1/len(valid_tickers) for t in valid_tickers}
+    if "weights" not in st.session_state:
+        st.session_state["weights"] = {t: 1/len(valid_tickers) for t in valid_tickers}
+
+    weights_dict = st.session_state["weights"]
 
     st.subheader("Adjust Weights")
 
@@ -574,10 +577,13 @@ with tab6:
     if total > 0:
         weights_dict = {t: weight/total for t, weight in weights_dict.items()}
 
+    # Save normalized weights back to session_state
+    st.session_state["weights"] = weights_dict
+
     # ---------------------------------------------------------
     # CONVERT TO NUMPY ARRAY (for portfolio math)
     # ---------------------------------------------------------
-    w = np.array([weights_dict[t] for t in valid_tickers])
+    global_weights = np.array([weights_dict[t] for t in valid_tickers])
 
     # ---------------------------------------------------------
     # DISPLAY WEIGHTS TABLE
@@ -587,8 +593,7 @@ with tab6:
         "Ticker": valid_tickers,
         "Weight": [weights_dict[t] for t in valid_tickers]
     })
-
-    st.dataframe(weights_df, use_container_width=True
+    st.dataframe(weights_df, use_container_width=True)
 # ---------------------------------------------------------
 # AI Commentary + Signals
 # ---------------------------------------------------------

@@ -107,83 +107,37 @@ mc_horizon = st.sidebar.slider("Monte Carlo Horizon (days)", 50, 500, 252)
 # Load data
 # ---------------------------------------------------------
 prices = load_price_data(tickers, start_date, end_date)
-#returns = load_returns_data(tickers, start_date, end_date)
 
 if prices is None or prices.empty:
     st.error("Price data could not be loaded.")
     st.stop()
 
-#if returns is None or returns.empty:
-   # st.error("Returns data could not be loaded.")
-   # st.stop()
-
-# Standardize naming
-#returns_df = returns.copy()
-
 # ---------------------------------------------------------
-# Equal-weight baseline
+# Returns and valid tickers
 # ---------------------------------------------------------
-weights = np.array([1 / len(tickers)] * len(tickers))
+returns_df = prices.pct_change().dropna()
 
-# ---------------------------------------------------------
-# Align tickers, weights, returns, covariance
-# ---------------------------------------------------------
-#valid_tickers = list(returns_df.columns)
-
-# ---------------------------------------------------------
-# DEFAULT WEIGHTS (equal weight for all valid tickers)
-# ---------------------------------------------------------
-weights_dict = {t: 1/len(valid_tickers) for t in valid_tickers}
-
-# Convert to numpy array in ticker order
-w = np.array([weights_dict[t] for t in valid_tickers])
-
-er = returns_df[valid_tickers].mean().values * 252
-cov_matrix = returns_df[valid_tickers].cov() * 252
-
-# Safety checks
-if len(w) != len(er):
-    st.error(f"Shape mismatch: weights={len(w)}, expected_returns={len(er)}")
+if returns_df is None or returns_df.empty:
+    st.error("Could not compute returns from price data.")
     st.stop()
 
-if cov_matrix.shape[0] != len(w):
-    st.error(f"Covariance mismatch: cov={cov_matrix.shape}, weights={len(w)}")
+valid_tickers = list(returns_df.columns)
+
+if len(valid_tickers) == 0:
+    st.error("No valid tickers after cleaning returns.")
     st.stop()
 
 # ---------------------------------------------------------
-# Portfolio metrics
+# Fundamentals pipeline
 # ---------------------------------------------------------
-portfolio_returns = returns_df[valid_tickers].values @ w
-
-portfolio_expected_return = float(np.dot(w, er))
-portfolio_volatility = float(np.sqrt(w.T @ cov_matrix.values @ w))
-portfolio_sharpe = (
-    portfolio_expected_return / portfolio_volatility
-    if portfolio_volatility > 0 else 0.0
-)
-
-# Performance dict for AI model
-expected_return = portfolio_returns.mean() * 252
-volatility = portfolio_returns.std() * np.sqrt(252)
-sharpe = expected_return / volatility if volatility > 0 else 0.0
-
-performance = {
-    "expected_return": expected_return,
-    "volatility": volatility,
-    "sharpe": sharpe,
-}
+try:
+    fundamentals = load_fundamentals(valid_tickers, full_prices=prices)
+except Exception as e:
+    st.warning(f"Could not load fundamentals: {e}")
+    fundamentals = {t: {} for t in valid_tickers}
 
 # ---------------------------------------------------------
-# Drawdown
-# ---------------------------------------------------------
-cum = (1 + portfolio_returns).cumprod()
-running_max = np.maximum.accumulate(cum)
-drawdown = (cum - running_max) / running_max
-drawdown_df = pd.DataFrame({"Drawdown": drawdown})
-max_drawdown = float(drawdown.min())
-
-# ---------------------------------------------------------
-# Sector weights
+# Sector weights helper
 # ---------------------------------------------------------
 def compute_sector_weights(weights_vec, tickers_list):
     sector_map = {
@@ -194,54 +148,7 @@ def compute_sector_weights(weights_vec, tickers_list):
     }
     sectors = [sector_map.get(t, "Other") for t in tickers_list]
     df = pd.DataFrame({"Ticker": tickers_list, "Weight": weights_vec, "Sector": sectors})
-    return df.groupby("Sector")["Weight"].sum
-
-# ---------------------------------------------------------
-# REBUILD SAFELY AFTER CLEANING TICKERS
-# ---------------------------------------------------------
-
-returns_df = prices.pct_change().dropna()
-valid_tickers = list(returns_df.columns)
-# ---------------------------------------------------------
-# FUNDAMENTALS PIPELINE (STEP 3 GOES HERE)
-# ---------------------------------------------------------
-try:
-    fundamentals = load_fundamentals(valid_tickers, full_prices=prices)
-except Exception as e:
-    st.warning(f"Could not load fundamentals: {e}")
-    fundamentals = {t: {} for t in valid_tickers}
-
-# ---------------------------------------------------------
-# GLOBAL METRICS USED BY TAB 1, TAB 2, TAB 3
-# ---------------------------------------------------------
-
-# Annual return
-annual_return = portfolio_returns.mean() * 252
-
-# Volatility
-portfolio_volatility = np.sqrt(w.T @ cov_matrix.values @ w)
-
-# Sharpe ratio
-sharpe_ratio = (
-    annual_return / portfolio_volatility
-    if portfolio_volatility > 0
-    else 0
-)
-
-# Max drawdown
-cum_ret = (1 + pd.Series(portfolio_returns)).cumprod()
-running_max = cum_ret.cummax()
-drawdown = (cum_ret - running_max) / running_max
-max_drawdown = drawdown.min()
-
-# Diversification score (simple placeholder)
-diversification_score = max(1, min(10, len(valid_tickers)))
-
-# Portfolio beta vs SPY
-try:
-    portfolio_beta = float((w * np.array(beta)).sum())
-except:
-    portfolio_beta = 0.0
+    return df.groupby("Sector")["Weight"].sum()
 
 # ---------------------------------------------------------
 # TABS START HERE
@@ -257,6 +164,7 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
     "Buy Analysis",
     "Optimizer"
 ])
+
 
 # ---------------------------------------------------------
 # TAB 1 — OVERVIEW

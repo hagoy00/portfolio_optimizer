@@ -178,6 +178,11 @@ try:
     # Max Drawdown
     max_drawdown = (portfolio_returns.cummax() - portfolio_returns).max()
 
+    # Diversification Score (0–10)
+    corr_matrix = returns_df.corr()
+    avg_corr = corr_matrix.where(~np.eye(corr_matrix.shape[0], dtype=bool)).mean().mean()
+    diversification_score = max(0, min(10, (1 - avg_corr) * 10))
+
     # Beta vs SPY (only if SPY exists)
     if "SPY" in returns_df.columns:
         spy_returns = returns_df["SPY"]

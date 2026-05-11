@@ -119,10 +119,10 @@ mc_results = None
 
 if run_button:
     cov_matrix = returns_df.cov()
+    mc_results = run_monte_carlo_simulation(returns_df, mc_sims, mc_horizon)
 
     optimizer_results = run_optimizer(returns_df, cov_matrix)
     buy_results = run_buy_analysis(valid_tickers, fundamentals, close)
-    mc_results = run_monte_carlo_simulation(returns_df, mc_sims, mc_horizon)
 
 # ---------------------------------------------------------
 # Tabs

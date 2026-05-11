@@ -409,7 +409,9 @@ with tab3:
         )
         ax2.axis("equal")
         st.pyplot(fig2)
-
+# ---------------------------------------------------------
+# Tab 4 Sector exposure
+# ---------------------------------------------------------
 
 with tab4:
     st.subheader("Sector Exposure")

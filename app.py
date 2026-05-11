@@ -9,8 +9,38 @@ import streamlit as st
 # ---------------------------------------------------------
 st.title("Portfolio Optimizer Dashboard")
 
-tickers = st.text_input("Enter tickers (comma-separated):", "AAPL, MSFT, NVDA")
-tickers = [t.strip().upper() for t in tickers.split(",") if t.strip()]
+# ---------------------------------------------------------
+# USER SELECTS UNIVERSE FIRST
+# ---------------------------------------------------------
+universe = st.selectbox(
+    "Select a ticker universe:",
+    ["S&P 500", "Nasdaq 100", "Dow 30", "Mega Caps", "Custom"]
+)
+
+# ---------------------------------------------------------
+# LOAD TICKERS BASED ON UNIVERSE
+# ---------------------------------------------------------
+if universe == "S&P 500":
+    sp500_df = pd.read_csv("data/sp500.csv")
+    all_tickers = sp500_df["Symbol"].tolist()
+
+elif universe == "Nasdaq 100":
+    nasdaq_df = pd.read_csv("data/nasdaq100.csv")
+    all_tickers = nasdaq_df["Symbol"].tolist()
+
+elif universe == "Dow 30":
+    dow_df = pd.read_csv("data/dow30.csv")
+    all_tickers = dow_df["Symbol"].tolist()
+
+elif universe == "Mega Caps":
+    all_tickers = ["AAPL", "MSFT", "NVDA", "GOOG", "AMZN", "META", "TSLA"]
+
+elif universe == "Custom":
+    custom_input = st.text_input("Enter custom tickers (comma-separated):")
+    all_tickers = [t.strip().upper() for t in custom_input.split(",") if t.strip()]
+
+else:
+    all_tickers = []
 
 start_date = st.date_input("Start Date", value=pd.to_datetime("2020-01-01"))
 end_date = st.date_input("End Date", value=pd.to_datetime("today"))

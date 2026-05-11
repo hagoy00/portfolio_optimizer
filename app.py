@@ -607,33 +607,52 @@ with tab5:
 # Weights
 # ---------------------------------------------------------
 with tab6:
-    st.subheader("Weights")
-    weights_df = pd.DataFrame({"Ticker": tickers, "Weight": weights})
-    st.dataframe(weights_df)
-col1, col2 = st.columns([1, 1.5])
+    st.header("Portfolio Weights")
 
-with col1:
-    weight = st.slider(
-        f"{ticker} Weight",
-        min_value=0.0,
-        max_value=1.0,
-        value=current_weights[ticker],
-        step=0.01,
-        key=f"slider_{ticker}"
-    )
+    if len(valid_tickers) == 0:
+        st.warning("No valid tickers available to assign weights.")
+        st.stop()
 
-with col2:
-    st.markdown(f"""
-    **Expected Return:** {expected_returns[ticker]:.2%}  
-    **Volatility:** {volatility[ticker]:.2%}  
-    **Sharpe Ratio:** {sharpe[ticker]:.2f}  
-    **Beta:** {beta[ticker]:.2f}  
-    **Correlation to Portfolio:** {correlation_to_portfolio[ticker]:.2f}  
-    **Marginal Contribution to Risk (MCTR):** {mctr[ticker]:.3f}  
-    **Sector:** {sector_map[ticker]}  
-    **Fundamental Score:** {fundamental_score[ticker]}  
-    **Ranking Score:** {ranking_score[ticker]}  
-    """)
+    # ---------------------------------------------------------
+    # DEFAULT WEIGHTS (equal weight for all valid tickers)
+    # ---------------------------------------------------------
+    weights_dict = {t: 1/len(valid_tickers) for t in valid_tickers}
+
+    st.subheader("Adjust Weights")
+
+    # ---------------------------------------------------------
+    # SLIDERS — USER-ADJUSTABLE WEIGHTS
+    # ---------------------------------------------------------
+    for t in valid_tickers:
+        weights_dict[t] = st.slider(
+            f"{t} Weight",
+            min_value=0.0,
+            max_value=1.0,
+            value=float(weights_dict[t]),
+            key=f"weight_{t}"
+        )
+
+    # ---------------------------------------------------------
+    # NORMALIZE WEIGHTS (so they sum to 1)
+    # ---------------------------------------------------------
+    total = sum(weights_dict.values())
+    if total > 0:
+        weights_dict = {t: w/total for t, w in weights_dict.items()}
+
+    # ---------------------------------------------------------
+    # CONVERT TO NUMPY ARRAY (for portfolio math)
+    # ---------------------------------------------------------
+    w = np.array([weights_dict[t] for t in valid_tickers])
+
+    # ---------------------------------------------------------
+    # DISPLAY WEIGHTS TABLE
+    # ---------------------------------------------------------
+    st.subheader("Final Normalized Weights")
+    weights_df = pd.DataFrame({
+        "Ticker": valid_tickers,
+        "Weight": [weights_dict[t] for t in valid_tickers]
+    })
+    st.dataframe(weights_df, use_container_width=True)
 
 # ---------------------------------------------------------
 # AI Commentary + Signals

@@ -1,50 +1,74 @@
 import pandas as pd
 import numpy as np
 
-# ---------------------------------------------------------
-# Safe numeric conversion
-# ---------------------------------------------------------
+
+# =========================================================
+# SAFE VALUE CONVERSION
+# =========================================================
 def safe_val(x):
     try:
         if x is None or (isinstance(x, float) and np.isnan(x)):
             return None
         return float(x)
-    except:
+    except Exception:
         return None
 
-# ---------------------------------------------------------
-# Momentum calculation
-# ---------------------------------------------------------
+
+# =========================================================
+# MOMENTUM (ANNUALIZED)
+# =========================================================
 def compute_momentum(prices, window=60):
     """
-    Computes simple momentum: (Price_today / Price_60_days_ago) - 1
+    Computes annualized momentum using last N days of returns.
+    More stable than simple pct_change(window).
     """
+
+    if prices is None or prices.empty:
+        return pd.Series(dtype=float)
+
     try:
-        return prices.pct_change(window).iloc[-1]
+        returns = prices.pct_change().dropna()
+        if len(returns) < window:
+            return returns.mean() * 252  # fallback: mean return
+        return returns.tail(window).mean() * 252
     except Exception:
         return pd.Series({c: None for c in prices.columns})
 
-# ---------------------------------------------------------
-# Risk calculation (volatility)
-# ---------------------------------------------------------
+
+# =========================================================
+# RISK (ANNUALIZED VOLATILITY)
+# =========================================================
 def compute_risk(prices, window=60):
     """
-    Computes rolling volatility as risk measure.
+    Computes annualized volatility.
     """
+
+    if prices is None or prices.empty:
+        return pd.Series(dtype=float)
+
     try:
-        returns = prices.pct_change()
-        return returns.rolling(window).std().iloc[-1]
+        returns = prices.pct_change().dropna()
+        if len(returns) < window:
+            vol = returns.std() * np.sqrt(252)
+        else:
+            vol = returns.rolling(window).std().iloc[-1] * np.sqrt(252)
+        return vol
     except Exception:
         return pd.Series({c: None for c in prices.columns})
 
-# ---------------------------------------------------------
-# Composite scoring model
-# ---------------------------------------------------------
+
+# =========================================================
+# COMPOSITE SCORING MODEL (INSTITUTIONAL-GRADE)
+# =========================================================
 def compute_score(momentum, risk, fundamentals):
     """
-    Combines momentum, risk, and fundamentals into a single score.
-    Higher is better.
+    Multi-factor scoring model:
+    - Momentum (positive is good)
+    - Risk (lower is better)
+    - Valuation (PE, PB)
+    - Dividend Yield
     """
+
     scores = {}
 
     for t in fundamentals.keys():
@@ -57,22 +81,30 @@ def compute_score(momentum, risk, fundamentals):
 
         score = 0
 
-        # Momentum
+        # -------------------------
+        # MOMENTUM (weight: 30%)
+        # -------------------------
         if m is not None:
-            score += m * 50
+            score += np.tanh(m) * 30  # bounded, stable
 
-        # Risk (lower is better)
+        # -------------------------
+        # RISK (weight: 25%)
+        # -------------------------
         if r is not None and r > 0:
-            score += (0.30 - r) * 100
+            score += (0.30 - r) * 80  # lower vol → higher score
 
-        # Valuation
+        # -------------------------
+        # VALUATION (weight: 30%)
+        # -------------------------
         if pe is not None and pe > 0:
-            score += max(0, 50 - pe)
+            score += max(0, 40 - pe)
 
         if pb is not None and pb > 0:
-            score += max(0, 20 - pb)
+            score += max(0, 15 - pb)
 
-        # Dividend
+        # -------------------------
+        # DIVIDEND (weight: 15%)
+        # -------------------------
         if dy is not None and dy > 0:
             score += dy * 100
 
@@ -80,27 +112,35 @@ def compute_score(momentum, risk, fundamentals):
 
     return scores
 
-# ---------------------------------------------------------
-# Rating model
-# ---------------------------------------------------------
+
+# =========================================================
+# RATING MODEL (CLEAN)
+# =========================================================
 def compute_rating(score):
+    if score is None:
+        return "Sell"
     if score >= 60:
         return "Buy"
     elif score >= 25:
         return "Hold"
-    else:
-        return "Sell"
+    return "Sell"
 
-# ---------------------------------------------------------
-# Main Buy Analysis Function
-# ---------------------------------------------------------
+
+# =========================================================
+# MAIN BUY ANALYSIS FUNCTION
+# =========================================================
 def run_buy_analysis(tickers, fundamentals, prices):
     """
     Main entry point for Buy Analysis.
-    Uses cleaned price data from app.py.
+    Fully crash-proof.
     """
 
-    # Momentum & Risk
+    if prices is None or prices.empty:
+        return pd.DataFrame(columns=[
+            "Ticker", "Momentum", "Risk", "PE", "PB", "DividendYield", "Score", "Rating"
+        ])
+
+    # Compute factors
     momentum = compute_momentum(prices)
     risk = compute_risk(prices)
 
@@ -122,9 +162,13 @@ def run_buy_analysis(tickers, fundamentals, prices):
             "Score": safe_val(scores.get(t)),
         }
 
-        row["Rating"] = compute_rating(row["Score"] if row["Score"] is not None else 0)
+        row["Rating"] = compute_rating(row["Score"])
 
         rows.append(row)
 
     df = pd.DataFrame(rows)
+
+    # Sort by score descending
+    df = df.sort_values("Score", ascending=False).reset_index(drop=True)
+
     return df

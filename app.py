@@ -511,7 +511,7 @@ with tab6:
     # ---------------------------------------------------------
     total = sum(weights_dict.values())
     if total > 0:
-        weights_dict = {t: w/total for t, w in weights_dict.items()}
+        weights_dict = {t: weight/total for t, weight in weights_dict.items()}
 
     # ---------------------------------------------------------
     # CONVERT TO NUMPY ARRAY (for portfolio math)
@@ -527,7 +527,6 @@ with tab6:
         "Weight": [weights_dict[t] for t in valid_tickers]
     })
     st.dataframe(weights_df, use_container_width=True)
-
 # ---------------------------------------------------------
 # AI Commentary + Signals
 # ---------------------------------------------------------

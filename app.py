@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 
 from datetime import datetime, timedelta
 
-from utils.data_loader import load_price_data, load_returns_data
+from utils.data_loader import load_price_data
 from utils.fundamentals_loader import load_fundamentals
 from utils.optimizer_core import run_optimizer
 from utils.buy_analysis import run_buy_analysis

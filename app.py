@@ -506,14 +506,18 @@ with tab7:
         st.stop()
 
     perf = model.get("performance") or {}
-    if not isinstance(perf, dict) or perf.get("expected_return") is None:
 
-    fundamentals_model = model.get("fundamentals", {})
-    tickers_model = model.get("tickers", valid_tickers)
-    drawdown_model = model.get("drawdown")
-    sector_weights_model = model.get("sector_weights", {})
-    mc_model = model.get("monte_carlo")
-    momentum_model = model.get("momentum", {})
+if not isinstance(perf, dict) or perf.get("expected_return") is None:
+    st.warning("Not enough data to generate commentary.")
+    st.stop()
+
+fundamentals_model = model.get("fundamentals", {})
+tickers_model = model.get("tickers", valid_tickers)
+drawdown_model = model.get("drawdown")
+sector_weights_model = model.get("sector_weights", {})
+mc_model = model.get("monte_carlo")
+momentum_model = model.get("momentum", {})
+
  
         st.warning("Not enough data to generate commentary.")
         st.stop()

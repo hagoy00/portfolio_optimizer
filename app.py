@@ -43,47 +43,30 @@ mc_sims = st.sidebar.slider("Monte Carlo Simulations", 200, 3000, 500)
 mc_horizon = st.sidebar.slider("Monte Carlo Horizon (days)", 50, 500, 252)
 
 # ---------------------------------------------------------
-# Robust Price Loader (handles all Yahoo formats)
+# LOAD PRICE DATA (NEW FLAT FORMAT)
 # ---------------------------------------------------------
-def load_price_data(tickers, start, end):
-    try:
-        raw = yf.download(tickers, start=start, end=end)
+from utils.data_loader import load_price_data
 
-        if raw is None or raw.empty:
-            return pd.DataFrame()
-
-        # MultiIndex case
-        if isinstance(raw.columns, pd.MultiIndex):
-            if "Adj Close" in raw.columns.get_level_values(0):
-                adj = raw["Adj Close"]
-            elif "Adj Close" in raw.columns.get_level_values(1):
-                adj = raw.xs("Adj Close", level=1, axis=1)
-            else:
-                adj = raw.xs("Close", level=1, axis=1)
-        else:
-            if "Adj Close" in raw.columns:
-                adj = raw["Adj Close"]
-            elif "Close" in raw.columns:
-                adj = raw["Close"]
-            else:
-                return pd.DataFrame()
-
-        if isinstance(adj, pd.Series):
-            adj = adj.to_frame()
-
-        return adj
-
-    except Exception as e:
-        st.error(f"Price load failed: {e}")
-        return pd.DataFrame()
-
-# Load user tickers
 prices = load_price_data(tickers, start_date, end_date)
 
+# Guard clause — no data
 if prices is None or prices.empty:
     st.error("Price data could not be loaded.")
     st.stop()
 
+# Prices is already Adjusted Close only
+# Columns = tickers
+# Index = dates
+close = prices.copy()
+
+# Compute returns
+returns = close.pct_change().dropna()
+
+# Portfolio returns (equal-weight unless user selects weights)
+if len(close.columns) > 0:
+    portfolio_returns = returns.mean(axis=1)
+else:
+    portfolio_returns = pd.Series(dtype=float)
 # ---------------------------------------------------------
 # Ensure SPY exists for Beta calculation
 # ---------------------------------------------------------

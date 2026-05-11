@@ -197,36 +197,11 @@ def compute_sector_weights(weights_vec, tickers_list):
     return df.groupby("Sector")["Weight"].sum
 
 # ---------------------------------------------------------
-# REBUILD WEIGHTS SAFELY AFTER CLEANING TICKERS
+# REBUILD SAFELY AFTER CLEANING TICKERS
 # ---------------------------------------------------------
 
-# 1. Compute returns_df
 returns_df = prices.pct_change().dropna()
-
-# 2. Extract valid tickers from returns_df
 valid_tickers = list(returns_df.columns)
-
-# 3. Rebuild weights_dict to match valid_tickers only
-clean_weights = {}
-
-# 5. Normalize weights to sum to 1
-if w.sum() > 0:
-    w = w / w.sum()
-else:
-    w = np.array([1 / len(valid_tickers)] * len(valid_tickers))
-
-# 6. Expected returns (annualized)
-expected_returns = returns_df.mean() * 252
-er = expected_returns.values
-
-# 7. Covariance matrix (annualized)
-cov_matrix = returns_df.cov() * 252
-
-# 8. Portfolio returns series
-portfolio_returns = returns_df[valid_tickers].values @ w
-
-# 9. Portfolio volatility
-portfolio_volatility = np.sqrt(w.T @ cov_matrix.values @ w)
 # ---------------------------------------------------------
 # FUNDAMENTALS PIPELINE (STEP 3 GOES HERE)
 # ---------------------------------------------------------

@@ -519,8 +519,8 @@ mc_model = model.get("monte_carlo")
 momentum_model = model.get("momentum", {})
 
  
-        st.warning("Not enough data to generate commentary.")
-        st.stop()
+    st.warning("Not enough data to generate commentary.")
+    st.stop()
 
     er = perf["expected_return"]
     vol = perf["volatility"]

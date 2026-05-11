@@ -20,7 +20,6 @@ mc_horizon = st.number_input("Monte Carlo Horizon (days)", min_value=30, max_val
 
 run_button = st.button("Run Analysis")
 
-
 from utils.data_loader import load_price_data
 from utils.fundamentals_loader import load_fundamentals
 from utils.optimizer_core import run_optimizer

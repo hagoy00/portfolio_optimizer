@@ -107,7 +107,7 @@ mc_horizon = st.sidebar.slider("Monte Carlo Horizon (days)", 50, 500, 252)
 # Load data
 # ---------------------------------------------------------
 prices = load_price_data(tickers, start_date, end_date)
-returns = load_returns_data(tickers, start_date, end_date)
+#returns = load_returns_data(tickers, start_date, end_date)
 
 if prices is None or prices.empty:
     st.error("Price data could not be loaded.")

@@ -587,7 +587,9 @@ with tab6:
         "Ticker": valid_tickers,
         "Weight": [weights_dict[t] for t in valid_tickers]
     })
-    st.dataframe(weights_df, use_container_width=True# ---------------------------------------------------------
+
+    st.dataframe(weights_df, use_container_width=True
+# ---------------------------------------------------------
 # AI Commentary + Signals
 # ---------------------------------------------------------
 with tab7:
@@ -845,9 +847,6 @@ with tab7:
             "and maintaining diversification is recommended."
         )
 
-# ---------------------------------------------------------
-# Buy Analysis
-# ---------------------------------------------------------
 # ---------------------------------------------------------
 # Buy Analysis (Corrected for New Architecture)
 # ---------------------------------------------------------

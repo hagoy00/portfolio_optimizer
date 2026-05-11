@@ -4,6 +4,23 @@ import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 import streamlit as st
 
+# ---------------------------------------------------------
+# USER INPUTS (must be at the top)
+# ---------------------------------------------------------
+st.title("Portfolio Optimizer Dashboard")
+
+tickers = st.text_input("Enter tickers (comma-separated):", "AAPL, MSFT, NVDA")
+tickers = [t.strip().upper() for t in tickers.split(",") if t.strip()]
+
+start_date = st.date_input("Start Date", value=pd.to_datetime("2020-01-01"))
+end_date = st.date_input("End Date", value=pd.to_datetime("today"))
+
+mc_sims = st.number_input("Monte Carlo Simulations", min_value=100, max_value=50000, value=5000)
+mc_horizon = st.number_input("Monte Carlo Horizon (days)", min_value=30, max_value=252*5, value=252)
+
+run_button = st.button("Run Analysis")
+
+
 from utils.data_loader import load_price_data
 from utils.fundamentals_loader import load_fundamentals
 from utils.optimizer_core import run_optimizer

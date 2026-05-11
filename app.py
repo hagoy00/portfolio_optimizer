@@ -330,8 +330,6 @@ with tab2:
 # ---------------------------------------------------------
 # TAB 3 — RISK & DRAWDOWN ANALYSIS (CRASH-PROOF VERSION)
 # ---------------------------------------------------------
-st.write("DEBUG: Tab 3 is running")
-
 with tab3:
     st.subheader("Risk & Drawdown Analysis")
 
@@ -347,11 +345,9 @@ with tab3:
     # === Rolling Volatility ===
     rolling_vol = ret.rolling(30).std() * np.sqrt(252)
 
-    # === Portfolio Beta (vs SPY) ===
-    try:
-        portfolio_beta = float((w * np.array(beta)).sum())
-    except:
-        portfolio_beta = 0.0
+    # === Portfolio Beta (use global value) ===
+    # portfolio_beta already computed globally
+    beta_value = portfolio_beta if not np.isnan(portfolio_beta) else 0.0
 
     # === Value at Risk (95%) ===
     var_95 = np.percentile(ret.dropna(), 5)
@@ -363,7 +359,7 @@ with tab3:
     colA, colB, colC, colD = st.columns(4)
     colA.metric("Max Drawdown", f"{max_dd:.2%}")
     colB.metric("Rolling Vol (30d)", f"{rolling_vol.iloc[-1]:.2%}")
-    colC.metric("Beta vs SPY", f"{portfolio_beta:.2f}")
+    colC.metric("Beta vs SPY", f"{beta_value:.2f}")
     colD.metric("CVaR (95%)", f"{cvar_95:.2%}")
 
     # === Drawdown Chart ===
@@ -383,21 +379,17 @@ with tab3:
     ax.legend()
     st.pyplot(fig)
 
-    
-    # ---------------------------------------------------------
+# ---------------------------------------------------------
 # RISK CONTRIBUTION — CRASH‑PROOF VERSION
 # ---------------------------------------------------------
 st.markdown("### Risk Contribution Breakdown")
 
-# If no tickers, skip chart
 if len(valid_tickers) == 0:
     st.info("No valid tickers available.")
 else:
-    # Equal contribution for each ticker (always valid)
     n = len(valid_tickers)
     risk_contribution = np.array([1.0 / n] * n, dtype=float)
 
-    # Final safety: ensure non-negative and normalized
     risk_contribution = np.clip(risk_contribution, 0, None)
     total = risk_contribution.sum()
     if total == 0 or np.isnan(total):
@@ -405,10 +397,8 @@ else:
     else:
         risk_contribution = risk_contribution / total
 
-    # ⭐ CRITICAL FIX: force labels to match wedge count
     valid_tickers = valid_tickers[:len(risk_contribution)]
 
-    # Render pie chart
     fig2, ax2 = plt.subplots()
     ax2.pie(
         risk_contribution,

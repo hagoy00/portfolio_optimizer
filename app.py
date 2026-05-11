@@ -304,32 +304,63 @@ with tab3:
 
     # Use aligned portfolio returns
     ret = pd.Series(portfolio_returns, name="Portfolio Return")
+    clean_ret = ret.dropna()
+
+    # === Guard clause: no return data ===
+    if clean_ret.empty:
+        st.warning("Not enough return data to compute risk metrics.")
+
+        colA, colB, colC, colD = st.columns(4)
+        colA.metric("Max Drawdown", "N/A")
+        colB.metric("Rolling Vol (30d)", "N/A")
+        colC.metric("Beta vs SPY", f"{portfolio_beta:.2f}")
+        colD.metric("CVaR (95%)", "N/A")
+
+        st.markdown("### Drawdown")
+        st.area_chart(pd.Series(dtype=float))
+
+        st.markdown("### Rolling Volatility (30-day)")
+        st.line_chart(pd.Series(dtype=float))
+
+        st.markdown("### Distribution of Daily Returns (for VaR)")
+        fig, ax = plt.subplots()
+        ax.hist([], bins=40, alpha=0.7)
+        st.pyplot(fig)
+
+        st.markdown("### Risk Contribution Breakdown")
+        st.info("No valid tickers available.")
+
+        st.stop()
 
     # === Drawdown ===
-    cum_ret = (1 + ret).cumprod()
+    cum_ret = (1 + clean_ret).cumprod()
     running_max = cum_ret.cummax()
     drawdown = (cum_ret - running_max) / running_max
-    max_dd = drawdown.min()
+    max_dd = drawdown.min() if not drawdown.empty else np.nan
 
     # === Rolling Volatility ===
-    rolling_vol = ret.rolling(30).std() * np.sqrt(252)
+    rolling_vol = clean_ret.rolling(30).std() * np.sqrt(252)
+    last_vol = rolling_vol.iloc[-1] if len(rolling_vol.dropna()) > 0 else np.nan
 
     # === Portfolio Beta (use global value) ===
-    # portfolio_beta already computed globally
     beta_value = portfolio_beta if not np.isnan(portfolio_beta) else 0.0
 
     # === Value at Risk (95%) ===
-    var_95 = np.percentile(ret.dropna(), 5)
+    var_95 = np.percentile(clean_ret, 5) if len(clean_ret) > 0 else np.nan
 
     # === Conditional VaR (CVaR) ===
-    cvar_95 = ret[ret <= var_95].mean() if len(ret[ret <= var_95]) > 0 else 0
+    if np.isnan(var_95):
+        cvar_95 = np.nan
+    else:
+        tail = clean_ret[clean_ret <= var_95]
+        cvar_95 = tail.mean() if len(tail) > 0 else np.nan
 
     # === Display Metrics ===
     colA, colB, colC, colD = st.columns(4)
-    colA.metric("Max Drawdown", f"{max_dd:.2%}")
-    colB.metric("Rolling Vol (30d)", f"{rolling_vol.iloc[-1]:.2%}")
+    colA.metric("Max Drawdown", f"{max_dd:.2%}" if not np.isnan(max_dd) else "N/A")
+    colB.metric("Rolling Vol (30d)", f"{last_vol:.2%}" if not np.isnan(last_vol) else "N/A")
     colC.metric("Beta vs SPY", f"{beta_value:.2f}")
-    colD.metric("CVaR (95%)", f"{cvar_95:.2%}")
+    colD.metric("CVaR (95%)", f"{cvar_95:.2%}" if not np.isnan(cvar_95) else "N/A")
 
     # === Drawdown Chart ===
     st.markdown("### Drawdown")
@@ -342,8 +373,9 @@ with tab3:
     # === VaR Distribution Chart ===
     st.markdown("### Distribution of Daily Returns (for VaR)")
     fig, ax = plt.subplots()
-    ax.hist(ret.dropna(), bins=40, alpha=0.7)
-    ax.axvline(var_95, color="red", linestyle="--", label=f"VaR 95%: {var_95:.2%}")
+    ax.hist(clean_ret, bins=40, alpha=0.7)
+    if not np.isnan(var_95):
+        ax.axvline(var_95, color="red", linestyle="--", label=f"VaR 95%: {var_95:.2%}")
     ax.set_title("Return Distribution with VaR")
     ax.legend()
     st.pyplot(fig)
@@ -377,6 +409,8 @@ with tab3:
         )
         ax2.axis("equal")
         st.pyplot(fig2)
+
+
 with tab4:
     st.subheader("Sector Exposure")
 

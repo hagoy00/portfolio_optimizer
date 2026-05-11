@@ -7,9 +7,12 @@ import yfinance as yf
 
 from datetime import datetime, timedelta
 
-from utils.optimizer_core import run_optimizer
+# === NEW UTILS (institutional‑grade) ===
+from utils.data_loader import load_price_data
+from utils.fundamentals_loader import load_fundamentals
+from utils.optimizer import run_optimizer
 from utils.buy_analysis import run_buy_analysis
-from utils.analytics import run_monte_carlo_simulation
+from utils.analysis import compute_returns, compute_beta_vs_spy, run_monte_carlo_simulation
 
 # ---------------------------------------------------------
 # Page config
@@ -45,45 +48,36 @@ mc_horizon = st.sidebar.slider("Monte Carlo Horizon (days)", 50, 500, 252)
 # ---------------------------------------------------------
 # LOAD PRICE DATA (NEW FLAT FORMAT)
 # ---------------------------------------------------------
-from utils.data_loader import load_price_data
-
 prices = load_price_data(tickers, start_date, end_date)
 
-# Guard clause — no data
 if prices is None or prices.empty:
     st.error("Price data could not be loaded.")
     st.stop()
 
-# Prices is already Adjusted Close only
-# Columns = tickers
-# Index = dates
+# Prices = Adjusted Close only
 close = prices.copy()
 
 # Compute returns
 returns = close.pct_change().dropna()
 
-# Portfolio returns (equal-weight unless user selects weights)
+# Portfolio returns (equal-weight)
 if len(close.columns) > 0:
     portfolio_returns = returns.mean(axis=1)
 else:
     portfolio_returns = pd.Series(dtype=float)
+
 # ---------------------------------------------------------
 # Ensure SPY exists for Beta calculation
 # ---------------------------------------------------------
-if "SPY" not in prices.columns:
+if "SPY" not in close.columns:
     spy_data = load_price_data(["SPY"], start_date, end_date)
     if spy_data is not None and not spy_data.empty:
-        prices["SPY"] = spy_data["SPY"]
+        close["SPY"] = spy_data["SPY"]
     else:
         st.warning("SPY could not be loaded. Beta vs SPY unavailable.")
 
-# ---------------------------------------------------------
-# Clean returns (keep SPY)
-# ---------------------------------------------------------
-returns_df = prices.pct_change()
-returns_df = returns_df.ffill().bfill()
-returns_df = returns_df.dropna(how="all")
-
+# Clean returns including SPY
+returns_df = close.pct_change().ffill().bfill().dropna(how="all")
 valid_tickers = list(returns_df.columns)
 
 if len(valid_tickers) == 0:
@@ -91,38 +85,11 @@ if len(valid_tickers) == 0:
     st.stop()
 
 # ---------------------------------------------------------
-# Auto Fundamentals Loader
+# Fundamentals Loader (NEW)
 # ---------------------------------------------------------
-@st.cache_data
-def load_fundamentals_auto(tickers):
-    fundamentals = {}
-    for t in tickers:
-        try:
-            info = yf.Ticker(t).info
-            fundamentals[t] = {
-                "PE": info.get("trailingPE"),
-                "PB": info.get("priceToBook"),
-                "DividendYield": info.get("dividendYield"),
-                "Beta": info.get("beta"),
-                "MarketCap": info.get("marketCap"),
-                "Sector": info.get("sector", "Unknown")
-            }
-        except:
-            fundamentals[t] = {
-                "PE": None,
-                "PB": None,
-                "DividendYield": None,
-                "Beta": None,
-                "MarketCap": None,
-                "Sector": "Unknown"
-            }
-    return fundamentals
+fundamentals = load_fundamentals(valid_tickers)
 
-fundamentals = load_fundamentals_auto(valid_tickers)
-
-# ---------------------------------------------------------
-# Auto Sector Detection
-# ---------------------------------------------------------
+# Sector map
 sector_map = {t: fundamentals[t].get("Sector", "Unknown") for t in valid_tickers}
 
 # ---------------------------------------------------------
@@ -130,23 +97,24 @@ sector_map = {t: fundamentals[t].get("Sector", "Unknown") for t in valid_tickers
 # ---------------------------------------------------------
 weights = np.array([1 / len(valid_tickers)] * len(valid_tickers))
 
-portfolio_returns = returns_df.dot(weights)
+portfolio_returns = returns_df[valid_tickers].dot(weights)
 annual_return = portfolio_returns.mean() * 252
 annual_volatility = portfolio_returns.std() * np.sqrt(252)
-sharpe_ratio = annual_return / annual_volatility
+sharpe_ratio = annual_return / annual_volatility if annual_volatility > 0 else np.nan
 max_drawdown = (portfolio_returns.cummax() - portfolio_returns).max()
 
-corr_matrix = returns_df.corr()
+corr_matrix = returns_df[valid_tickers].corr()
 avg_corr = corr_matrix.where(~np.eye(corr_matrix.shape[0], dtype=bool)).mean().mean()
 diversification_score = max(0, min(10, (1 - avg_corr) * 10))
 
+# Beta vs SPY
 if "SPY" in returns_df.columns:
     spy_returns = returns_df["SPY"]
     covariance = portfolio_returns.cov(spy_returns)
     market_variance = spy_returns.var()
-    portfolio_beta = covariance / market_variance
+    portfolio_beta = covariance / market_variance if market_variance > 0 else np.nan
 else:
-    portfolio_beta = float("nan")
+    portfolio_beta = np.nan
 
 # ---------------------------------------------------------
 # Tabs

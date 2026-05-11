@@ -426,22 +426,37 @@ with tab3:
         )
         ax2.axis("equal")
         st.pyplot(fig2)
-# ---------------------------------------------------------
-# Sectors
-# ---------------------------------------------------------
 with tab4:
     st.subheader("Sector Exposure")
 
-    # Recompute sector weights here
-    try:
-        sector_weights = compute_sector_weights(valid_tickers, fundamentals)
-    except:
-        sector_weights = {t: 0 for t in valid_tickers}
+    # Safety: ensure fundamentals exist
+    if fundamentals is None or len(fundamentals) == 0:
+        st.info("Sector data unavailable. Run analysis first.")
+        st.stop()
 
-    sector_df = pd.DataFrame.from_dict(sector_weights, orient="index", columns=["Weight"])
-    st.bar_chart(sector_df)
+    # Auto sector detection from fundamentals
+    sector_map = {t: fundamentals[t].get("Sector", "Unknown") for t in valid_tickers}
 
+    # Equal weights for now (optimizer will override later)
+    w = np.array([1 / len(valid_tickers)] * len(valid_tickers))
+    w_series = pd.Series(w, index=valid_tickers)
 
+    # Compute sector weights
+    sector_weights = w_series.groupby(sector_map).sum().sort_values(ascending=False)
+
+    # Display table
+    st.markdown("### Sector Allocation Breakdown")
+    st.dataframe(sector_weights.to_frame("Weight").style.format({"Weight": "{:.2%}"}))
+
+    # Display chart
+    st.markdown("### Sector Chart")
+    fig = go.Figure(go.Bar(
+        x=sector_weights.index,
+        y=sector_weights.values,
+        marker_color="steelblue"
+    ))
+    fig.update_layout(height=400)
+    st.plotly_chart(fig, use_container_width=True)
 # ---------------------------------------------------------
 # Fundamentals
 # ---------------------------------------------------------

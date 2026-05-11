@@ -827,104 +827,106 @@ with tab8:
         st.info("Run the analysis first to generate optimizer results.")
         st.stop()
 
-    perf = model.get("performance", {})
-    st.write(perf)
-
-
     if not run_button:
         st.info("Run Analysis to generate buy analysis.")
-    else:
-        buy_results = run_buy_analysis(tickers, fundamentals, prices)
+        st.stop()
 
-        numeric_cols = ["PE", "PB", "DividendYield", "Momentum", "Risk", "Score"]
-        for col in numeric_cols:
-            if col in buy_results.columns:
-                buy_results[col] = buy_results[col].apply(safe_val)
+    # Run buy analysis
+    buy_results = run_buy_analysis(tickers, fundamentals, prices)
 
-        def rating_color(val):
-            return {"Buy": "🟢 Buy", "Hold": "🟡 Hold", "Sell": "🔴 Sell"}[val]
+    # Clean numeric columns
+    numeric_cols = ["PE", "PB", "DividendYield", "Momentum", "Risk", "Score"]
+    for col in numeric_cols:
+        if col in buy_results.columns:
+            buy_results[col] = buy_results[col].apply(safe_val)
 
-        buy_results["RatingColored"] = buy_results["Rating"].apply(rating_color)
+    # Rating colors
+    def rating_color(val):
+        return {"Buy": "🟢 Buy", "Hold": "🟡 Hold", "Sell": "🔴 Sell"}[val]
 
-        st.dataframe(
-            buy_results[
-                ["Ticker", "Momentum", "Risk", "PE", "PB", "DividendYield", "Score", "RatingColored"]
-            ]
-        )
+    buy_results["RatingColored"] = buy_results["Rating"].apply(rating_color)
 
-        st.subheader("AI Buy Analysis Commentary")
+    st.dataframe(
+        buy_results[
+            ["Ticker", "Momentum", "Risk", "PE", "PB", "DividendYield", "Score", "RatingColored"]
+        ]
+    )
 
-        def generate_buy_commentary(df):
-            if df.empty:
-                return "No buy analysis available."
-            lines = []
-            best = df.sort_values("Score", ascending=False).iloc[0]
-            lines.append(f"**{best['Ticker']}** leads with a score of {best['Score']}.")
-            worst = df.sort_values("Score", ascending=True).iloc[0]
-            lines.append(f"**{worst['Ticker']}** ranks weakest with a score of {worst['Score']}.")
-            return "\n\n".join(lines)
+    # Commentary
+    st.subheader("AI Buy Analysis Commentary")
 
-        st.markdown(generate_buy_commentary(buy_results))
+    def generate_buy_commentary(df):
+        if df.empty:
+            return "No buy analysis available."
+        lines = []
+        best = df.sort_values("Score", ascending=False).iloc[0]
+        lines.append(f"**{best['Ticker']}** leads with a score of {best['Score']}.")
+        worst = df.sort_values("Score", ascending=True).iloc[0]
+        lines.append(f"**{worst['Ticker']}** ranks weakest with a score of {worst['Score']}.")
+        return "\n\n".join(lines)
 
-        st.subheader("Fundamentals Radar Chart")
-        radar_cols = ["PE", "PB", "DividendYield", "Momentum", "Risk"]
-        fig = go.Figure()
-        for _, row in buy_results.iterrows():
-            fig.add_trace(go.Scatterpolar(
-                r=[row[c] if row[c] is not None else 0 for c in radar_cols],
-                theta=radar_cols,
-                fill='toself',
-                name=row["Ticker"]
-            ))
-        fig.update_layout(polar=dict(radialaxis=dict(visible=True)), showlegend=True, height=500)
-        st.plotly_chart(fig, use_container_width=True, key="radar_chart")
+    st.markdown(generate_buy_commentary(buy_results))
 
-        st.subheader("Top Strengths & Weaknesses")
+    # Radar chart
+    st.subheader("Fundamentals Radar Chart")
+    radar_cols = ["PE", "PB", "DividendYield", "Momentum", "Risk"]
+    fig = go.Figure()
+    for _, row in buy_results.iterrows():
+        fig.add_trace(go.Scatterpolar(
+            r=[row[c] if row[c] is not None else 0 for c in radar_cols],
+            theta=radar_cols,
+            fill='toself',
+            name=row["Ticker"]
+        ))
+    fig.update_layout(polar=dict(radialaxis=dict(visible=True)), showlegend=True, height=500)
+    st.plotly_chart(fig, use_container_width=True, key="radar_chart")
 
-        def strengths_weaknesses(row):
-            strengths, weaknesses = [], []
+    # Strengths & Weaknesses
+    st.subheader("Top Strengths & Weaknesses")
 
-            if row["Momentum"] and row["Momentum"] > 0:
-                strengths.append("Positive momentum")
-            else:
-                weaknesses.append("Weak momentum")
+    def strengths_weaknesses(row):
+        strengths, weaknesses = [], []
 
-            if row["Risk"] and row["Risk"] < 0.30:
-                strengths.append("Low volatility")
-            else:
-                weaknesses.append("High volatility")
+        if row["Momentum"] and row["Momentum"] > 0:
+            strengths.append("Positive momentum")
+        else:
+            weaknesses.append("Weak momentum")
 
-            if row["PE"] and row["PE"] > 40:
-                weaknesses.append("Stretched PE ratio")
-            elif row["PE"]:
-                strengths.append("Reasonable PE ratio")
+        if row["Risk"] and row["Risk"] < 0.30:
+            strengths.append("Low volatility")
+        else:
+            weaknesses.append("High volatility")
 
-            if row["PB"] and row["PB"] > 8:
-                weaknesses.append("Rich PB ratio")
-            elif row["PB"]:
-                strengths.append("Healthy PB ratio")
+        if row["PE"] and row["PE"] > 40:
+            weaknesses.append("Stretched PE ratio")
+        elif row["PE"]:
+            strengths.append("Reasonable PE ratio")
 
-            if row["DividendYield"] and row["DividendYield"] > 0.01:
-                strengths.append("Dividend support")
-            else:
-                weaknesses.append("Low or no dividend")
+        if row["PB"] and row["PB"] > 8:
+            weaknesses.append("Rich PB ratio")
+        elif row["PB"]:
+            strengths.append("Healthy PB ratio")
 
-            return strengths, weaknesses
+        if row["DividendYield"] and row["DividendYield"] > 0.01:
+            strengths.append("Dividend support")
+        else:
+            weaknesses.append("Low or no dividend")
 
-        for _, row in buy_results.iterrows():
-            st.markdown(f"### {row['Ticker']}")
-            strengths, weaknesses = strengths_weaknesses(row)
+        return strengths, weaknesses
 
-            st.markdown("**Strengths:**")
-            for s in strengths:
-                st.markdown(f"- {s}")
+    for _, row in buy_results.iterrows():
+        st.markdown(f"### {row['Ticker']}")
+        strengths, weaknesses = strengths_weaknesses(row)
 
-            st.markdown("**Weaknesses:**")
-            for w in weaknesses:
-                st.markdown(f"- {w}")
+        st.markdown("**Strengths:**")
+        for s in strengths:
+            st.markdown(f"- {s}")
 
-            st.markdown("---")
+        st.markdown("**Weaknesses:**")
+        for w in weaknesses:
+            st.markdown(f"- {w}")
 
+        st.markdown("---")
 # ---------------------------------------------------------
 # Optimizer
 # ---------------------------------------------------------

@@ -116,17 +116,15 @@ buy_results = None
 mc_results = None
 
 if run_button:
+    fundamentals = load_fundamentals(valid_tickers)   # <— ADD THIS LINE
+
     cov_matrix = returns_df[valid_tickers].cov()
     optimizer_results = run_optimizer(returns_df[valid_tickers], cov_matrix)
     buy_results = run_buy_analysis(valid_tickers, fundamentals, close)
     mc_results = run_monte_carlo_simulation(returns_df[valid_tickers], mc_sims, mc_horizon)
 
     st.session_state["model"] = {
-        "performance": {
-            "expected_return": annual_return,
-            "volatility": annual_volatility,
-            "sharpe": sharpe_ratio,
-        },
+        "performance": {...},
         "fundamentals": fundamentals,
         "tickers": valid_tickers,
         "drawdown": drawdown.to_frame("Drawdown"),
@@ -134,7 +132,7 @@ if run_button:
         "monte_carlo": mc_results,
         "optimizer": optimizer_results,
         "buy_analysis": buy_results,
-        "momentum": {},  # placeholder
+        "momentum": {},
     }
 
 # ---------------------------------------------------------

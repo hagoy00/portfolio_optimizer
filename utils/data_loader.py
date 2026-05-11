@@ -85,18 +85,21 @@ def extract_adj_close(full_prices):
 # ---------------------------------------------------------
 # Public API: load price data
 # ---------------------------------------------------------
-def load_price_data(tickers_input, start, end):
-    tickers = clean_ticker_input(tickers_input)
-
-    raw = yf.download(
+def load_price_data(tickers, start_date, end_date):
+    data = yf.download(
         tickers,
-        start=start,
-        end=end,
+        start=start_date,
+        end=end_date,
         group_by="ticker",
         auto_adjust=False,
-        progress=False,
-        threads=True
+        threads=False
     )
+
+    # STEP 1 — Keep only Close prices
+    if isinstance(data.columns, pd.MultiIndex):
+        data = data['Close']
+
+    return data
 
     if raw is None or raw.empty:
         return pd.DataFrame()

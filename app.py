@@ -175,6 +175,9 @@ try:
     annual_volatility = portfolio_returns.std() * (252 ** 0.5)
     sharpe_ratio = annual_return / annual_volatility
 
+    # Max Drawdown
+    max_drawdown = (portfolio_returns.cummax() - portfolio_returns).max()
+
     # Beta vs SPY (only if SPY exists)
     if "SPY" in returns_df.columns:
         spy_returns = returns_df["SPY"]
@@ -187,6 +190,7 @@ try:
 except Exception as e:
     st.error(f"Portfolio metrics failed: {e}")
     st.stop()
+
 # ---------------------------------------------------------
 # TABS START HERE
 # ---------------------------------------------------------

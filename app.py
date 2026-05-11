@@ -507,8 +507,8 @@ with tab7:
     perf = model.get("performance") or {}
 
     if not isinstance(perf, dict) or perf.get("expected_return") is None:
-    st.warning("Not enough data to generate commentary.")
-    st.stop()
+        st.warning("Not enough data to generate commentary.")
+        st.stop()
 
     fundamentals_model = model.get("fundamentals", {})
     tickers_model = model.get("tickers", valid_tickers)

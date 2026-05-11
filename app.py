@@ -130,6 +130,11 @@ weights = np.array([1 / len(tickers)] * len(tickers))
 # ---------------------------------------------------------
 #valid_tickers = list(returns_df.columns)
 
+# ---------------------------------------------------------
+# DEFAULT WEIGHTS (equal weight for all valid tickers)
+# ---------------------------------------------------------
+weights_dict = {t: 1/len(valid_tickers) for t in valid_tickers}
+
 weights_dict = dict(zip(tickers, weights))
 w = np.array([weights_dict[t] for t in valid_tickers])
 

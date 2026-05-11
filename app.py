@@ -48,6 +48,11 @@ mc_horizon = st.sidebar.slider("Monte Carlo Horizon (days)", 50, 500, 252)
 # ---------------------------------------------------------
 # LOAD PRICE DATA (NEW FLAT FORMAT)
 # ---------------------------------------------------------
+from utils.data_loader import load_price_data
+from utils.fundamentals_loader import load_fundamentals
+from utils.optimizer_core import run_optimizer
+from utils.buy_analysis import run_buy_analysis
+from utils.analytics import run_monte_carlo_simulation
 
 # Load prices
 prices = load_price_data(tickers, start_date, end_date)
@@ -119,10 +124,10 @@ mc_results = None
 
 if run_button:
     cov_matrix = returns_df.cov()
-    mc_results = run_monte_carlo_simulation(returns_df, mc_sims, mc_horizon)
 
     optimizer_results = run_optimizer(returns_df, cov_matrix)
     buy_results = run_buy_analysis(valid_tickers, fundamentals, close)
+    mc_results = run_monte_carlo_simulation(returns_df, mc_sims, mc_horizon)
 
 # ---------------------------------------------------------
 # Tabs

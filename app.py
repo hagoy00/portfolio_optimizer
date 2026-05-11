@@ -113,9 +113,9 @@ if prices is None or prices.empty:
     st.error("Price data could not be loaded.")
     st.stop()
 
-if returns is None or returns.empty:
-    st.error("Returns data could not be loaded.")
-    st.stop()
+#if returns is None or returns.empty:
+   # st.error("Returns data could not be loaded.")
+   # st.stop()
 
 # Standardize naming
 returns_df = returns.copy()

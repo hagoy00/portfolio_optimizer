@@ -135,7 +135,7 @@ weights = np.array([1 / len(tickers)] * len(tickers))
 # ---------------------------------------------------------
 weights_dict = {t: 1/len(valid_tickers) for t in valid_tickers}
 
-weights_dict = dict(zip(tickers, weights))
+# Convert to numpy array in ticker order
 w = np.array([weights_dict[t] for t in valid_tickers])
 
 er = returns_df[valid_tickers].mean().values * 252

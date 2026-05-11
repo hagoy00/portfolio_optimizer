@@ -917,7 +917,7 @@ with tab8:
             st.markdown("---")
 
 # ---------------------------------------------------------
-# Optimizer + Monte Carlo
+# Optimizer
 # ---------------------------------------------------------
 @st.cache_data(show_spinner=True)
 def run_optimizer_cached(returns, cov):
@@ -926,60 +926,63 @@ def run_optimizer_cached(returns, cov):
 with tab9:
     st.subheader("Optimizer")
 
+    # Safety check
     if not run_button:
         st.info("Run Analysis to generate optimizer results.")
-    else:
-        # -----------------------------
-        # Run Optimizer
-        # -----------------------------
-        opt_results = run_optimizer_cached(returns, cov)
-        st.success("Optimization complete!")
+        st.stop()
 
-        # -----------------------------
-        # Equal Weight Portfolio
-        # -----------------------------
-        st.markdown("### Equal Weight Portfolio")
-        ew = opt_results["equal_weight"]
-        st.write(f"**Expected Return:** {ew['expected_return']:.2%}")
-        st.write(f"**Volatility:** {ew['volatility']:.2%}")
-        st.write(f"**Sharpe Ratio:** {ew['sharpe']:.2f}")
+    # -----------------------------
+    # Run Optimizer
+    # -----------------------------
+    cov_matrix = returns_df.cov()
+    opt_results = run_optimizer_cached(returns_df, cov_matrix)
+    st.success("Optimization complete!")
 
-        ew_df = pd.DataFrame({
-            "Ticker": opt_results["tickers"],
-            "Weight": ew["weights"]
-        })
-        st.dataframe(ew_df, key="ew_df")
+    # -----------------------------
+    # Equal Weight Portfolio
+    # -----------------------------
+    st.markdown("### Equal Weight Portfolio")
+    ew = opt_results["equal_weight"]
+    st.write(f"**Expected Return:** {ew['expected_return']:.2%}")
+    st.write(f"**Volatility:** {ew['volatility']:.2%}")
+    st.write(f"**Sharpe Ratio:** {ew['sharpe']:.2f}")
 
-        # -----------------------------
-        # Max Sharpe Portfolio
-        # -----------------------------
-        st.markdown("### Maximum Sharpe Portfolio")
-        ms = opt_results["max_sharpe"]
-        st.write(f"**Expected Return:** {ms['expected_return']:.2%}")
-        st.write(f"**Volatility:** {ms['volatility']:.2%}")
-        st.write(f"**Sharpe Ratio:** {ms['sharpe']:.2f}")
+    ew_df = pd.DataFrame({
+        "Ticker": opt_results["tickers"],
+        "Weight": ew["weights"]
+    })
+    st.dataframe(ew_df, key="ew_df")
 
-        ms_df = pd.DataFrame({
-            "Ticker": opt_results["tickers"],
-            "Weight": ms["weights"]
-        })
-        st.dataframe(ms_df, key="ms_df")
+    # -----------------------------
+    # Maximum Sharpe Portfolio
+    # -----------------------------
+    st.markdown("### Maximum Sharpe Portfolio")
+    ms = opt_results["max_sharpe"]
+    st.write(f"**Expected Return:** {ms['expected_return']:.2%}")
+    st.write(f"**Volatility:** {ms['volatility']:.2%}")
+    st.write(f"**Sharpe Ratio:** {ms['sharpe']:.2f}")
 
-        # -----------------------------
-        # Correlation Heatmap (ONLY HERE)
-        # -----------------------------
-        st.markdown("### Correlation Heatmap")
+    ms_df = pd.DataFrame({
+        "Ticker": opt_results["tickers"],
+        "Weight": ms["weights"]
+    })
+    st.dataframe(ms_df, key="ms_df")
 
-        corr = returns.corr()
+    # -----------------------------
+    # Correlation Heatmap
+    # -----------------------------
+    st.markdown("### Correlation Heatmap")
 
-        fig = go.Figure(data=go.Heatmap(
-            z=corr.values,
-            x=corr.columns,
-            y=corr.columns,
-            colorscale="RdBu",
-            zmin=-1,
-            zmax=1
-        ))
+    corr = returns_df.corr()
 
-        fig.update_layout(height=500)
-        st.plotly_chart(fig, use_container_width=True)
+    fig = go.Figure(data=go.Heatmap(
+        z=corr.values,
+        x=corr.columns,
+        y=corr.columns,
+        colorscale="RdBu",
+        zmin=-1,
+        zmax=1
+    ))
+
+    fig.update_layout(height=500)
+    st.plotly_chart(fig, use_container_width=True)

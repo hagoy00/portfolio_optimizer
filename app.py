@@ -149,6 +149,25 @@ def compute_sector_weights(weights_vec, tickers_list):
     sectors = [sector_map.get(t, "Other") for t in tickers_list]
     df = pd.DataFrame({"Ticker": tickers_list, "Weight": weights_vec, "Sector": sectors})
     return df.groupby("Sector")["Weight"].sum()
+# -----------------------------
+# PORTFOLIO METRICS (GLOBAL)
+# -----------------------------
+try:
+    portfolio_returns = returns.dot(weights)
+
+    annual_return = portfolio_returns.mean() * 252
+    annual_volatility = portfolio_returns.std() * (252 ** 0.5)
+    sharpe_ratio = annual_return / annual_volatility
+
+    # Beta vs SPY
+    spy_returns = returns["SPY"]
+    covariance = portfolio_returns.cov(spy_returns)
+    market_variance = spy_returns.var()
+    portfolio_beta = covariance / market_variance
+
+except Exception as e:
+    st.error(f"Portfolio metrics failed: {e}")
+    st.stop()
 
 # ---------------------------------------------------------
 # TABS START HERE

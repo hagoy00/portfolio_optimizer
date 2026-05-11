@@ -124,7 +124,12 @@ if run_button:
     mc_results = run_monte_carlo_simulation(returns_df[valid_tickers], mc_sims, mc_horizon)
 
     st.session_state["model"] = {
-        "performance": {...},
+        "performance": {
+            "expected_return": annual_return,
+            "volatility": annual_volatility,
+            "sharpe": sharpe_ratio,
+        },
+
         "fundamentals": fundamentals,
         "tickers": valid_tickers,
         "drawdown": drawdown.to_frame("Drawdown"),
@@ -500,15 +505,16 @@ with tab7:
         st.info("Run the analysis first to generate optimizer results.")
         st.stop()
 
-    perf = model.get("performance", {})
+    perf = model.get("performance") or {}
+    if not isinstance(perf, dict) or perf.get("expected_return") is None:
+
     fundamentals_model = model.get("fundamentals", {})
     tickers_model = model.get("tickers", valid_tickers)
     drawdown_model = model.get("drawdown")
     sector_weights_model = model.get("sector_weights", {})
     mc_model = model.get("monte_carlo")
     momentum_model = model.get("momentum", {})
-
-    if not perf or perf.get("expected_return") is None:
+ 
         st.warning("Not enough data to generate commentary.")
         st.stop()
 

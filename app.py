@@ -48,6 +48,8 @@ mc_horizon = st.sidebar.slider("Monte Carlo Horizon (days)", 50, 500, 252)
 # ---------------------------------------------------------
 # LOAD PRICE DATA (NEW FLAT FORMAT)
 # ---------------------------------------------------------
+
+# Load prices
 prices = load_price_data(tickers, start_date, end_date)
 
 if prices is None or prices.empty:
@@ -57,30 +59,25 @@ if prices is None or prices.empty:
 # Prices = Adjusted Close only
 close = prices.copy()
 
-# Compute returns
-returns = close.pct_change().dropna()
-
-# Portfolio returns (equal-weight)
-if len(close.columns) > 0:
-    portfolio_returns = returns.mean(axis=1)
-else:
-    portfolio_returns = pd.Series(dtype=float)
 # ---------------------------------------------------------
-# Optional SPY for beta calculation only
+# Clean returns (user tickers only)
+# ---------------------------------------------------------
+returns_df = close.pct_change().dropna()
+
+valid_tickers = list(returns_df.columns)
+
+if len(valid_tickers) == 0:
+    st.error("No valid tickers after cleaning returns.")
+    st.stop()
+
+# ---------------------------------------------------------
+# Load SPY separately for beta (DO NOT add to tickers)
 # ---------------------------------------------------------
 spy_data = load_price_data(["SPY"], start_date, end_date)
 if spy_data is not None and not spy_data.empty:
     spy_returns = spy_data["SPY"].pct_change().dropna()
 else:
     spy_returns = None
-       
-# Clean returns including SPY
-returns_df = close.pct_change().ffill().bfill().dropna(how="all")
-valid_tickers = list(returns_df.columns)
-
-if len(valid_tickers) == 0:
-    st.error("No valid tickers after cleaning returns.")
-    st.stop()
 
 # ---------------------------------------------------------
 # Fundamentals Loader (NEW)
@@ -95,24 +92,37 @@ sector_map = {t: fundamentals[t].get("Sector", "Unknown") for t in valid_tickers
 # ---------------------------------------------------------
 weights = np.array([1 / len(valid_tickers)] * len(valid_tickers))
 
-portfolio_returns = returns_df[valid_tickers].dot(weights)
+portfolio_returns = returns_df.dot(weights)
 annual_return = portfolio_returns.mean() * 252
 annual_volatility = portfolio_returns.std() * np.sqrt(252)
 sharpe_ratio = annual_return / annual_volatility if annual_volatility > 0 else np.nan
 max_drawdown = (portfolio_returns.cummax() - portfolio_returns).max()
 
-corr_matrix = returns_df[valid_tickers].corr()
+corr_matrix = returns_df.corr()
 avg_corr = corr_matrix.where(~np.eye(corr_matrix.shape[0], dtype=bool)).mean().mean()
 diversification_score = max(0, min(10, (1 - avg_corr) * 10))
 
 # Beta vs SPY
-if "SPY" in returns_df.columns:
-    spy_returns = returns_df["SPY"]
+if spy_returns is not None:
     covariance = portfolio_returns.cov(spy_returns)
     market_variance = spy_returns.var()
     portfolio_beta = covariance / market_variance if market_variance > 0 else np.nan
 else:
     portfolio_beta = np.nan
+
+# ---------------------------------------------------------
+# Optimizer + Buy Analysis (RUN ONLY WHEN BUTTON CLICKED)
+# ---------------------------------------------------------
+optimizer_results = None
+buy_results = None
+mc_results = None
+
+if run_button:
+    cov_matrix = returns_df.cov()
+
+    optimizer_results = run_optimizer(returns_df, cov_matrix)
+    buy_results = run_buy_analysis(valid_tickers, fundamentals, close)
+    mc_results = run_monte_carlo_simulation(portfolio_returns, mc_sims, mc_horizon)
 
 # ---------------------------------------------------------
 # Tabs

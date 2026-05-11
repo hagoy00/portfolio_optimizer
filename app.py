@@ -580,6 +580,15 @@ with tab6:
 with tab7:
     st.subheader("AI Portfolio Commentary")
 
+    # Safety check — model must exist
+    model = st.session_state.get("model")
+    if model is None:
+        st.info("Run the analysis first to generate optimizer results.")
+        st.stop()
+
+    perf = model.get("performance", {})
+    st.write(perf)
+
     perf = model.get("performance", {})
     fundamentals_model = model.get("fundamentals", {})
     tickers_model = model.get("tickers", tickers)
@@ -820,7 +829,17 @@ with tab7:
 # Buy Analysis
 # ---------------------------------------------------------
 with tab8:
-    st.subheader("Buy / Hold / Sell Analysis")
+    st.subheader("Buy Analysis")
+
+    # Safety check — model must exist
+    model = st.session_state.get("model")
+    if model is None:
+        st.info("Run the analysis first to generate optimizer results.")
+        st.stop()
+
+    perf = model.get("performance", {})
+    st.write(perf)
+
 
     if not run_button:
         st.info("Run Analysis to generate buy analysis.")
@@ -926,11 +945,17 @@ def run_optimizer_cached(returns, cov):
 with tab9:
     st.subheader("Optimizer")
 
-    # Safety check
+    # Safety check — run button must be pressed
     if not run_button:
         st.info("Run Analysis to generate optimizer results.")
         st.stop()
 
+    cov_matrix = returns_df.cov()
+    opt_results = run_optimizer_cached(returns_df, cov_matrix)
+
+    # Save model for other tabs
+    st.session_state["model"] = opt_results
+    
     # -----------------------------
     # Run Optimizer
     # -----------------------------

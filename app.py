@@ -8,11 +8,11 @@ import yfinance as yf
 from datetime import datetime, timedelta
 
 # === NEW UTILS (institutional‑grade) ===
+from utils.optimizer_core import run_optimizer
+from utils.buy_analysis import run_buy_analysis
+from utils.analysis import run_monte_carlo_simulation
 from utils.data_loader import load_price_data
 from utils.fundamentals_loader import load_fundamentals
-from utils.optimizer import run_optimizer
-from utils.buy_analysis import run_buy_analysis
-from utils.analysis import compute_returns, compute_beta_vs_spy, run_monte_carlo_simulation
 
 # ---------------------------------------------------------
 # Page config

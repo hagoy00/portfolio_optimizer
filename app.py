@@ -214,7 +214,8 @@ with tab1:
     with col1:
         st.metric("Annual Return", f"{annual_return:.2%}")
     with col2:
-        st.metric("Volatility", f"{portfolio_volatility:.2%}")
+        st.metric("Volatility", f"{annual_volatility:.2%}")
+        #st.metric("Volatility", f"{portfolio_volatility:.2%}")
     with col3:
         st.metric("Sharpe Ratio", f"{sharpe_ratio:.2f}")
 

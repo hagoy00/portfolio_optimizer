@@ -118,7 +118,7 @@ if prices is None or prices.empty:
    # st.stop()
 
 # Standardize naming
-returns_df = returns.copy()
+#returns_df = returns.copy()
 
 # ---------------------------------------------------------
 # Equal-weight baseline

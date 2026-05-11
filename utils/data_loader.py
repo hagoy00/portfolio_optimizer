@@ -1,92 +1,36 @@
-import pandas as pd
 import yfinance as yf
-
-# ---------------------------------------------------------
-# Clean ticker input
-# ---------------------------------------------------------
-def clean_ticker_input(raw):
-    if isinstance(raw, list):
-        return [t.strip().upper() for t in raw if t]
-
-    raw = raw.replace(" ", "")
-    parts = raw.split(",")
-    parts = [p.strip().upper() for p in parts if p]
-
-    cleaned = []
-    for p in parts:
-        if "." in p and p.count(".") > 1:
-            cleaned.extend(p.split("."))
-        else:
-            cleaned.append(p)
-
-    return cleaned
+import pandas as pd
 
 
-# ---------------------------------------------------------
-# Normalize Yahoo Finance output (new API format)
-# ---------------------------------------------------------
 def normalize_yahoo_output(raw, tickers):
-
-    if raw is None or raw.empty:
-        return pd.DataFrame()
-
-    # If Yahoo returns Field → Ticker (new format)
-    if isinstance(raw.columns, pd.MultiIndex):
-        if raw.columns.names == ["Attributes", "Ticker"]:
-            raw = raw.swaplevel(0, 1, axis=1).sort_index(axis=1)
-
-    # Now raw should be Ticker → Field
+    """
+    Normalize Yahoo Finance multi-index output into a clean DataFrame:
+    Columns become: ['AAPL', 'MSFT', 'NVDA', ...]
+    """
+    # If single ticker, yfinance returns a normal DataFrame
     if not isinstance(raw.columns, pd.MultiIndex):
-        return pd.DataFrame()
+        return raw.to_frame().T if isinstance(raw, pd.Series) else raw
 
-    # Filter only valid tickers
-    level0 = [str(x).upper() for x in raw.columns.get_level_values(0)]
-    valid = [t for t in tickers if t.upper() in level0]
+    # MultiIndex: (Ticker, Field)
+    clean = {}
 
-    if not valid:
-        return pd.DataFrame()
+    for t in tickers:
+        if t in raw.columns.get_level_values(0):
+            try:
+                clean[t] = raw[t]['Close']
+            except Exception:
+                continue
 
-    data = raw[valid]
-
-    # Ensure Close and Adj Close exist
-    for t in valid:
-        fields = data[t].columns
-
-        if "Close" not in fields and "Adj Close" in fields:
-            data[(t, "Close")] = data[(t, "Adj Close")]
-
-        if "Adj Close" not in fields and "Close" in fields:
-            data[(t, "Adj Close")] = data[(t, "Close")]
-
-    data.columns = data.columns.set_names(["Ticker", "Field"])
-
-    return data.dropna(how="all")
+    return pd.DataFrame(clean)
 
 
-# ---------------------------------------------------------
-# Extract Adjusted Close (fallback to Close)
-# ---------------------------------------------------------
-def extract_adj_close(full_prices):
-
-    if full_prices is None or full_prices.empty:
-        return pd.DataFrame()
-
-    level1 = full_prices.columns.get_level_values(1)
-
-    if "Adj Close" in level1:
-        return full_prices.xs("Adj Close", level=1, axis=1).dropna(how="all")
-
-    if "Close" in level1:
-        return full_prices.xs("Close", level=1, axis=1).dropna(how="all")
-
-    return pd.DataFrame()
-
-
-# ---------------------------------------------------------
-# Public API: load price data
-# ---------------------------------------------------------
 def load_price_data(tickers, start_date, end_date):
-    data = yf.download(
+    """
+    Downloads price data for multiple tickers and returns ONLY Close prices.
+    This prevents OHLC columns from polluting the app.
+    """
+
+    raw = yf.download(
         tickers,
         start=start_date,
         end=end_date,
@@ -95,36 +39,28 @@ def load_price_data(tickers, start_date, end_date):
         threads=False
     )
 
-    # STEP 1 — Keep only Close prices
-    if isinstance(data.columns, pd.MultiIndex):
-        data = data['Close']
-
-    return data
-
+    # If nothing downloaded
     if raw is None or raw.empty:
         return pd.DataFrame()
 
+    # Normalize Yahoo output
     full_prices = normalize_yahoo_output(raw, tickers)
 
     if full_prices is None or full_prices.empty:
         return pd.DataFrame()
 
+    # ---------------------------------------------------------
+    # STEP 1 — KEEP ONLY CLOSE PRICES (CRITICAL FIX)
+    # ---------------------------------------------------------
+    # If MultiIndex: (Ticker, Field)
+    if isinstance(full_prices.columns, pd.MultiIndex):
+        full_prices = full_prices.xs("Close", level=1, axis=1)
+
+    # If still multi-level or messy, flatten
+    if isinstance(full_prices.columns, pd.MultiIndex):
+        full_prices.columns = [col[0] for col in full_prices.columns]
+
+    # Final cleanup: ensure only tickers remain
+    full_prices = full_prices[[t for t in tickers if t in full_prices.columns]]
+
     return full_prices
-
-
-# ---------------------------------------------------------
-# Public API: load returns
-# ---------------------------------------------------------
-def load_returns_data(tickers_input, start, end):
-    prices = load_price_data(tickers_input, start, end)
-
-    if prices is None or prices.empty:
-        return pd.DataFrame()
-
-    adj = extract_adj_close(prices)
-
-    if adj is None or adj.empty:
-        return pd.DataFrame()
-
-    returns = adj.pct_change().dropna(how="all")
-    return returns

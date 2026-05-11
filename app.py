@@ -209,15 +209,6 @@ valid_tickers = list(returns_df.columns)
 # 3. Rebuild weights_dict to match valid_tickers only
 clean_weights = {}
 
-if 'weights_dict' in locals():
-    for t in valid_tickers:
-        clean_weights[t] = weights_dict.get(t, 1 / len(valid_tickers))
-else:
-    clean_weights = {t: 1 / len(valid_tickers) for t in valid_tickers}
-
-# 4. Convert to numpy array
-w = np.array([clean_weights[t] for t in valid_tickers], dtype=float)
-
 # 5. Normalize weights to sum to 1
 if w.sum() > 0:
     w = w / w.sum()

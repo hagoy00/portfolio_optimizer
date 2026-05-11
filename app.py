@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-
+import yfinance as yf
 from datetime import datetime, timedelta
 
 from utils.data_loader import load_price_data
@@ -138,12 +138,14 @@ if "SPY" not in prices.columns:
 # Clean returns (keep SPY)
 # ---------------------------------------------------------
 returns_df = prices.pct_change()
-
-# Forward/back fill to avoid SPY being dropped
 returns_df = returns_df.ffill().bfill()
-
-# Drop rows only if ALL tickers are missing
 returns_df = returns_df.dropna(how="all")
+
+valid_tickers = list(returns_df.columns)
+
+if len(valid_tickers) == 0:
+    st.error("No valid tickers after cleaning returns.")
+    st.stop()
 
 # ---------------------------------------------------------
 # Auto-detect Fundamentals (PE, PB, Beta, DivYield, MarketCap, Sector)
@@ -156,88 +158,58 @@ def load_fundamentals_auto(tickers):
             info = yf.Ticker(t).info
             fundamentals[t] = {
                 "PE": info.get("trailingPE"),
-               
+                "PB": info.get("priceToBook"),
+                "DividendYield": info.get("dividendYield"),
+                "Beta": info.get("beta"),
+                "MarketCap": info.get("marketCap"),
+                "Sector": info.get("sector", "Unknown")
+            }
+        except:
+            fundamentals[t] = {
+                "PE": None,
+                "PB": None,
+                "DividendYield": None,
+                "Beta": None,
+                "MarketCap": None,
+                "Sector": "Unknown"
+            }
+    return fundamentals
 
-
-# ---------------------------------------------------------
-# Returns and valid tickers
-# ---------------------------------------------------------
-returns_df = prices.pct_change().dropna()
-
-if returns_df is None or returns_df.empty:
-    st.error("Could not compute returns from price data.")
-    st.stop()
-
-valid_tickers = list(returns_df.columns)
-
-if len(valid_tickers) == 0:
-    st.error("No valid tickers after cleaning returns.")
-    st.stop()
-
-# ---------------------------------------------------------
-# Fundamentals pipeline
-# ---------------------------------------------------------
-try:
-    fundamentals = load_fundamentals(valid_tickers, full_prices=prices)
-except Exception as e:
-    st.warning(f"Could not load fundamentals: {e}")
-    fundamentals = {t: {} for t in valid_tickers}
+fundamentals = load_fundamentals_auto(valid_tickers)
 
 # ---------------------------------------------------------
-# Sector weights helper
+# Auto Sector Detection (no manual map needed)
 # ---------------------------------------------------------
-def compute_sector_weights(weights_vec, tickers_list):
-    sector_map = {
-        "AAPL": "Technology", "MSFT": "Technology", "NVDA": "Technology",
-        "AMZN": "Consumer Discretionary", "GOOG": "Communication Services",
-        "META": "Communication Services", "TSLA": "Consumer Discretionary",
-        "JPM": "Financials", "XOM": "Energy"
-    }
-    sectors = [sector_map.get(t, "Other") for t in tickers_list]
-    df = pd.DataFrame({"Ticker": tickers_list, "Weight": weights_vec, "Sector": sectors})
-    return df.groupby("Sector")["Weight"].sum()
+sector_map = {t: fundamentals[t].get("Sector", "Unknown") for t in valid_tickers}
+
 # ---------------------------------------------------------
 # PREP FOR METRICS
 # ---------------------------------------------------------
-
-# Convert weights to numpy (temporary equal weights if optimizer not run yet)
-try:
-    weights = np.array([1 / len(valid_tickers)] * len(valid_tickers))
-except Exception as e:
-    st.error(f"Could not initialize weights: {e}")
-    st.stop()
-
-# Compute returns_df already done above:
-# returns_df = prices.pct_change().dropna()
+weights = np.array([1 / len(valid_tickers)] * len(valid_tickers))
 
 # ---------------------------------------------------------
 # PORTFOLIO METRICS (GLOBAL)
 # ---------------------------------------------------------
 try:
-    # Portfolio returns
     portfolio_returns = returns_df.dot(weights)
 
-    # Core metrics
     annual_return = portfolio_returns.mean() * 252
     annual_volatility = portfolio_returns.std() * (252 ** 0.5)
     sharpe_ratio = annual_return / annual_volatility
 
-    # Max Drawdown
     max_drawdown = (portfolio_returns.cummax() - portfolio_returns).max()
 
-    # Diversification Score (0–10)
     corr_matrix = returns_df.corr()
     avg_corr = corr_matrix.where(~np.eye(corr_matrix.shape[0], dtype=bool)).mean().mean()
     diversification_score = max(0, min(10, (1 - avg_corr) * 10))
 
-    # Beta vs SPY (only if SPY exists)
     if "SPY" in returns_df.columns:
         spy_returns = returns_df["SPY"]
         covariance = portfolio_returns.cov(spy_returns)
         market_variance = spy_returns.var()
         portfolio_beta = covariance / market_variance
     else:
-        portfolio_beta = float("nan")  # SPY missing → beta unavailable
+        portfolio_beta = float("nan")
 
 except Exception as e:
     st.error(f"Portfolio metrics failed: {e}")
@@ -257,7 +229,6 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
     "Buy Analysis",
     "Optimizer"
 ])
-
 
 # ---------------------------------------------------------
 # TAB 1 — OVERVIEW

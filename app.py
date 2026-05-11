@@ -104,6 +104,8 @@ run_button = st.sidebar.button("Run Analysis")
 mc_sims = st.sidebar.slider("Monte Carlo Simulations", 200, 3000, 500)
 mc_horizon = st.sidebar.slider("Monte Carlo Horizon (days)", 50, 500, 252)
 
+import yfinance as yf
+
 # ---------------------------------------------------------
 # Load Price Data (robust loader + SPY auto-include)
 # ---------------------------------------------------------
@@ -116,14 +118,20 @@ def load_price_data(tickers, start, end):
 
         # MultiIndex case
         if isinstance(raw.columns, pd.MultiIndex):
+            # Case: ('Adj Close', 'AAPL')
             if "Adj Close" in raw.columns.get_level_values(0):
                 adj = raw["Adj Close"]
+
+            # Case: ('AAPL', 'Adj Close')
             elif "Adj Close" in raw.columns.get_level_values(1):
                 adj = raw.xs("Adj Close", level=1, axis=1)
+
+            # Fallback to Close
             else:
                 adj = raw.xs("Close", level=1, axis=1)
+
         else:
-            # Single-level
+            # Single-level columns
             if "Adj Close" in raw.columns:
                 adj = raw["Adj Close"]
             elif "Close" in raw.columns:
@@ -131,6 +139,7 @@ def load_price_data(tickers, start, end):
             else:
                 return pd.DataFrame()
 
+        # Ensure DataFrame
         if isinstance(adj, pd.Series):
             adj = adj.to_frame()
 

@@ -1,34 +1,51 @@
 import yfinance as yf
 import numpy as np
+import pandas as pd
 
-# ---------------------------------------------------------
-# Safe extraction helper
-# ---------------------------------------------------------
+
+# =========================================================
+# SAFE NUMERIC EXTRACTION
+# =========================================================
 def safe_get(value):
-    if value in [None, "None", "nan", "NaN"]:
+    """
+    Converts Yahoo values into clean floats.
+    Returns None for invalid or missing values.
+    """
+    if value in [None, "None", "nan", "NaN", "", "-", "N/A"]:
         return None
     try:
         return float(value)
-    except:
-        return value
+    except Exception:
+        return None
 
-# ---------------------------------------------------------
-# Clean Fundamentals Loader
-# ---------------------------------------------------------
+
+# =========================================================
+# CLEAN FUNDAMENTALS LOADER
+# =========================================================
 def load_fundamentals(tickers):
     """
     Clean, stable fundamentals loader.
-    Matches the structure expected by:
-    - Tab 5 (Fundamentals)
-    - Tab 7 (AI Commentary)
-    - Tab 8 (Buy Analysis)
+    Fully crash-proof.
+    Returns a dict:
+        fundamentals[ticker] = {
+            "PE": float or None,
+            "PB": float or None,
+            "EPS": float or None,
+            "ROE": float or None,
+            "DividendYield": float or None,
+            "DebtToEquity": float or None,
+            "Beta": float or None,
+            "Sector": str,
+            "MarketCap": float or None,
+        }
     """
 
     fundamentals = {}
 
     for t in tickers:
         try:
-            info = yf.Ticker(t).info
+            yf_t = yf.Ticker(t)
+            info = yf_t.info
 
             fundamentals[t] = {
                 "PE": safe_get(info.get("trailingPE")),
@@ -43,6 +60,7 @@ def load_fundamentals(tickers):
             }
 
         except Exception:
+            # Full fallback — never break the app
             fundamentals[t] = {
                 "PE": None,
                 "PB": None,

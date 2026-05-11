@@ -149,26 +149,40 @@ def compute_sector_weights(weights_vec, tickers_list):
     sectors = [sector_map.get(t, "Other") for t in tickers_list]
     df = pd.DataFrame({"Ticker": tickers_list, "Weight": weights_vec, "Sector": sectors})
     return df.groupby("Sector")["Weight"].sum()
-# ---------------------------------------------------
+# ---------------------------------------------------------
 # PREP FOR METRICS
-# ---------------------------------------------------
-weights = np.array([1 / len(valid_tickers)] * len(valid_tickers))
+# ---------------------------------------------------------
 
-# ---------------------------------------------------
-# PORTFOLIO METRICS (GLOBAL)
-# ---------------------------------------------------
+# Convert weights to numpy (temporary equal weights if optimizer not run yet)
 try:
+    weights = np.array([1 / len(valid_tickers)] * len(valid_tickers))
+except Exception as e:
+    st.error(f"Could not initialize weights: {e}")
+    st.stop()
+
+# Compute returns_df already done above:
+# returns_df = prices.pct_change().dropna()
+
+# ---------------------------------------------------------
+# PORTFOLIO METRICS (GLOBAL)
+# ---------------------------------------------------------
+try:
+    # Portfolio returns
     portfolio_returns = returns_df.dot(weights)
 
+    # Core metrics
     annual_return = portfolio_returns.mean() * 252
     annual_volatility = portfolio_returns.std() * (252 ** 0.5)
     sharpe_ratio = annual_return / annual_volatility
 
-    # Beta vs SPY
-    spy_returns = returns_df["SPY"]
-    covariance = portfolio_returns.cov(spy_returns)
-    market_variance = spy_returns.var()
-    portfolio_beta = covariance / market_variance
+    # Beta vs SPY (only if SPY exists)
+    if "SPY" in returns_df.columns:
+        spy_returns = returns_df["SPY"]
+        covariance = portfolio_returns.cov(spy_returns)
+        market_variance = spy_returns.var()
+        portfolio_beta = covariance / market_variance
+    else:
+        portfolio_beta = float("nan")  # SPY missing → beta unavailable
 
 except Exception as e:
     st.error(f"Portfolio metrics failed: {e}")

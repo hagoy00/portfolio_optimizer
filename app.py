@@ -1,17 +1,15 @@
-import plotly.graph_objects as go
 import streamlit as st
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import plotly.graph_objects as go
 import yfinance as yf
+
 from datetime import datetime, timedelta
 
-from utils.data_loader import load_price_data
-from utils.fundamentals_loader import load_fundamentals
 from utils.optimizer_core import run_optimizer
 from utils.buy_analysis import run_buy_analysis
 from utils.analytics import run_monte_carlo_simulation
-from datetime import datetime, timedelta
 
 # ---------------------------------------------------------
 # Page config

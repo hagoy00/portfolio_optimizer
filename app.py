@@ -128,7 +128,7 @@ weights = np.array([1 / len(tickers)] * len(tickers))
 # ---------------------------------------------------------
 # Align tickers, weights, returns, covariance
 # ---------------------------------------------------------
-valid_tickers = list(returns_df.columns)
+#valid_tickers = list(returns_df.columns)
 
 weights_dict = dict(zip(tickers, weights))
 w = np.array([weights_dict[t] for t in valid_tickers])

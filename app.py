@@ -65,17 +65,15 @@ if len(close.columns) > 0:
     portfolio_returns = returns.mean(axis=1)
 else:
     portfolio_returns = pd.Series(dtype=float)
-
 # ---------------------------------------------------------
-# Ensure SPY exists for Beta calculation
+# Optional SPY for beta calculation only
 # ---------------------------------------------------------
-if "SPY" not in close.columns:
-    spy_data = load_price_data(["SPY"], start_date, end_date)
-    if spy_data is not None and not spy_data.empty:
-        close["SPY"] = spy_data["SPY"]
-    else:
-        st.warning("SPY could not be loaded. Beta vs SPY unavailable.")
-
+spy_data = load_price_data(["SPY"], start_date, end_date)
+if spy_data is not None and not spy_data.empty:
+    spy_returns = spy_data["SPY"].pct_change().dropna()
+else:
+    spy_returns = None
+       
 # Clean returns including SPY
 returns_df = close.pct_change().ffill().bfill().dropna(how="all")
 valid_tickers = list(returns_df.columns)

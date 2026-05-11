@@ -104,13 +104,60 @@ mc_sims = st.sidebar.slider("Monte Carlo Simulations", 200, 3000, 500)
 mc_horizon = st.sidebar.slider("Monte Carlo Horizon (days)", 50, 500, 252)
 
 # ---------------------------------------------------------
-# Load data
+# Load Price Data (with SPY auto-include)
 # ---------------------------------------------------------
+def load_price_data(tickers, start, end):
+    try:
+        data = yf.download(tickers, start=start, end=end)["Adj Close"]
+        if isinstance(data, pd.Series):
+            data = data.to_frame()
+        return data
+    except Exception as e:
+        st.error(f"Price load failed: {e}")
+        return pd.DataFrame()
+
+# Load user tickers
 prices = load_price_data(tickers, start_date, end_date)
 
 if prices is None or prices.empty:
     st.error("Price data could not be loaded.")
     st.stop()
+
+# ---------------------------------------------------------
+# Ensure SPY exists for Beta calculation
+# ---------------------------------------------------------
+if "SPY" not in prices.columns:
+    st.warning("SPY missing — attempting to reload SPY data.")
+    spy_data = load_price_data(["SPY"], start_date, end_date)
+    if spy_data is not None and not spy_data.empty:
+        prices["SPY"] = spy_data["SPY"]
+    else:
+        st.error("SPY could not be loaded. Beta vs SPY will be unavailable.")
+
+# ---------------------------------------------------------
+# Clean returns (keep SPY)
+# ---------------------------------------------------------
+returns_df = prices.pct_change()
+
+# Forward/back fill to avoid SPY being dropped
+returns_df = returns_df.ffill().bfill()
+
+# Drop rows only if ALL tickers are missing
+returns_df = returns_df.dropna(how="all")
+
+# ---------------------------------------------------------
+# Auto-detect Fundamentals (PE, PB, Beta, DivYield, MarketCap, Sector)
+# ---------------------------------------------------------
+@st.cache_data
+def load_fundamentals_auto(tickers):
+    fundamentals = {}
+    for t in tickers:
+        try:
+            info = yf.Ticker(t).info
+            fundamentals[t] = {
+                "PE": info.get("trailingPE"),
+               
+
 
 # ---------------------------------------------------------
 # Returns and valid tickers

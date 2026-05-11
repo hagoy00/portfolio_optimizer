@@ -74,6 +74,7 @@ def safe_val(x):
     except:
         pass
     return x
+import yfinance as yf
 
 # ---------------------------------------------------------
 # Sidebar inputs
@@ -104,14 +105,37 @@ mc_sims = st.sidebar.slider("Monte Carlo Simulations", 200, 3000, 500)
 mc_horizon = st.sidebar.slider("Monte Carlo Horizon (days)", 50, 500, 252)
 
 # ---------------------------------------------------------
-# Load Price Data (with SPY auto-include)
+# Load Price Data (robust loader + SPY auto-include)
 # ---------------------------------------------------------
 def load_price_data(tickers, start, end):
     try:
-        data = yf.download(tickers, start=start, end=end)["Adj Close"]
-        if isinstance(data, pd.Series):
-            data = data.to_frame()
-        return data
+        raw = yf.download(tickers, start=start, end=end)
+
+        if raw is None or raw.empty:
+            return pd.DataFrame()
+
+        # MultiIndex case
+        if isinstance(raw.columns, pd.MultiIndex):
+            if "Adj Close" in raw.columns.get_level_values(0):
+                adj = raw["Adj Close"]
+            elif "Adj Close" in raw.columns.get_level_values(1):
+                adj = raw.xs("Adj Close", level=1, axis=1)
+            else:
+                adj = raw.xs("Close", level=1, axis=1)
+        else:
+            # Single-level
+            if "Adj Close" in raw.columns:
+                adj = raw["Adj Close"]
+            elif "Close" in raw.columns:
+                adj = raw["Close"]
+            else:
+                return pd.DataFrame()
+
+        if isinstance(adj, pd.Series):
+            adj = adj.to_frame()
+
+        return adj
+
     except Exception as e:
         st.error(f"Price load failed: {e}")
         return pd.DataFrame()
@@ -127,12 +151,11 @@ if prices is None or prices.empty:
 # Ensure SPY exists for Beta calculation
 # ---------------------------------------------------------
 if "SPY" not in prices.columns:
-    st.warning("SPY missing — attempting to reload SPY data.")
     spy_data = load_price_data(["SPY"], start_date, end_date)
     if spy_data is not None and not spy_data.empty:
         prices["SPY"] = spy_data["SPY"]
     else:
-        st.error("SPY could not be loaded. Beta vs SPY will be unavailable.")
+        st.warning("SPY could not be loaded. Beta vs SPY unavailable.")
 
 # ---------------------------------------------------------
 # Clean returns (keep SPY)
@@ -229,6 +252,7 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
     "Buy Analysis",
     "Optimizer"
 ])
+
 
 # ---------------------------------------------------------
 # TAB 1 — OVERVIEW

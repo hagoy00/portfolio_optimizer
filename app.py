@@ -111,14 +111,26 @@ else:
 # Fundamentals
 fundamentals = load_fundamentals(valid_tickers)
 
-# Default equal weights
+# ---------------------------------------------------------
+# FIX: Ensure weights_dict contains ALL valid tickers
+# ---------------------------------------------------------
 if "weights" not in st.session_state:
-    st.session_state["weights"] = {t: 1/len(valid_tickers) for t in valid_tickers}
+    st.session_state["weights"] = {}
 
 weights_dict = st.session_state["weights"]
+
+# Add missing tickers with equal weights
+for t in valid_tickers:
+    if t not in weights_dict:
+        weights_dict[t] = 1 / len(valid_tickers)
+
+# Remove tickers that no longer exist
+weights_dict = {t: weights_dict[t] for t in valid_tickers}
+
+# Normalize weights
 total_w = sum(weights_dict.values())
 if total_w > 0:
-    weights_dict = {t: w/total_w for t, w in weights_dict.items()}
+    weights_dict = {t: w / total_w for t, w in weights_dict.items()}
 
 st.session_state["weights"] = weights_dict
 global_weights = np.array([weights_dict[t] for t in valid_tickers])

@@ -4,6 +4,13 @@ import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 import streamlit as st
 
+
+from utils.data_loader import load_price_data
+from utils.fundamentals_loader import load_fundamentals
+from utils.optimizer_core import run_optimizer
+from utils.buy_analysis import run_buy_analysis
+from utils.analytics import run_monte_carlo_simulation
+
 # ---------------------------------------------------------
 # USER INPUTS (must be at the top)
 # ---------------------------------------------------------
@@ -42,6 +49,22 @@ elif universe == "Custom":
 else:
     all_tickers = []
 
+# ---------------------------------------------------------
+# TICKER MULTISELECT (THIS WAS MISSING)
+# ---------------------------------------------------------
+selected_tickers = st.multiselect(
+    "Select tickers:",
+    options=all_tickers,
+    default=all_tickers[:5] if len(all_tickers) > 5 else all_tickers
+)
+
+if not selected_tickers:
+    st.warning("Please select at least one ticker.")
+    st.stop()
+
+# ---------------------------------------------------------
+# DATE INPUTS + SIM SETTINGS
+# ---------------------------------------------------------
 start_date = st.date_input("Start Date", value=pd.to_datetime("2020-01-01"))
 end_date = st.date_input("End Date", value=pd.to_datetime("today"))
 
@@ -49,12 +72,6 @@ mc_sims = st.number_input("Monte Carlo Simulations", min_value=100, max_value=50
 mc_horizon = st.number_input("Monte Carlo Horizon (days)", min_value=30, max_value=252*5, value=252)
 
 run_button = st.button("Run Analysis")
-
-from utils.data_loader import load_price_data
-from utils.fundamentals_loader import load_fundamentals
-from utils.optimizer_core import run_optimizer
-from utils.buy_analysis import run_buy_analysis
-from utils.analytics import run_monte_carlo_simulation
 
 # ---------------------------------------------------------
 # Helper
@@ -68,9 +85,10 @@ def safe_val(x):
         return np.nan
 
 # ---------------------------------------------------------
-# Core data load (assumes tickers, start_date, end_date, run_button, mc_sims, mc_horizon exist)
+# CORE DATA LOAD (FIXED: replaced tickers → selected_tickers)
 # ---------------------------------------------------------
-prices = load_price_data(tickers, start_date, end_date)
+prices = load_price_data(selected_tickers, start_date, end_date)
+
 if prices is None or prices.empty:
     st.error("Price data could not be loaded.")
     st.stop()
@@ -93,13 +111,15 @@ else:
 # Fundamentals
 fundamentals = load_fundamentals(valid_tickers)
 
-# Default equal weights (will be overridden by Tab 6 sliders)
+# Default equal weights
 if "weights" not in st.session_state:
     st.session_state["weights"] = {t: 1/len(valid_tickers) for t in valid_tickers}
+
 weights_dict = st.session_state["weights"]
 total_w = sum(weights_dict.values())
 if total_w > 0:
     weights_dict = {t: w/total_w for t, w in weights_dict.items()}
+
 st.session_state["weights"] = weights_dict
 global_weights = np.array([weights_dict[t] for t in valid_tickers])
 st.session_state["global_weights"] = global_weights
@@ -109,6 +129,7 @@ portfolio_returns = returns_df[valid_tickers].dot(global_weights)
 annual_return = portfolio_returns.mean() * 252
 annual_volatility = portfolio_returns.std() * np.sqrt(252)
 sharpe_ratio = annual_return / annual_volatility if annual_volatility > 0 else np.nan
+
 drawdown = (1 + portfolio_returns).cumprod()
 drawdown = (drawdown / drawdown.cummax()) - 1
 max_drawdown = drawdown.min() if not drawdown.empty else np.nan
@@ -130,23 +151,24 @@ if spy_returns is not None and not spy_returns.empty:
 else:
     portfolio_beta = np.nan
 
-# Sector weights (using fundamentals + weights)
+# Sector weights
 fdf_for_sector = pd.DataFrame(fundamentals).T.reindex(valid_tickers)
 if "Sector" not in fdf_for_sector.columns:
     fdf_for_sector["Sector"] = "Unknown"
+
 sector_map = fdf_for_sector["Sector"].fillna("Unknown").to_dict()
 w_series = pd.Series(global_weights, index=valid_tickers)
 sector_weights = w_series.groupby(sector_map).sum().sort_values(ascending=False).to_dict()
 
 # ---------------------------------------------------------
-# Run optimizer / buy / MC and build model when button pressed
+# RUN OPTIMIZER / BUY / MC
 # ---------------------------------------------------------
 optimizer_results = None
 buy_results = None
 mc_results = None
 
 if run_button:
-    fundamentals = load_fundamentals(valid_tickers)   # <— ADD THIS LINE
+    fundamentals = load_fundamentals(valid_tickers)
 
     cov_matrix = returns_df[valid_tickers].cov()
     optimizer_results = run_optimizer(returns_df[valid_tickers], cov_matrix)
@@ -159,7 +181,6 @@ if run_button:
             "volatility": annual_volatility,
             "sharpe": sharpe_ratio,
         },
-
         "fundamentals": fundamentals,
         "tickers": valid_tickers,
         "drawdown": drawdown.to_frame("Drawdown"),
@@ -169,7 +190,6 @@ if run_button:
         "buy_analysis": buy_results,
         "momentum": {},
     }
-
 # ---------------------------------------------------------
 # Tabs
 # ---------------------------------------------------------
@@ -184,7 +204,6 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
     "Buy Analysis",
     "Optimizer"
 ])
-
 # ---------------------------------------------------------
 # TAB 1 — OVERVIEW
 # ---------------------------------------------------------

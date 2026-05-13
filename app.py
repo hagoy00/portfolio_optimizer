@@ -423,31 +423,49 @@ with tab3:
             st.pyplot(fig2)
 
 # ---------------------------------------------------------
-# TAB 4 — SECTOR EXPOSURE
+# TAB 4 — SECTOR EXPOSURE (FIXED)
 # ---------------------------------------------------------
 with tab4:
     st.subheader("Sector Exposure")
 
-    if not fundamentals or len(fundamentals) == 0:
+    # Use fundamentals_df created earlier
+    if fundamentals_df.empty:
         st.info("Sector data unavailable. Run analysis first.")
         st.stop()
 
-    fdf = pd.DataFrame(fundamentals).T.reindex(valid_tickers)
-    if "Sector" not in fdf.columns:
-        fdf["Sector"] = "Unknown"
-    sector_map = fdf["Sector"].fillna("Unknown").to_dict()
+    # Ensure Sector column exists
+    if "Sector" not in fundamentals_df.columns:
+        fundamentals_df["Sector"] = "Unknown"
 
-    w = st.session_state.get("global_weights", np.array([1/len(valid_tickers)]*len(valid_tickers)))
-    w_series = pd.Series(w, index=valid_tickers)
-    sector_weights_series = w_series.groupby(sector_map).sum().sort_values(ascending=False)
+    # Clean sector values
+    fundamentals_df["Sector"] = fundamentals_df["Sector"].fillna("Unknown")
 
+    # Use sidebar tickers, not valid_tickers
+    fdf = fundamentals_df.reindex(tickers)
+
+    # Weighting logic
+    if "global_weights" in st.session_state:
+        w = st.session_state["global_weights"]
+        if len(w) != len(tickers):
+            w = np.array([1/len(tickers)] * len(tickers))
+    else:
+        w = np.array([1/len(tickers)] * len(tickers))
+
+    w_series = pd.Series(w, index=tickers)
+
+    # Group by sector
+    sector_map = fdf["Sector"].to_dict()
+    sector_weights = w_series.groupby(sector_map).sum().sort_values(ascending=False)
+
+    # Display table
     st.markdown("### Sector Allocation Breakdown")
-    st.dataframe(sector_weights_series.to_frame("Weight").style.format({"Weight": "{:.2%}"}))
+    st.dataframe(sector_weights.to_frame("Weight").style.format({"Weight": "{:.2%}"}))
 
+    # Display chart
     st.markdown("### Sector Chart")
     fig = go.Figure(go.Bar(
-        x=sector_weights_series.index,
-        y=sector_weights_series.values,
+        x=sector_weights.index,
+        y=sector_weights.values,
         marker_color="steelblue"
     ))
     fig.update_layout(height=400)
@@ -938,6 +956,7 @@ with tab9:
     # Use sidebar tickers, NOT valid_tickers
     cov_matrix = returns_df[tickers].cov()
     opt_results = run_optimizer_cached(returns_df[tickers], cov_matrix)
+
     st.success("Optimization complete!")
 
     st.markdown("### Equal Weight Portfolio")

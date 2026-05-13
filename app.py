@@ -123,10 +123,10 @@ else:
 # Fundamentals should use the original selected tickers
 fundamentals = load_fundamentals(tickers)
 
+# Safe check
 if fundamentals is None or not isinstance(fundamentals, (pd.DataFrame, dict)) or len(fundamentals) == 0:
     st.warning("No fundamentals data available for the selected tickers.")
     st.stop()
-
 
 # ---------------------------------------------------------
 # FIX: Ensure weights_dict contains ALL valid tickers

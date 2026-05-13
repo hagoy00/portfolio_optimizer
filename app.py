@@ -12,6 +12,38 @@ from utils.buy_analysis import run_buy_analysis
 from utils.analytics import run_monte_carlo_simulation
 
 # ---------------------------------------------------------
+# SIDEBAR – MAIN CONTROLS
+# ---------------------------------------------------------
+st.sidebar.header("Configuration")
+
+universe = st.sidebar.selectbox(
+    "Select a ticker universe:",
+    ["S&P 500", "Nasdaq 100", "Dow 30", "Mega Caps", "Custom"]
+)
+
+tickers = st.sidebar.multiselect(
+    "Select tickers:",
+    options=available_tickers,
+    default=["AAPL", "MSFT", "AMZN", "NVDA", "GOOGL"]
+)
+
+start_date = st.sidebar.date_input("Start Date", value=pd.to_datetime("2020-01-01"))
+end_date = st.sidebar.date_input("End Date", value=pd.to_datetime("today"))
+
+mc_sims = st.sidebar.number_input(
+    "Monte Carlo Simulations",
+    min_value=100, max_value=50000, value=5000
+)
+
+mc_horizon = st.sidebar.number_input(
+    "Monte Carlo Horizon (days)",
+    min_value=30, max_value=252*5, value=252
+)
+
+run_button = st.sidebar.button("Run Analysis")
+
+
+# ---------------------------------------------------------
 # USER INPUTS (must be at the top)
 # ---------------------------------------------------------
 st.title("Portfolio Optimizer Dashboard")

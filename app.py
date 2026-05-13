@@ -621,25 +621,53 @@ with tab6:
 with tab7:
     st.subheader("AI Portfolio Commentary")
 
-    model = st.session_state.get("model")
-    if not model:
-        st.info("Run the analysis first to generate optimizer results.")
-        st.stop()
-    perf = model.get("performance") or {}
+    # --- NEW DATA PIPELINE (replaces old model-based checks) ---
 
-    if not isinstance(perf, dict) or perf.get("expected_return") is None:
-        st.warning("Not enough data to generate commentary.")
-        st.stop()
-
-    fundamentals_model = model.get("fundamentals", {})
-    tickers_model = model.get("tickers", valid_tickers)
-    drawdown_model = model.get("drawdown")
-    sector_weights_model = model.get("sector_weights", {})
-    mc_model = model.get("monte_carlo")
-    momentum_model = model.get("momentum", {})
- 
+# 1. Ensure fundamentals exist
+if fundamentals_df.empty:
     st.warning("Not enough data to generate commentary.")
     st.stop()
+
+# 2. Sector weights (from Sector Exposure logic)
+if "global_weights" in st.session_state:
+    w = st.session_state["global_weights"]
+    if len(w) != len(tickers):
+        w = np.array([1/len(tickers)] * len(tickers))
+else:
+    w = np.array([1/len(tickers)] * len(tickers))
+
+w_series = pd.Series(w, index=tickers)
+sector_map = fundamentals_df["Sector"].to_dict()
+sector_weights_model = w_series.groupby(sector_map).sum().sort_values(ascending=False)
+
+# 3. Optimizer results (if available)
+optimizer = None
+if "model" in st.session_state and "optimizer" in st.session_state["model"]:
+    optimizer = st.session_state["model"]["optimizer"]
+
+# 4. Performance metrics (from optimizer)
+if optimizer:
+    perf = optimizer["max_sharpe"]
+    er = perf["expected_return"]
+    vol = perf["volatility"]
+    sharpe_m = perf["sharpe"]
+else:
+    st.warning("Optimizer results unavailable.")
+    st.stop()
+
+# 5. Drawdown (from your existing drawdown tab)
+drawdown_model = st.session_state.get("drawdown")
+
+# 6. Monte Carlo (from your existing MC tab)
+mc_model = st.session_state.get("monte_carlo")
+
+# 7. Momentum (from your existing momentum calculation)
+momentum_model = st.session_state.get("momentum", {})
+
+# 8. Fundamentals for signals
+fundamentals_model = fundamentals_df.to_dict(orient="index")
+tickers_model = tickers
+
     er = perf["expected_return"]
     vol = perf["volatility"]
     sharpe_m = perf["sharpe"]

@@ -120,8 +120,12 @@ if spy_data is not None and not spy_data.empty:
 else:
     spy_returns = None
 
-# Fundamentals
-fundamentals = load_fundamentals(valid_tickers)
+# Fundamentals should use the original selected tickers
+fundamentals = load_fundamentals(tickers)
+
+if fundamentals is None or fundamentals.empty:
+    st.warning("No fundamentals data available for the selected tickers.")
+
 
 # ---------------------------------------------------------
 # FIX: Ensure weights_dict contains ALL valid tickers

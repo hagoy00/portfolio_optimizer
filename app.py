@@ -120,13 +120,16 @@ if spy_data is not None and not spy_data.empty:
 else:
     spy_returns = None
 
-# Fundamentals should use the original selected tickers
 fundamentals = load_fundamentals(tickers)
 
-# Safe check
-if fundamentals is None or not isinstance(fundamentals, (pd.DataFrame, dict)) or len(fundamentals) == 0:
-    st.warning("No fundamentals data available for the selected tickers.")
+if not fundamentals or len(fundamentals) == 0:
+    st.error("No fundamentals data returned for the selected tickers.")
     st.stop()
+
+# Convert dict → DataFrame
+fundamentals_df = pd.DataFrame(fundamentals).T
+    
+st.write("DEBUG — Fundamentals Loaded:", fundamentals)
 
 # ---------------------------------------------------------
 # FIX: Ensure weights_dict contains ALL valid tickers

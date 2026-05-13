@@ -123,8 +123,9 @@ else:
 # Fundamentals should use the original selected tickers
 fundamentals = load_fundamentals(tickers)
 
-if fundamentals is None or fundamentals.empty:
+if fundamentals is None or not isinstance(fundamentals, (pd.DataFrame, dict)) or len(fundamentals) == 0:
     st.warning("No fundamentals data available for the selected tickers.")
+    st.stop()
 
 
 # ---------------------------------------------------------

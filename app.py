@@ -4,32 +4,68 @@ import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 import streamlit as st
 
-
 from utils.data_loader import load_price_data
 from utils.fundamentals_loader import load_fundamentals
 from utils.optimizer_core import run_optimizer
 from utils.buy_analysis import run_buy_analysis
 from utils.analytics import run_monte_carlo_simulation
 
+
+# ---------------------------------------------------------
+# FUNCTION: LOAD TICKERS BASED ON UNIVERSE
+# ---------------------------------------------------------
+def get_available_tickers(universe):
+    if universe == "S&P 500":
+        df = pd.read_csv("data/sp500.csv")
+        return df["Symbol"].tolist()
+
+    elif universe == "Nasdaq 100":
+        df = pd.read_csv("data/nasdaq100.csv")
+        return df["Symbol"].tolist()
+
+    elif universe == "Dow 30":
+        df = pd.read_csv("data/dow30.csv")
+        return df["Symbol"].tolist()
+
+    elif universe == "Mega Caps":
+        return ["AAPL", "MSFT", "NVDA", "GOOG", "AMZN", "META", "TSLA"]
+
+    elif universe == "Custom":
+        custom_input = st.sidebar.text_input(
+            "Enter custom tickers (comma-separated):",
+            placeholder="AAPL, MSFT, TSLA"
+        )
+        return [t.strip().upper() for t in custom_input.split(",") if t.strip()]
+
+    return []
+
+
 # ---------------------------------------------------------
 # SIDEBAR – MAIN CONTROLS
 # ---------------------------------------------------------
 st.sidebar.header("Configuration")
 
+# 1. Universe selector
 universe = st.sidebar.selectbox(
     "Select a ticker universe:",
     ["S&P 500", "Nasdaq 100", "Dow 30", "Mega Caps", "Custom"]
 )
 
+# 2. Load tickers dynamically (includes custom input)
+available_tickers = get_available_tickers(universe)
+
+# 3. Ticker multiselect
 tickers = st.sidebar.multiselect(
     "Select tickers:",
     options=available_tickers,
-    default=["AAPL", "MSFT", "AMZN", "NVDA", "GOOGL"]
+    default=available_tickers[:5] if len(available_tickers) > 5 else available_tickers
 )
 
+# 4. Date range
 start_date = st.sidebar.date_input("Start Date", value=pd.to_datetime("2020-01-01"))
 end_date = st.sidebar.date_input("End Date", value=pd.to_datetime("today"))
 
+# 5. Monte Carlo settings
 mc_sims = st.sidebar.number_input(
     "Monte Carlo Simulations",
     min_value=100, max_value=50000, value=5000
@@ -40,46 +76,14 @@ mc_horizon = st.sidebar.number_input(
     min_value=30, max_value=252*5, value=252
 )
 
+# 6. Run button
 run_button = st.sidebar.button("Run Analysis")
 
 
 # ---------------------------------------------------------
-# USER INPUTS (must be at the top)
+# MAIN PAGE TITLE
 # ---------------------------------------------------------
 st.title("Portfolio Optimizer Dashboard")
-
-# ---------------------------------------------------------
-# USER SELECTS UNIVERSE FIRST
-# ---------------------------------------------------------
-universe = st.selectbox(
-    "Select a ticker universe:",
-    ["S&P 500", "Nasdaq 100", "Dow 30", "Mega Caps", "Custom"]
-)
-
-# ---------------------------------------------------------
-# LOAD TICKERS BASED ON UNIVERSE
-# ---------------------------------------------------------
-if universe == "S&P 500":
-    sp500_df = pd.read_csv("data/sp500.csv")
-    all_tickers = sp500_df["Symbol"].tolist()
-
-elif universe == "Nasdaq 100":
-    nasdaq_df = pd.read_csv("data/nasdaq100.csv")
-    all_tickers = nasdaq_df["Symbol"].tolist()
-
-elif universe == "Dow 30":
-    dow_df = pd.read_csv("data/dow30.csv")
-    all_tickers = dow_df["Symbol"].tolist()
-
-elif universe == "Mega Caps":
-    all_tickers = ["AAPL", "MSFT", "NVDA", "GOOG", "AMZN", "META", "TSLA"]
-
-elif universe == "Custom":
-    custom_input = st.text_input("Enter custom tickers (comma-separated):")
-    all_tickers = [t.strip().upper() for t in custom_input.split(",") if t.strip()]
-
-else:
-    all_tickers = []
 
 # ---------------------------------------------------------
 # TICKER MULTISELECT (THIS WAS MISSING)

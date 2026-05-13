@@ -219,7 +219,7 @@ if run_button:
 
     cov_matrix = returns_df[valid_tickers].cov()
     optimizer_results = run_optimizer(returns_df[valid_tickers], cov_matrix)
-    buy_results = run_buy_analysis(valid_tickers, fundamentals, close)
+    buy_results = run_buy_analysis(tickers, fundamentals_df, close)
     mc_results = run_monte_carlo_simulation(returns_df[valid_tickers], mc_sims, mc_horizon)
 
     st.session_state["model"] = {

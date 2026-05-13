@@ -120,7 +120,22 @@ if spy_data is not None and not spy_data.empty:
 else:
     spy_returns = None
 
+# Fundamentals
 fundamentals = load_fundamentals(tickers)
+
+# STEP 2 — Convert dict → DataFrame
+fundamentals_df = pd.DataFrame(fundamentals).T
+
+# STEP 3 — Safe check
+if fundamentals_df.empty:
+    st.error("No fundamentals data available for the selected tickers.")
+    st.stop()
+
+# STEP 4 — Fix missing sectors
+if "Sector" not in fundamentals_df.columns:
+    fundamentals_df["Sector"] = "Unknown"
+
+fundamentals_df["Sector"] = fundamentals_df["Sector"].fillna("Unknown")
 
 if not fundamentals or len(fundamentals) == 0:
     st.error("No fundamentals data returned for the selected tickers.")

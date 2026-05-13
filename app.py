@@ -97,9 +97,9 @@ def safe_val(x):
         return np.nan
 
 # ---------------------------------------------------------
-# CORE DATA LOAD (FIXED: replaced tickers → selected_tickers)
+# CORE DATA LOAD (using sidebar tickers)
 # ---------------------------------------------------------
-prices = load_price_data(selected_tickers, start_date, end_date)
+prices = load_price_data(tickers, start_date, end_date)
 
 if prices is None or prices.empty:
     st.error("Price data could not be loaded.")

@@ -615,7 +615,10 @@ with tab6:
     })
     st.dataframe(weights_df, use_container_width=True)
 
-    with tab7:
+# ---------------------------------------------------------
+# TAB 7 — AI COMMENTARY + SIGNALS
+# ---------------------------------------------------------
+with tab7:
     st.subheader("AI Portfolio Commentary")
 
     # --- NEW DATA PIPELINE ---
@@ -661,20 +664,18 @@ with tab6:
     # Fundamentals for signals
     fundamentals_model = fundamentals_df.to_dict(orient="index")
     tickers_model = tickers
-    er = perf["expected_return"]
-    vol = perf["volatility"]
-    sharpe_m = perf["sharpe"]
 
+    # Max drawdown
     if isinstance(drawdown_model, pd.DataFrame) and not drawdown_model.empty:
         max_dd_m = float(drawdown_model["Drawdown"].min())
     else:
         max_dd_m = None
     max_dd_text = f"{max_dd_m:.2%}" if isinstance(max_dd_m, (int, float, np.floating)) else "N/A"
 
-    sector_text = ""
-    if isinstance(sector_weights_model, dict) and sector_weights_model:
-        sector_text = ", ".join([f"{s}: {w:.1%}" for s, w in sector_weights_model.items()])
+    # Sector text
+    sector_text = ", ".join([f"{s}: {w:.1%}" for s, w in sector_weights_model.items()])
 
+    # Fundamentals summary
     fund_summary = []
     for t in tickers_model:
         f = fundamentals_model.get(t, {})
@@ -689,6 +690,7 @@ with tab6:
         })
     fund_df = pd.DataFrame(fund_summary)
 
+    # Portfolio grade
     grade = "C"
     if sharpe_m > 1.2 and er > 0.12:
         grade = "A"
@@ -697,6 +699,7 @@ with tab6:
     elif sharpe_m < 0.3 or er < 0.03:
         grade = "D"
 
+    # Risk bucket
     if vol < 0.12:
         risk_bucket = "Low Risk"
     elif vol < 0.20:
@@ -704,6 +707,7 @@ with tab6:
     else:
         risk_bucket = "High Risk"
 
+    # Monte Carlo commentary
     mc_comment = ""
     if isinstance(mc_model, pd.DataFrame) and not mc_model.empty:
         final_vals = mc_model.iloc[-1]
@@ -715,6 +719,7 @@ with tab6:
             f"a **median outcome of {p50:.2f}x**, and a **best-case outcome of {p95:.2f}x**."
         )
 
+    # Portfolio overview
     st.markdown("### Portfolio Overview")
     st.write(
         f"""
@@ -730,6 +735,7 @@ with tab6:
     st.markdown("---")
     st.markdown("### AI Commentary")
 
+    # Expected return commentary
     if er > 0.15:
         st.write("• Strong expected returns suggest meaningful upside potential.")
     elif er > 0.05:
@@ -737,6 +743,7 @@ with tab6:
     else:
         st.write("• Expected returns appear muted, likely due to defensive or low-growth names.")
 
+    # Volatility commentary
     if vol > 0.25:
         st.write("• Volatility is high, indicating exposure to high-beta or momentum stocks.")
     elif vol > 0.15:
@@ -744,6 +751,7 @@ with tab6:
     else:
         st.write("• Volatility is low, suggesting defensive or mega-cap concentration.")
 
+    # Sharpe commentary
     if sharpe_m > 1.0:
         st.write("• Strong Sharpe ratio indicates efficient risk-adjusted performance.")
     elif sharpe_m > 0.5:
@@ -751,6 +759,7 @@ with tab6:
     else:
         st.write("• Weak Sharpe ratio suggests the portfolio may not be compensated for its risk.")
 
+    # Drawdown commentary
     if isinstance(max_dd_m, (int, float, np.floating)):
         if max_dd_m < -0.40:
             st.write("• Deep drawdowns indicate vulnerability during market stress.")
@@ -759,16 +768,17 @@ with tab6:
         else:
             st.write("• Shallow drawdowns indicate strong downside resilience.")
 
+    # Sector commentary
     if sector_text:
         st.markdown("### Sector Exposure")
         st.write(f"**Sector Weights:** {sector_text}")
-        if "Technology" in sector_weights_model and sector_weights_model["Technology"] > 0.45:
-            st.write("• Heavy concentration in Technology increases sensitivity to interest rates.")
 
+    # Monte Carlo commentary
     if mc_comment:
         st.markdown("### Monte Carlo Outlook")
         st.write(mc_comment)
 
+    # Sector profile from fundamentals
     if "Sector" in fund_df.columns:
         sectors_from_fund = fund_df["Sector"].fillna("Unknown").value_counts().to_dict()
         if sectors_from_fund:
@@ -776,6 +786,7 @@ with tab6:
             sector_lines = [f"{s}: {c} name(s)" for s, c in sectors_from_fund.items()]
             st.write("• " + "; ".join(sector_lines))
 
+    # AI Buy/Hold/Sell Signals
     st.markdown("### AI Buy / Hold / Sell Signals")
 
     signals = []
@@ -824,6 +835,7 @@ with tab6:
     signals_df = pd.DataFrame(signals)
     st.dataframe(signals_df)
 
+    # Signal summary
     st.markdown("### AI Signal Summary")
     buys = signals_df[signals_df["Rating"] == "Buy"]["Ticker"].tolist()
     holds = signals_df[signals_df["Rating"] == "Hold"]["Ticker"].tolist()
@@ -836,27 +848,26 @@ with tab6:
     if sells:
         st.write(f"• **Sell signals:** {', '.join(sells)} exhibit weaker fundamentals or elevated risk.")
 
+    # Portfolio-level signal
     st.markdown("### AI Portfolio-Level Signal")
     buy_count = len(buys)
     sell_count = len(sells)
 
     if buy_count > sell_count:
-        portfolio_signal = "Buy"
         st.success("**AI Portfolio Signal: BUY** — The portfolio shows strong aggregate fundamentals.")
     elif sell_count >= buy_count + 2:
-        portfolio_signal = "Sell"
         st.error("**AI Portfolio Signal: SELL** — The portfolio shows broad fundamental weakness.")
     else:
-        portfolio_signal = "Hold"
         st.warning("**AI Portfolio Signal: HOLD** — Mixed signals across the portfolio.")
 
+    # Final commentary
     st.markdown("### AI Commentary on Signals")
-    if portfolio_signal == "Buy":
+    if buy_count > sell_count:
         st.write(
             "The portfolio demonstrates broad fundamental strength, with multiple tickers showing "
             "attractive valuation, healthy risk profiles, and supportive momentum."
         )
-    elif portfolio_signal == "Sell":
+    elif sell_count >= buy_count + 2:
         st.write(
             "The portfolio exhibits widespread fundamental weakness. Several names show elevated risk, "
             "poor valuation, or weak momentum. Rebalancing may be warranted."
@@ -866,7 +877,6 @@ with tab6:
             "The portfolio presents a balanced but indecisive signal profile. Monitoring key metrics "
             "and maintaining diversification is recommended."
         )
-
 # ---------------------------------------------------------
 # TAB 8 — BUY ANALYSIS
 # ---------------------------------------------------------

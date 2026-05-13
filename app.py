@@ -86,30 +86,6 @@ run_button = st.sidebar.button("Run Analysis")
 st.title("Portfolio Optimizer Dashboard")
 
 # ---------------------------------------------------------
-# TICKER MULTISELECT (THIS WAS MISSING)
-# ---------------------------------------------------------
-selected_tickers = st.multiselect(
-    "Select tickers:",
-    options=all_tickers,
-    default=all_tickers[:5] if len(all_tickers) > 5 else all_tickers
-)
-
-if not selected_tickers:
-    st.warning("Please select at least one ticker.")
-    st.stop()
-
-# ---------------------------------------------------------
-# DATE INPUTS + SIM SETTINGS
-# ---------------------------------------------------------
-start_date = st.date_input("Start Date", value=pd.to_datetime("2020-01-01"))
-end_date = st.date_input("End Date", value=pd.to_datetime("today"))
-
-mc_sims = st.number_input("Monte Carlo Simulations", min_value=100, max_value=50000, value=5000)
-mc_horizon = st.number_input("Monte Carlo Horizon (days)", min_value=30, max_value=252*5, value=252)
-
-run_button = st.button("Run Analysis")
-
-# ---------------------------------------------------------
 # Helper
 # ---------------------------------------------------------
 def safe_val(x):

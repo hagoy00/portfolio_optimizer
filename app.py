@@ -440,7 +440,9 @@ with tab4:
 with tab5:
     st.subheader("Fundamentals")
 
-    fundamentals_df = pd.DataFrame(fundamentals).T.reindex(valid_tickers)
+    # Use the sidebar tickers, NOT valid_tickers
+    fundamentals_df = pd.DataFrame(fundamentals).T.reindex(tickers)
+
     num_cols = ["ROE", "EPS", "PE", "PB", "DividendYield"]
     for c in num_cols:
         if c not in fundamentals_df.columns:
@@ -448,6 +450,8 @@ with tab5:
 
     display_df = fundamentals_df.copy()
     display_df[num_cols] = display_df[num_cols].fillna(0)
+
+    # Do NOT drop Sector unless it exists
     fundamentals_display = display_df.drop(columns=["Sector"], errors="ignore")
     st.dataframe(fundamentals_display)
 
@@ -460,6 +464,7 @@ with tab5:
         pe = row.get("PE")
         pb = row.get("PB")
         dy = row.get("DividendYield")
+
         if pd.notna(roe):
             score += roe * 10
         if pd.notna(eps):
@@ -470,6 +475,7 @@ with tab5:
             score += max(0, 20 - pb)
         if pd.notna(dy):
             score += dy * 100
+
         return score
 
     fundamentals_df["score"] = fundamentals_df.apply(score_fundamentals, axis=1)
@@ -481,6 +487,7 @@ with tab5:
     def generate_fundamentals_commentary(rdf):
         if rdf.empty:
             return "No fundamentals available."
+
         lines = []
         tickers_sorted = rdf.index.tolist()
         best = tickers_sorted[0]
@@ -808,16 +815,12 @@ with tab7:
 with tab8:
     st.subheader("Buy Analysis")
 
-    model = st.session_state.get("model")
-    if model is None:
-        st.info("Run the analysis first to generate optimizer results.")
-        st.stop()
-
     if not run_button:
         st.info("Run Analysis to generate buy analysis.")
         st.stop()
 
-    buy_results = run_buy_analysis(valid_tickers, fundamentals, close)
+    # Use sidebar tickers, NOT valid_tickers
+    buy_results = run_buy_analysis(tickers, fundamentals, close)
 
     numeric_cols = ["PE", "PB", "DividendYield", "Momentum", "Risk", "Score"]
     for col in numeric_cols:
@@ -861,7 +864,7 @@ with tab8:
             name=row["Ticker"]
         ))
     fig.update_layout(polar=dict(radialaxis=dict(visible=True)), showlegend=True, height=500)
-    st.plotly_chart(fig, use_container_width=True, key="radar_chart")
+    st.plotly_chart(fig, use_container_width=True)
 
     st.subheader("Top Strengths & Weaknesses")
 
@@ -899,7 +902,6 @@ with tab8:
         for w in weaknesses:
             st.markdown(f"- {w}")
         st.markdown("---")
-
 # ---------------------------------------------------------
 # TAB 9 — OPTIMIZER
 # ---------------------------------------------------------
@@ -914,8 +916,9 @@ with tab9:
         st.info("Run Analysis to generate optimizer results.")
         st.stop()
 
-    cov_matrix = returns_df[valid_tickers].cov()
-    opt_results = run_optimizer_cached(returns_df[valid_tickers], cov_matrix)
+    # Use sidebar tickers, NOT valid_tickers
+    cov_matrix = returns_df[tickers].cov()
+    opt_results = run_optimizer_cached(returns_df[tickers], cov_matrix)
     st.success("Optimization complete!")
 
     st.markdown("### Equal Weight Portfolio")
@@ -941,7 +944,7 @@ with tab9:
     st.dataframe(ms_df, key="ms_df")
 
     st.markdown("### Correlation Heatmap")
-    corr = returns_df[valid_tickers].corr()
+    corr = returns_df[tickers].corr()
     fig = go.Figure(data=go.Heatmap(
         z=corr.values,
         x=corr.columns,
@@ -953,16 +956,8 @@ with tab9:
     fig.update_layout(height=500)
     st.plotly_chart(fig, use_container_width=True)
 
+    # Save optimizer results
     if "model" in st.session_state:
         st.session_state["model"]["optimizer"] = opt_results
     else:
         st.session_state["model"] = {"optimizer": opt_results}
-
-
-
-
-
-
-
-
-

@@ -1,19 +1,12 @@
-import requests
+import finnhub
 import pandas as pd
 import numpy as np
-from bs4 import BeautifulSoup
 import yfinance as yf
 
-HEADERS = {"User-Agent": "Mozilla/5.0"}
+FINNHUB_API_KEY = "YOUR_KEY_HERE"
 
-def safe_float(x):
-    try:
-        if x is None:
-            return None
-        x = x.replace(",", "").replace("%", "").strip()
-        return float(x)
-    except:
-        return None
+# Finnhub client
+finnhub_client = finnhub.Client(api_key=FINNHUB_API_KEY)
 
 
 def compute_beta(ticker):
@@ -25,57 +18,31 @@ def compute_beta(ticker):
         return None
 
 
-def scrape_key_statistics(ticker):
-    url = f"https://finance.yahoo.com/quote/{ticker}/key-statistics"
-    r = requests.get(url, headers=HEADERS, timeout=10)
-    soup = BeautifulSoup(r.text, "html.parser")
-
-    stats = {}
-
-    for row in soup.select("table tbody tr"):
-        cols = row.find_all("td")
-        if len(cols) == 2:
-            key = cols[0].text.strip()
-            val = cols[1].text.strip()
-            stats[key] = val
-
-    return stats
-
-
-def scrape_profile_sector(ticker):
-    url = f"https://finance.yahoo.com/quote/{ticker}/profile"
-    r = requests.get(url, headers=HEADERS, timeout=10)
-    soup = BeautifulSoup(r.text, "html.parser")
-
-    tag = soup.find("span", string="Sector")
-    if tag:
-        return tag.find_next("span").text.strip()
-    return "Unknown"
-
-
 def load_fundamentals(tickers):
     results = {}
 
     for t in tickers:
         try:
-            stats = scrape_key_statistics(t)
-            sector = scrape_profile_sector(t)
-            beta = compute_beta(t)
+            # Finnhub company fundamentals
+            profile = finnhub_client.company_profile2(symbol=t)
+            metrics = finnhub_client.company_basic_financials(t, "all")
+
+            data = metrics.get("metric", {})
 
             results[t] = {
-                "PE": safe_float(stats.get("Trailing P/E")),
-                "PB": safe_float(stats.get("Price/Book (mrq)")),
-                "EPS": safe_float(stats.get("Diluted EPS (ttm)")),
-                "ROE": safe_float(stats.get("Return on Equity (ttm)")),
-                "DividendYield": safe_float(stats.get("Forward Annual Dividend Yield")),
-                "DebtToEquity": safe_float(stats.get("Total Debt/Equity (mrq)")),
-                "MarketCap": stats.get("Market Cap (intraday)"),
-                "Sector": sector,
-                "Beta": beta,
+                "PE": data.get("peNormalizedAnnual"),
+                "PB": data.get("pbAnnual"),
+                "EPS": data.get("epsNormalizedAnnual"),
+                "ROE": data.get("roeAnnual"),
+                "DividendYield": data.get("dividendYieldIndicatedAnnual"),
+                "DebtToEquity": data.get("totalDebtToEquityAnnual"),
+                "MarketCap": profile.get("marketCapitalization"),
+                "Sector": profile.get("finnhubIndustry"),
+                "Beta": compute_beta(t),
             }
 
         except Exception as e:
-            print(f"Yahoo scrape error for {t}: {e}")
+            print(f"Finnhub error for {t}: {e}")
             results[t] = {
                 "PE": None,
                 "PB": None,

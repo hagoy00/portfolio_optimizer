@@ -564,33 +564,45 @@ def score_fundamentals(row):
 
     # PE (lower is better)
     if pd.notna(pe):
-        if pe < 15: score += 2
-        elif pe < 25: score += 1
+        if pe < 15:
+            score += 2
+        elif pe < 25:
+            score += 1
 
     # PB (lower is better)
     if pd.notna(pb):
-        if pb < 3: score += 2
-        elif pb < 6: score += 1
+        if pb < 3:
+            score += 2
+        elif pb < 6:
+            score += 1
 
     # EPS (higher is better)
     if pd.notna(eps):
-        if eps > 5: score += 2
-        elif eps > 1: score += 1
+        if eps > 5:
+            score += 2
+        elif eps > 1:
+            score += 1
 
     # ROE (higher is better)
     if pd.notna(roe):
-        if roe > 0.25: score += 2
-        elif roe > 0.10: score += 1
+        if roe > 0.25:
+            score += 2
+        elif roe > 0.10:
+            score += 1
 
     # Dividend Yield (higher is better)
     if pd.notna(dy):
-        if dy > 2: score += 2
-        elif dy > 1: score += 1
+        if dy > 2:
+            score += 2
+        elif dy > 1:
+            score += 1
 
     # Debt-to-Equity (lower is better)
     if pd.notna(dte):
-        if dte < 40: score += 2
-        elif dte < 80: score += 1
+        if dte < 40:
+            score += 2
+        elif dte < 80:
+            score += 1
 
     return score
 

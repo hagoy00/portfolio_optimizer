@@ -265,22 +265,27 @@ for t in valid_tickers:
 fundamentals_df = pd.DataFrame(fundamentals).set_index("Ticker")
 
 # ---------------------------------------------------------
-# SECTOR WEIGHTS (USE fundamentals_df)
+# SAFE SECTOR WEIGHTS (REPLACE OLD BLOCK)
 # ---------------------------------------------------------
-fdf_for_sector = fundamentals_df.reindex(valid_tickers)
 
-if "Sector" not in fdf_for_sector.columns:
-    fdf_for_sector["Sector"] = "Unknown"
+# Clean sector labels
+fundamentals_df["Sector"] = (
+    fundamentals_df["Sector"]
+    .fillna("Unknown")
+    .replace("", "Unknown")
+    .astype(str)
+)
 
-fdf_for_sector["Sector"] = fdf_for_sector["Sector"].fillna("Unknown")
+# Ensure weights align with fundamentals_df
+weights_series = pd.Series(global_weights, index=valid_tickers)
+weights_series = weights_series.reindex(fundamentals_df.index).fillna(0)
 
-sector_map = fdf_for_sector["Sector"].to_dict()
-w_series = pd.Series(global_weights, index=valid_tickers)
+# Safe groupby
 sector_weights = (
-    w_series.groupby(sector_map)
+    weights_series
+    .groupby(fundamentals_df["Sector"])
     .sum()
     .sort_values(ascending=False)
-    .to_dict()
 )
 
 # ---------------------------------------------------------

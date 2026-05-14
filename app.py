@@ -168,12 +168,10 @@ for t in valid_tickers:
         "Sector": f.get("Sector", "Unknown")
     })
 
+# THIS IS THE CORRECT AND ONLY VERSION
 fundamentals_df = pd.DataFrame(fundamentals).set_index("Ticker")
 
-# STEP 2 — Convert dict → DataFrame
-fundamentals_df = pd.DataFrame(fundamentals)
-
-# STEP 3 — Safe check
+# SAFE CHECK
 if fundamentals_df.empty:
     st.error("No fundamentals data available for the selected tickers.")
     st.stop()

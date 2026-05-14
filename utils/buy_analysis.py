@@ -57,9 +57,6 @@ def compute_risk(prices, window=60):
         return pd.Series({c: None for c in prices.columns})
 
 
-# =========================================================
-# COMPOSITE SCORING MODEL (INSTITUTIONAL-GRADE)
-# =========================================================
 def compute_score(momentum, risk, fundamentals):
     """
     Multi-factor scoring model:
@@ -72,13 +69,14 @@ def compute_score(momentum, risk, fundamentals):
     scores = {}
 
     for t in fundamentals.index:
- 
-        m = safe_val(momentum.get(t))
-        r = safe_val(risk.get(t))
 
+        m  = safe_val(momentum.get(t))
+        r  = safe_val(risk.get(t))
+
+        # FIXED: correct DataFrame indexing
         pe = safe_val(fundamentals.loc[t, "PE"])
-        pb = safe_val(fundamentals[t].get("PB"))
-        dy = safe_val(fundamentals[t].get("DividendYield"))
+        pb = safe_val(fundamentals.loc[t, "PB"])
+        dy = safe_val(fundamentals.loc[t, "DividendYield"])
 
         score = 0
 
@@ -89,19 +87,19 @@ def compute_score(momentum, risk, fundamentals):
             score += np.tanh(m) * 30  # bounded, stable
 
         # -------------------------
-        # RISK (weight: 25%)
+        # RISK (weight: 30%)
         # -------------------------
         if r is not None and r > 0:
-            score += (0.30 - r) * 80  # lower vol → higher score
+            score += (0.30 - r) * 100  # lower risk = higher score
 
         # -------------------------
-        # VALUATION (weight: 30%)
+        # VALUATION (weight: 25%)
         # -------------------------
         if pe is not None and pe > 0:
-            score += max(0, 40 - pe)
+            score += max(0, 50 - pe)
 
         if pb is not None and pb > 0:
-            score += max(0, 15 - pb)
+            score += max(0, 20 - pb)
 
         # -------------------------
         # DIVIDEND (weight: 15%)
@@ -112,7 +110,6 @@ def compute_score(momentum, risk, fundamentals):
         scores[t] = score
 
     return scores
-
 
 # =========================================================
 # RATING MODEL (CLEAN)

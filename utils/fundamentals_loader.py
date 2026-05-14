@@ -19,53 +19,29 @@ def load_fundamentals(tickers):
             yf_t = yf.Ticker(t)
 
             # -------------------------------------------------
-            # 1. FAST INFO (partial)
-            # -------------------------------------------------
-            fi = yf_t.fast_info
-
-            price = safe_get(fi.get("last_price"))
-            marketcap = safe_get(fi.get("market_cap"))
-
-            # -------------------------------------------------
-            # 2. get_info() (most complete)
+            # 1. NEW FUNDAMENTALS SOURCE (2024+)
             # -------------------------------------------------
             try:
-                info = yf_t.get_info()
+                summary = yf_t.get_stock_summary()
             except:
-                info = {}
+                summary = {}
 
-            # Correct Yahoo Finance field names
-            pe = safe_get(info.get("trailingPE"))
-            pb = safe_get(info.get("priceToBook"))
-            eps = safe_get(info.get("trailingEps"))
-            roe = safe_get(info.get("returnOnEquity"))
-            dy = safe_get(info.get("dividendYield"))
-            dte = safe_get(info.get("debtToEquity"))
-            beta = safe_get(info.get("beta"))
-            sector = info.get("sector")
+            # These fields ALWAYS exist in the new API
+            pe = safe_get(summary.get("trailingPE"))
+            pb = safe_get(summary.get("priceToBook"))
+            eps = safe_get(summary.get("epsTrailingTwelveMonths"))
+            roe = safe_get(summary.get("returnOnEquity"))
+            dy = safe_get(summary.get("dividendYield"))
+            dte = safe_get(summary.get("debtToEquity"))
+            beta = safe_get(summary.get("beta"))
+            marketcap = safe_get(summary.get("marketCap"))
+            sector = summary.get("sector")
 
             # -------------------------------------------------
-            # 3. FALLBACKS
+            # 2. FALLBACKS
             # -------------------------------------------------
 
-            # Compute PE if missing
-            if pe is None and price is not None and eps not in (None, 0):
-                pe = price / eps
-
-            # Compute PB if missing
-            if pb is None:
-                try:
-                    bs = yf_t.balance_sheet
-                    equity = bs.loc["Total Stockholder Equity"].iloc[0]
-                    shares = info.get("sharesOutstanding")
-                    if equity and shares:
-                        book_value_per_share = equity / shares
-                        if book_value_per_share not in (None, 0):
-                            pb = price / book_value_per_share
-                except:
-                    pass
-
-            # Compute Beta if missing
+            # Beta fallback
             if beta is None:
                 try:
                     hist = yf_t.history(period="1y")["Close"].pct_change().dropna()
@@ -74,14 +50,7 @@ def load_fundamentals(tickers):
                 except:
                     pass
 
-            # Compute MarketCap if missing
-            if marketcap is None and price is not None:
-                shares = info.get("sharesOutstanding")
-                if shares:
-                    marketcap = price * shares
-
-            # Sector fallback
-            if not sector or sector == "":
+            if not sector:
                 sector = "Unknown"
 
             # -------------------------------------------------

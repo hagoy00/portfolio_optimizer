@@ -19,14 +19,13 @@ def load_fundamentals(tickers):
             yf_t = yf.Ticker(t)
 
             # -------------------------------------------------
-            # 1. NEW FUNDAMENTALS SOURCE (2024+)
+            # NEW FUNDAMENTALS SOURCE (2024+)
             # -------------------------------------------------
             try:
                 summary = yf_t.get_stock_summary()
             except:
                 summary = {}
 
-            # These fields ALWAYS exist in the new API
             pe = safe_get(summary.get("trailingPE"))
             pb = safe_get(summary.get("priceToBook"))
             eps = safe_get(summary.get("epsTrailingTwelveMonths"))
@@ -38,7 +37,7 @@ def load_fundamentals(tickers):
             sector = summary.get("sector")
 
             # -------------------------------------------------
-            # 2. FALLBACKS
+            # FALLBACKS
             # -------------------------------------------------
 
             # Beta fallback

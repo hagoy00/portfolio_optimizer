@@ -729,22 +729,22 @@ with tab7:
 
     # Sector weights
     # Clean sector labels for model sector weights
-sector_series = (
-    fundamentals_df["Sector"]
-    .astype(str)
-    .replace("None", "Unknown")
-    .replace("nan", "Unknown")
-    .replace("", "Unknown")
-    .fillna("Unknown")
-)
+    sector_series = (
+        fundamentals_df["Sector"]
+        .astype(str)
+        .replace("None", "Unknown")
+        .replace("nan", "Unknown")
+        .replace("", "Unknown")
+        .fillna("Unknown")
+    )
 
-# Safe groupby using the cleaned Series
-sector_weights_model = (
-    w_series
-    .groupby(sector_series)
-    .sum()
-    .sort_values(ascending=False)
-)
+    # Safe groupby using the cleaned Series
+    sector_weights_model = (
+        w_series
+        .groupby(sector_series)
+        .sum()
+        .sort_values(ascending=False)
+    )
 
 
     # -----------------------------

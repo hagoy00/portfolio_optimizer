@@ -156,7 +156,7 @@ else:
 fundamentals = load_fundamentals(tickers)
 
 # STEP 2 — Convert dict → DataFrame
-fundamentals_df = pd.DataFrame(fundamentals).T
+fundamentals_df = pd.DataFrame(fundamentals)
 
 # STEP 3 — Safe check
 if fundamentals_df.empty:
@@ -174,7 +174,7 @@ if not fundamentals or len(fundamentals) == 0:
     st.stop()
 
 # Convert dict → DataFrame
-fundamentals_df = pd.DataFrame(fundamentals).T
+fundamentals_df = pd.DataFrame(fundamentals)
     
 st.write("DEBUG — Fundamentals Loaded:", fundamentals)
 
@@ -231,7 +231,7 @@ else:
     portfolio_beta = np.nan
 
 # Sector weights
-fdf_for_sector = pd.DataFrame(fundamentals).T.reindex(valid_tickers)
+fdf_for_sector = pd.DataFrame(fundamentals).reindex(valid_tickers)
 if "Sector" not in fdf_for_sector.columns:
     fdf_for_sector["Sector"] = "Unknown"
 

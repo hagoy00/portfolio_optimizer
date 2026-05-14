@@ -40,39 +40,6 @@ def get_available_tickers(universe):
     return []
 
 # ---------------------------------------------------------
-# FUNCTION: LOAD FUNDAMENTALS  ✅ INSERT HERE
-# ---------------------------------------------------------
-def load_fundamentals(ticker):
-    try:
-        stock = yf.Ticker(ticker)
-        fast = stock.fast_info
-
-        pe = fast.get("trailing_pe", None)
-        pb = fast.get("price_to_book", None)
-        dividend = fast.get("dividend_yield", None)
-        beta = fast.get("beta", None)
-        market_cap = fast.get("market_cap", None)
-
-        if dividend is not None:
-            dividend = dividend * 100  # convert to %
-
-        return {
-            "PE": pe,
-            "PB": pb,
-            "DividendYield": dividend,
-            "Beta": beta,
-            "MarketCap": market_cap
-        }
-
-    except:
-        return {
-            "PE": None,
-            "PB": None,
-            "DividendYield": None,
-            "Beta": None,
-            "MarketCap": None
-        }
-# ---------------------------------------------------------
 # SIDEBAR – MAIN CONTROLS
 # ---------------------------------------------------------
 st.sidebar.header("Configuration")

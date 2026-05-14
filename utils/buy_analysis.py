@@ -12,6 +12,37 @@ def safe_val(x):
     except Exception:
         return None
 
+def compute_risk(prices, window=60):
+    """
+    Computes annualized volatility.
+    Ensures output index matches ticker symbols exactly.
+    """
+
+    if prices is None or prices.empty:
+        return pd.Series(dtype=float)
+
+    # Ensure columns are clean ticker symbols
+    prices = prices.copy()
+    prices.columns = [str(c).upper() for c in prices.columns]
+
+    try:
+        # Daily returns
+        returns = prices.pct_change().dropna()
+
+        # If insufficient data, fallback to simple std
+        if len(returns) < window:
+            vol = returns.std() * np.sqrt(252)
+        else:
+            vol = returns.rolling(window).std().iloc[-1] * np.sqrt(252)
+
+        # Ensure index matches tickers
+        vol.index = prices.columns
+
+        return vol
+
+    except Exception:
+        # Return None for each ticker if something breaks
+        return pd.Series({c: None for c in prices.columns})
 
 # =========================================================
 # MOMENTUM (ANNUALIZED)

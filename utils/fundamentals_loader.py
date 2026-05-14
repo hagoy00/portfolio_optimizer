@@ -2,6 +2,7 @@ import requests
 import pandas as pd
 import numpy as np
 from bs4 import BeautifulSoup
+import yfinance as yf
 
 
 def safe_float(x):
@@ -10,6 +11,15 @@ def safe_float(x):
             return None
         x = x.replace(",", "").replace("%", "").strip()
         return float(x)
+    except:
+        return None
+
+
+def compute_beta(ticker):
+    try:
+        stock = yf.Ticker(ticker).history(period="1y")["Close"].pct_change().dropna()
+        spy = yf.Ticker("SPY").history(period="1y")["Close"].pct_change().dropna()
+        return np.cov(stock, spy)[0][1] / np.var(spy)
     except:
         return None
 
@@ -43,6 +53,9 @@ def scrape_yahoo_fundamentals(ticker):
         if sector_tag:
             sector = sector_tag.find_next("span").text.strip()
 
+        # Compute Beta
+        beta = compute_beta(ticker)
+
         return {
             "PE": safe_float(data.get("PE Ratio (TTM)")),
             "PB": safe_float(data.get("Price/Book (mrq)")),
@@ -54,6 +67,7 @@ def scrape_yahoo_fundamentals(ticker):
             "DebtToEquity": safe_float(data.get("Total Debt/Equity (mrq)")),
             "MarketCap": data.get("Market Cap"),
             "Sector": sector if sector else "Unknown",
+            "Beta": beta,
         }
 
     except Exception as e:
@@ -67,6 +81,7 @@ def scrape_yahoo_fundamentals(ticker):
             "DebtToEquity": None,
             "MarketCap": None,
             "Sector": "Unknown",
+            "Beta": None,
         }
 
 

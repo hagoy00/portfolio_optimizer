@@ -920,7 +920,8 @@ with tab8:
         st.stop()
 
     # Use sidebar tickers, NOT valid_tickers
-    buy_results = run_buy_analysis(tickers, fundamentals, close)
+    buy_results = run_buy_analysis(tickers, fundamentals_df, close)
+    #buy_results = run_buy_analysis(tickers, fundamentals, close)
 
     numeric_cols = ["PE", "PB", "DividendYield", "Momentum", "Risk", "Score"]
     for col in numeric_cols:

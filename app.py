@@ -171,6 +171,13 @@ for t in valid_tickers:
 # THIS IS THE CORRECT AND ONLY VERSION
 fundamentals_df = pd.DataFrame(fundamentals).set_index("Ticker")
 
+st.markdown("### DEBUG — Fundamentals Raw Input")
+st.write(fundamentals)  # show raw list
+
+st.markdown("### DEBUG — Fundamentals DataFrame")
+st.write("Shape:", fundamentals_df.shape)
+st.write("Columns:", fundamentals
+
 # SAFE CHECK
 if fundamentals_df.empty:
     st.error("No fundamentals data available for the selected tickers.")

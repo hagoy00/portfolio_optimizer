@@ -552,7 +552,7 @@ with tab5:
 
     st.subheader("Fundamentals Ranking")
 
-    def score_fundamentals(row):
+def score_fundamentals(row):
     score = 0
 
     pe = row.get("PE")

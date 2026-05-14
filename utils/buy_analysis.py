@@ -80,9 +80,9 @@ def compute_score(momentum, risk, fundamentals):
         r  = safe_val(risk.get(t))
 
         # Correct DataFrame indexing
-        pe = safe_val(fundamentals.loc[t, "PE"])
-        pb = safe_val(fundamentals.loc[t, "PB"])
-        dy = safe_val(fundamentals.loc[t, "DividendYield"])
+        pe = safe_val(fundamentals_df.loc[t, "PE"])
+        pb = safe_val(fundamentals_df.loc[t, "PB"])
+        dy = safe_val(fundamentals_df.loc[t, "DividendYield"])
 
         score = 0
 
@@ -134,7 +134,7 @@ def compute_rating(score):
 # =========================================================
 # MAIN BUY ANALYSIS FUNCTION (FINAL, CORRECT)
 # =========================================================
-def run_buy_analysis(tickers, fundamentals, prices):
+def run_buy_analysis(tickers, fundamentals_df, prices):
     """
     Main entry point for Buy Analysis.
     Fully crash-proof.
@@ -143,8 +143,8 @@ def run_buy_analysis(tickers, fundamentals, prices):
     # -------------------------
     # VALIDATION
     # -------------------------
-    if fundamentals is None or not isinstance(fundamentals, pd.DataFrame):
-        raise ValueError("fundamentals must be a DataFrame")
+    if fundamentals_df is None or not isinstance(fundamentals_df, pd.DataFrame):
+    raise ValueError("fundamentals_df must be a DataFrame")
 
     if prices is None or prices.empty:
         return pd.DataFrame(columns=[
@@ -152,7 +152,7 @@ def run_buy_analysis(tickers, fundamentals, prices):
         ])
 
     # Ensure fundamentals index matches tickers
-    fundamentals = fundamentals.reindex(tickers)
+    fundamentals_df = fundamentals_df.reindex(tickers)
 
     # -------------------------
     # FACTORS
@@ -161,7 +161,9 @@ def run_buy_analysis(tickers, fundamentals, prices):
     risk = compute_risk(prices)
 
     # Composite score
-    scores = compute_score(momentum, risk, fundamentals)
+    scores = compute_score(momentum, risk, fundamentals_df)
+
+    #scores = compute_score(momentum, risk, fundamentals)
 
     # -------------------------
     # BUILD OUTPUT TABLE

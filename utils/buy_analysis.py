@@ -1,7 +1,6 @@
 import pandas as pd
 import numpy as np
 
-
 # =========================================================
 # SAFE VALUE CONVERSION
 # =========================================================
@@ -18,18 +17,13 @@ def safe_val(x):
 # MOMENTUM (ANNUALIZED)
 # =========================================================
 def compute_momentum(prices, window=60):
-    """
-    Computes annualized momentum using last N days of returns.
-    More stable than simple pct_change(window).
-    """
-
     if prices is None or prices.empty:
         return pd.Series(dtype=float)
 
     try:
         returns = prices.pct_change().dropna()
         if len(returns) < window:
-            return returns.mean() * 252  # fallback: mean return
+            return returns.mean() * 252
         return returns.tail(window).mean() * 252
     except Exception:
         return pd.Series({c: None for c in prices.columns})
@@ -39,10 +33,6 @@ def compute_momentum(prices, window=60):
 # RISK (ANNUALIZED VOLATILITY)
 # =========================================================
 def compute_risk(prices, window=60):
-    """
-    Computes annualized volatility.
-    """
-
     if prices is None or prices.empty:
         return pd.Series(dtype=float)
 
@@ -58,58 +48,40 @@ def compute_risk(prices, window=60):
 
 
 # =========================================================
-# COMPOSITE SCORING MODEL (INSTITUTIONAL-GRADE)
+# COMPOSITE SCORING MODEL
 # =========================================================
-def compute_score(momentum, risk, fundamentals):
-    """
-    Multi-factor scoring model:
-    - Momentum (positive is good)
-    - Risk (lower is better)
-    - Valuation (PE, PB)
-    - Dividend Yield
-    """
-
-    if fundamentals is None or not isinstance(fundamentals, pd.DataFrame):
-        raise ValueError("fundamentals must be a DataFrame")
+def compute_score(momentum, risk, fundamentals_df):
+    if fundamentals_df is None or not isinstance(fundamentals_df, pd.DataFrame):
+        raise ValueError("fundamentals_df must be a DataFrame")
 
     scores = {}
 
-    for t in fundamentals.index:
-
+    for t in fundamentals_df.index:
         m  = safe_val(momentum.get(t))
         r  = safe_val(risk.get(t))
 
-        # Correct DataFrame indexing
         pe = safe_val(fundamentals_df.loc[t, "PE"])
         pb = safe_val(fundamentals_df.loc[t, "PB"])
         dy = safe_val(fundamentals_df.loc[t, "DividendYield"])
 
         score = 0
 
-        # -------------------------
-        # MOMENTUM (weight: 30%)
-        # -------------------------
+        # Momentum (30%)
         if m is not None:
-            score += np.tanh(m) * 30  # bounded, stable
+            score += np.tanh(m) * 30
 
-        # -------------------------
-        # RISK (weight: 30%)
-        # -------------------------
+        # Risk (30%)
         if r is not None and r > 0:
-            score += (0.30 - r) * 100  # lower risk = higher score
+            score += (0.30 - r) * 100
 
-        # -------------------------
-        # VALUATION (weight: 25%)
-        # -------------------------
+        # Valuation (25%)
         if pe is not None and pe > 0:
             score += max(0, 50 - pe)
 
         if pb is not None and pb > 0:
             score += max(0, 20 - pb)
 
-        # -------------------------
-        # DIVIDEND (weight: 15%)
-        # -------------------------
+        # Dividend (15%)
         if dy is not None and dy > 0:
             score += dy * 100
 
@@ -119,7 +91,7 @@ def compute_score(momentum, risk, fundamentals):
 
 
 # =========================================================
-# RATING MODEL (CLEAN)
+# RATING MODEL
 # =========================================================
 def compute_rating(score):
     if score is None:
@@ -132,52 +104,33 @@ def compute_rating(score):
 
 
 # =========================================================
-# MAIN BUY ANALYSIS FUNCTION (FINAL, CORRECT)
+# MAIN BUY ANALYSIS FUNCTION
 # =========================================================
 def run_buy_analysis(tickers, fundamentals_df, prices):
-    """
-    Main entry point for Buy Analysis.
-    Fully crash-proof.
-    """
-
-    # -------------------------
-    # VALIDATION
-    # -------------------------
     if fundamentals_df is None or not isinstance(fundamentals_df, pd.DataFrame):
-    raise ValueError("fundamentals_df must be a DataFrame")
+        raise ValueError("fundamentals_df must be a DataFrame")
 
     if prices is None or prices.empty:
         return pd.DataFrame(columns=[
             "Ticker", "Momentum", "Risk", "PE", "PB", "DividendYield", "Score", "Rating"
         ])
 
-    # Ensure fundamentals index matches tickers
     fundamentals_df = fundamentals_df.reindex(tickers)
 
-    # -------------------------
-    # FACTORS
-    # -------------------------
     momentum = compute_momentum(prices)
     risk = compute_risk(prices)
 
-    # Composite score
     scores = compute_score(momentum, risk, fundamentals_df)
 
-    #scores = compute_score(momentum, risk, fundamentals)
-
-    # -------------------------
-    # BUILD OUTPUT TABLE
-    # -------------------------
     rows = []
     for t in tickers:
-
         row = {
             "Ticker": t,
             "Momentum": safe_val(momentum.get(t)),
             "Risk": safe_val(risk.get(t)),
-            "PE": safe_val(fundamentals.loc[t, "PE"]),
-            "PB": safe_val(fundamentals.loc[t, "PB"]),
-            "DividendYield": safe_val(fundamentals.loc[t, "DividendYield"]),
+            "PE": safe_val(fundamentals_df.loc[t, "PE"]),
+            "PB": safe_val(fundamentals_df.loc[t, "PB"]),
+            "DividendYield": safe_val(fundamentals_df.loc[t, "DividendYield"]),
             "Score": safe_val(scores.get(t)),
         }
 
@@ -185,8 +138,6 @@ def run_buy_analysis(tickers, fundamentals_df, prices):
         rows.append(row)
 
     df = pd.DataFrame(rows)
-
-    # Sort by score descending
     df = df.sort_values("Score", ascending=False).reset_index(drop=True)
 
     return df

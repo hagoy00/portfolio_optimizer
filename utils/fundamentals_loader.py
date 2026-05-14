@@ -19,7 +19,7 @@ def load_fundamentals(tickers):
             yf_t = yf.Ticker(t)
 
             # -------------------------------------------------
-            # 1. FAST INFO (partial, unreliable now)
+            # 1. FAST INFO (partial)
             # -------------------------------------------------
             fi = yf_t.fast_info
 
@@ -34,13 +34,14 @@ def load_fundamentals(tickers):
             except:
                 info = {}
 
+            # Correct Yahoo Finance field names
             pe = safe_get(info.get("trailingPE"))
             pb = safe_get(info.get("priceToBook"))
-            beta = safe_get(info.get("beta"))
             eps = safe_get(info.get("trailingEps"))
-            dy = safe_get(info.get("dividendYield"))
             roe = safe_get(info.get("returnOnEquity"))
+            dy = safe_get(info.get("dividendYield"))
             dte = safe_get(info.get("debtToEquity"))
+            beta = safe_get(info.get("beta"))
             sector = info.get("sector")
 
             # -------------------------------------------------
@@ -56,13 +57,15 @@ def load_fundamentals(tickers):
                 try:
                     bs = yf_t.balance_sheet
                     equity = bs.loc["Total Stockholder Equity"].iloc[0]
-                    shares = marketcap / price if (marketcap and price) else None
+                    shares = info.get("sharesOutstanding")
                     if equity and shares:
-                        pb = price / (equity / shares)
+                        book_value_per_share = equity / shares
+                        if book_value_per_share not in (None, 0):
+                            pb = price / book_value_per_share
                 except:
                     pass
 
-            # Compute Beta if missing (using covariance)
+            # Compute Beta if missing
             if beta is None:
                 try:
                     hist = yf_t.history(period="1y")["Close"].pct_change().dropna()
@@ -73,15 +76,12 @@ def load_fundamentals(tickers):
 
             # Compute MarketCap if missing
             if marketcap is None and price is not None:
-                try:
-                    shares = info.get("sharesOutstanding")
-                    if shares:
-                        marketcap = price * shares
-                except:
-                    pass
+                shares = info.get("sharesOutstanding")
+                if shares:
+                    marketcap = price * shares
 
             # Sector fallback
-            if not sector:
+            if not sector or sector == "":
                 sector = "Unknown"
 
             # -------------------------------------------------
@@ -99,7 +99,8 @@ def load_fundamentals(tickers):
                 "MarketCap": marketcap,
             }
 
-        except Exception:
+        except Exception as e:
+            print(f"Error loading fundamentals for {t}: {e}")
             results[t] = {
                 "PE": None,
                 "PB": None,

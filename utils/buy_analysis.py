@@ -57,6 +57,9 @@ def compute_risk(prices, window=60):
         return pd.Series({c: None for c in prices.columns})
 
 
+# =========================================================
+# COMPOSITE SCORING MODEL (INSTITUTIONAL-GRADE)
+# =========================================================
 def compute_score(momentum, risk, fundamentals):
     """
     Multi-factor scoring model:
@@ -66,6 +69,9 @@ def compute_score(momentum, risk, fundamentals):
     - Dividend Yield
     """
 
+    if fundamentals is None or not isinstance(fundamentals, pd.DataFrame):
+        raise ValueError("fundamentals must be a DataFrame")
+
     scores = {}
 
     for t in fundamentals.index:
@@ -73,7 +79,7 @@ def compute_score(momentum, risk, fundamentals):
         m  = safe_val(momentum.get(t))
         r  = safe_val(risk.get(t))
 
-        # FIXED: correct DataFrame indexing
+        # Correct DataFrame indexing
         pe = safe_val(fundamentals.loc[t, "PE"])
         pb = safe_val(fundamentals.loc[t, "PB"])
         dy = safe_val(fundamentals.loc[t, "DividendYield"])
@@ -111,6 +117,7 @@ def compute_score(momentum, risk, fundamentals):
 
     return scores
 
+
 # =========================================================
 # RATING MODEL (CLEAN)
 # =========================================================
@@ -125,7 +132,7 @@ def compute_rating(score):
 
 
 # =========================================================
-# MAIN BUY ANALYSIS FUNCTION
+# MAIN BUY ANALYSIS FUNCTION (FINAL, CORRECT)
 # =========================================================
 def run_buy_analysis(tickers, fundamentals, prices):
     """
@@ -133,35 +140,46 @@ def run_buy_analysis(tickers, fundamentals, prices):
     Fully crash-proof.
     """
 
+    # -------------------------
+    # VALIDATION
+    # -------------------------
+    if fundamentals is None or not isinstance(fundamentals, pd.DataFrame):
+        raise ValueError("fundamentals must be a DataFrame")
+
     if prices is None or prices.empty:
         return pd.DataFrame(columns=[
             "Ticker", "Momentum", "Risk", "PE", "PB", "DividendYield", "Score", "Rating"
         ])
 
-    # Compute factors
+    # Ensure fundamentals index matches tickers
+    fundamentals = fundamentals.reindex(tickers)
+
+    # -------------------------
+    # FACTORS
+    # -------------------------
     momentum = compute_momentum(prices)
     risk = compute_risk(prices)
 
     # Composite score
     scores = compute_score(momentum, risk, fundamentals)
 
-    # Build output table
+    # -------------------------
+    # BUILD OUTPUT TABLE
+    # -------------------------
     rows = []
     for t in tickers:
-        f = fundamentals.get(t, {})
 
         row = {
             "Ticker": t,
             "Momentum": safe_val(momentum.get(t)),
             "Risk": safe_val(risk.get(t)),
-            "PE": safe_val(f.get("PE")),
-            "PB": safe_val(f.get("PB")),
-            "DividendYield": safe_val(f.get("DividendYield")),
+            "PE": safe_val(fundamentals.loc[t, "PE"]),
+            "PB": safe_val(fundamentals.loc[t, "PB"]),
+            "DividendYield": safe_val(fundamentals.loc[t, "DividendYield"]),
             "Score": safe_val(scores.get(t)),
         }
 
         row["Rating"] = compute_rating(row["Score"])
-
         rows.append(row)
 
     df = pd.DataFrame(rows)

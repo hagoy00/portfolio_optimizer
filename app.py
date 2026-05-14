@@ -462,11 +462,21 @@ with tab4:
 # ---------------------------------------------------------
 # TAB 5 — FUNDAMENTALS
 # ---------------------------------------------------------
+# ---------------------------------------------------------
+# TAB 5 — FUNDAMENTALS
+# ---------------------------------------------------------
 with tab5:
     st.subheader("Fundamentals")
 
     # Use the sidebar tickers, NOT valid_tickers
-    fundamentals_df = pd.DataFrame(fundamentals).T.reindex(tickers)
+    fundamentals_df = (
+        pd.DataFrame(fundamentals)
+        .set_index("Ticker")
+        .reindex(tickers)
+    )
+
+    st.dataframe(fundamentals_df)
+    st.subheader("Fundamentals")
 
     num_cols = ["ROE", "EPS", "PE", "PB", "DividendYield"]
     for c in num_cols:

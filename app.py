@@ -122,30 +122,44 @@ else:
 # ---------------------------------------------------------
 # LOAD FUNDAMENTALS FOR EACH VALID TICKER
 # ---------------------------------------------------------
+
+# Normalize tickers
+valid_tickers = [t.strip().upper() for t in valid_tickers]
+
 fundamentals = []
+
 for t in valid_tickers:
-    f = load_fundamentals([t])  # returns a DataFrame with index = ticker
-    f = load_fundamentals([t])
+    f = load_fundamentals([t])   # returns DataFrame indexed by ticker
 
-    st.write("DEBUG — ticker:", t)
-    st.write("DEBUG — load_fundamentals([t]) returned:")
-    st.write(f)
-    st.write("DEBUG — f.index:", getattr(f, "index", "NO INDEX"))
+    # --- SAFETY: force DataFrame format ---
+    if isinstance(f, dict):
+        f = pd.DataFrame([f], index=[t])
 
+    elif isinstance(f, pd.DataFrame):
+        if t not in f.index:
+            f.index = [t]
+
+    # Now safe
     row = f.loc[t]
 
     fundamentals.append({
         "Ticker": t,
-        "PE": row["PE"],
-        "PB": row["PB"],
-        "DividendYield": row["DividendYield"],
-        "Beta": row["Beta"],
-        "MarketCap": row["MarketCap"],
+        "PE": row.get("PE"),
+        "PB": row.get("PB"),
+        "EPS": row.get("EPS"),
+        "ROE": row.get("ROE"),
+        "DividendYield": row.get("DividendYield"),
+        "DebtToEquity": row.get("DebtToEquity"),
+        "Beta": row.get("Beta"),
+        "MarketCap": row.get("MarketCap"),
         "Sector": row.get("Sector", "Unknown")
     })
 
-# THIS IS THE CORRECT AND ONLY VERSION
+# Convert to DataFrame
 fundamentals_df = pd.DataFrame(fundamentals).set_index("Ticker")
+
+# Clean sector labels
+fundamentals_df["Sector"] = fundamentals_df["Sector"].fillna("Unknown").replace("", "Unknown")
 
 st.markdown("### DEBUG — Fundamentals Raw Input")
 st.write(fundamentals)

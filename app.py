@@ -553,25 +553,46 @@ with tab5:
     st.subheader("Fundamentals Ranking")
 
     def score_fundamentals(row):
-        score = 0.0
-        roe = row.get("ROE")
-        eps = row.get("EPS")
-        pe = row.get("PE")
-        pb = row.get("PB")
-        dy = row.get("DividendYield")
+    score = 0
 
-        if pd.notna(roe):
-            score += roe * 10
-        if pd.notna(eps):
-            score += eps
-        if pd.notna(pe):
-            score += max(0, 50 - pe)
-        if pd.notna(pb):
-            score += max(0, 20 - pb)
-        if pd.notna(dy):
-            score += dy * 100
+    pe = row.get("PE")
+    pb = row.get("PB")
+    eps = row.get("EPS")
+    roe = row.get("ROE")
+    dy = row.get("DividendYield")
+    dte = row.get("DebtToEquity")
 
-        return score
+    # PE (lower is better)
+    if pd.notna(pe):
+        if pe < 15: score += 2
+        elif pe < 25: score += 1
+
+    # PB (lower is better)
+    if pd.notna(pb):
+        if pb < 3: score += 2
+        elif pb < 6: score += 1
+
+    # EPS (higher is better)
+    if pd.notna(eps):
+        if eps > 5: score += 2
+        elif eps > 1: score += 1
+
+    # ROE (higher is better)
+    if pd.notna(roe):
+        if roe > 0.25: score += 2
+        elif roe > 0.10: score += 1
+
+    # Dividend Yield (higher is better)
+    if pd.notna(dy):
+        if dy > 2: score += 2
+        elif dy > 1: score += 1
+
+    # Debt-to-Equity (lower is better)
+    if pd.notna(dte):
+        if dte < 40: score += 2
+        elif dte < 80: score += 1
+
+    return score
 
     fundamentals_df["score"] = fundamentals_df.apply(score_fundamentals, axis=1)
     ranked_df = fundamentals_df.sort_values("score", ascending=False)

@@ -271,10 +271,13 @@ fundamentals_df = pd.DataFrame(fundamentals).set_index("Ticker")
 # Clean sector labels
 fundamentals_df["Sector"] = (
     fundamentals_df["Sector"]
-    .fillna("Unknown")
+    .astype(str)              # <-- MUST COME FIRST
+    .replace("None", "Unknown")
+    .replace("nan", "Unknown")
     .replace("", "Unknown")
-    .astype(str)
+    .fillna("Unknown")
 )
+
 
 # Ensure weights align with fundamentals_df
 weights_series = pd.Series(global_weights, index=valid_tickers)

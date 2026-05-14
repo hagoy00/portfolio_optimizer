@@ -1,84 +1,56 @@
-import yfinance as yf
+import requests
 import pandas as pd
 import numpy as np
+from bs4 import BeautifulSoup
 
-def safe_get(x):
+def safe_float(x):
     try:
-        if x is None or x == "" or x == "None":
-            return None
-        return float(x)
+        return float(x.replace(",", "").replace("%", "")) if isinstance(x, str) else float(x)
     except:
         return None
 
+def scrape_yahoo_fundamentals(ticker):
+    url = f"https://finance.yahoo.com/quote/{ticker}"
+    headers = {"User-Agent": "Mozilla/5.0"}
+
+    try:
+        r = requests.get(url, headers=headers)
+        soup = BeautifulSoup(r.text, "html.parser")
+
+        data = {}
+
+        # Extract key-value pairs from Yahoo Finance summary table
+        for row in soup.select("td"):
+            key = row.text.strip()
+            val = row.find_next("td").text.strip() if row.find_next("td") else None
+            data[key] = val
+
+        return {
+            "PE": safe_float(data.get("PE Ratio (TTM)")),
+            "PB": safe_float(data.get("Price/Book (mrq)")),
+            "EPS": safe_float(data.get("EPS (TTM)")),
+            "ROE": safe_float(data.get("Return on Equity (ttm)")),
+            "DividendYield": safe_float(data.get("Forward Dividend & Yield", "").split("(")[-1].replace(")", "")),
+            "DebtToEquity": safe_float(data.get("Total Debt/Equity (mrq)")),
+            "MarketCap": data.get("Market Cap"),
+            "Sector": data.get("Sector"),
+        }
+
+    except Exception as e:
+        print(f"Scrape error for {ticker}: {e}")
+        return {
+            "PE": None,
+            "PB": None,
+            "EPS": None,
+            "ROE": None,
+            "DividendYield": None,
+            "DebtToEquity": None,
+            "MarketCap": None,
+            "Sector": "Unknown",
+        }
 
 def load_fundamentals(tickers):
     results = {}
-
     for t in tickers:
-        try:
-            yf_t = yf.Ticker(t)
-
-            # -------------------------------------------------
-            # NEW FUNDAMENTALS SOURCE (2024+)
-            # -------------------------------------------------
-            try:
-                summary = yf_t.get_stock_summary()
-            except:
-                summary = {}
-
-            pe = safe_get(summary.get("trailingPE"))
-            pb = safe_get(summary.get("priceToBook"))
-            eps = safe_get(summary.get("epsTrailingTwelveMonths"))
-            roe = safe_get(summary.get("returnOnEquity"))
-            dy = safe_get(summary.get("dividendYield"))
-            dte = safe_get(summary.get("debtToEquity"))
-            beta = safe_get(summary.get("beta"))
-            marketcap = safe_get(summary.get("marketCap"))
-            sector = summary.get("sector")
-
-            # -------------------------------------------------
-            # FALLBACKS
-            # -------------------------------------------------
-
-            # Beta fallback
-            if beta is None:
-                try:
-                    hist = yf_t.history(period="1y")["Close"].pct_change().dropna()
-                    spy = yf.Ticker("SPY").history(period="1y")["Close"].pct_change().dropna()
-                    beta = np.cov(hist, spy)[0][1] / np.var(spy)
-                except:
-                    pass
-
-            if not sector:
-                sector = "Unknown"
-
-            # -------------------------------------------------
-            # STORE CLEAN FUNDAMENTALS
-            # -------------------------------------------------
-            results[t] = {
-                "PE": pe,
-                "PB": pb,
-                "EPS": eps,
-                "ROE": roe,
-                "DividendYield": dy,
-                "DebtToEquity": dte,
-                "Beta": beta,
-                "Sector": sector,
-                "MarketCap": marketcap,
-            }
-
-        except Exception as e:
-            print(f"Error loading fundamentals for {t}: {e}")
-            results[t] = {
-                "PE": None,
-                "PB": None,
-                "EPS": None,
-                "ROE": None,
-                "DividendYield": None,
-                "DebtToEquity": None,
-                "Beta": None,
-                "Sector": "Unknown",
-                "MarketCap": None,
-            }
-
+        results[t] = scrape_yahoo_fundamentals(t)
     return pd.DataFrame(results).T

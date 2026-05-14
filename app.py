@@ -170,9 +170,6 @@ for t in valid_tickers:
 
 fundamentals_df = pd.DataFrame(fundamentals).set_index("Ticker")
 
-# Fundamentals
-fundamentals = load_fundamentals(tickers)
-
 # STEP 2 — Convert dict → DataFrame
 fundamentals_df = pd.DataFrame(fundamentals)
 

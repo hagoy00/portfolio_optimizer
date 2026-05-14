@@ -176,8 +176,6 @@ if not fundamentals or len(fundamentals) == 0:
 # Convert dict → DataFrame
 fundamentals_df = pd.DataFrame(fundamentals)
     
-st.write("DEBUG — Fundamentals Loaded:", fundamentals)
-
 # ---------------------------------------------------------
 # FIX: Ensure weights_dict contains ALL valid tickers
 # ---------------------------------------------------------

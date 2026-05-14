@@ -287,69 +287,6 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
 # ---------------------------------------------------------
 # Tab 1 
 # ---------------------------------------------------------
-with tab1:
-    st.subheader("Portfolio Overview")
-
-    # ---------------------------------------------------------
-    # FUNDAMENTALS MUST BE LOADED BEFORE ANY METRICS
-    # ---------------------------------------------------------
-    fundamentals = []
-    for t in valid_tickers:
-        f = load_fundamentals(t)
-        fundamentals.append({
-            "Ticker": t,
-            "PE": f["PE"],
-            "PB": f["PB"],
-            "DividendYield": f["DividendYield"],
-            "Beta": f["Beta"],
-            "MarketCap": f["MarketCap"]
-        })
-
-    fundamentals_df = pd.DataFrame(fundamentals)
-    st.dataframe(fundamentals_df)
-
-    # --- FIRST ROW OF METRICS ---
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.metric("Annual Return", f"{annual_return:.2%}")
-    with col2:
-        st.metric("Volatility", f"{annual_volatility:.2%}")
-    with col3:
-        st.metric("Sharpe Ratio", f"{sharpe_ratio:.2f}")
-
-    # --- SECOND ROW OF METRICS ---
-    col4, col5, col6 = st.columns(3)
-    with col4:
-        st.metric("Max Drawdown", f"{max_drawdown:.2%}")
-    with col5:
-        st.metric("Beta vs SPY", f"{portfolio_beta:.2f}")
-    with col6:
-        st.metric("Diversification Score", f"{diversification_score:.1f}/10")
-
-    # ---------------------------------------------------------
-    # TRUE RISK CONTRIBUTION (not equal weights)
-    # ---------------------------------------------------------
-    st.subheader("Risk Contribution Breakdown")
-
-    if len(valid_tickers) == 0:
-        st.info("No valid tickers available.")
-    else:
-        w = st.session_state.get("global_weights", np.array([1/len(valid_tickers)] * len(valid_tickers)))
-        cov = returns_df[valid_tickers].cov().values
-        port_var = float(w @ cov @ w.T)
-
-        if port_var <= 0 or np.isnan(port_var):
-            st.info("Unable to compute risk contribution.")
-        else:
-            mrc = cov @ w
-            rc = w * mrc
-            rc_pct = rc / port_var
-
-            fig, ax = plt.subplots(figsize=(6, 6))
-            ax.pie(rc_pct, labels=valid_tickers, autopct="%1.1f%%", startangle=90)
-            ax.axis("equal")
-            st.pyplot(fig)
-
 # ---------------------------------------------------------
 # TAB 2 — PERFORMANCE
 # ---------------------------------------------------------

@@ -152,6 +152,24 @@ if spy_data is not None and not spy_data.empty:
 else:
     spy_returns = None
 
+# ---------------------------------------------------------
+# LOAD FUNDAMENTALS FOR EACH VALID TICKER
+# ---------------------------------------------------------
+fundamentals = []
+for t in valid_tickers:
+    f = load_fundamentals(t)
+    fundamentals.append({
+        "Ticker": t,
+        "PE": f["PE"],
+        "PB": f["PB"],
+        "DividendYield": f["DividendYield"],
+        "Beta": f["Beta"],
+        "MarketCap": f["MarketCap"],
+        "Sector": f.get("Sector", "Unknown")
+    })
+
+fundamentals_df = pd.DataFrame(fundamentals).set_index("Ticker")
+
 # Fundamentals
 fundamentals = load_fundamentals(tickers)
 

@@ -663,19 +663,19 @@ with tab6:
         "Weight": [weights_dict[t] for t in valid_tickers]
     })
     st.dataframe(weights_df, use_container_width=True)
-
 # ---------------------------------------------------------
-# TAB 7 — AI COMMENTARY + SIGNALS
+# TAB 7 — AI COMMENTARY + SIGNALS (FINAL FIXED)
 # ---------------------------------------------------------
 with tab7:
     st.subheader("AI Portfolio Commentary")
 
-    # --- NEW DATA PIPELINE ---
-    if fundamentals_df.empty:
+    if fundamentals_df is None or fundamentals_df.empty:
         st.warning("Not enough data to generate commentary.")
         st.stop()
 
-    # Sector weights
+    # -----------------------------
+    # PORTFOLIO WEIGHTS
+    # -----------------------------
     if "global_weights" in st.session_state:
         w = st.session_state["global_weights"]
         if len(w) != len(tickers):
@@ -684,15 +684,17 @@ with tab7:
         w = np.array([1/len(tickers)] * len(tickers))
 
     w_series = pd.Series(w, index=tickers)
-    sector_map = fundamentals_df["Sector"].to_dict()
+
+    # Sector weights
+    sector_map = fundamentals_df["Sector"].fillna("Unknown").to_dict()
     sector_weights_model = w_series.groupby(sector_map).sum().sort_values(ascending=False)
 
-    # Optimizer
-    optimizer = None
-    if "model" in st.session_state and "optimizer" in st.session_state["model"]:
-        optimizer = st.session_state["model"]["optimizer"]
+    # -----------------------------
+    # OPTIMIZER RESULTS
+    # -----------------------------
+    optimizer = st.session_state.get("model", {}).get("optimizer")
 
-    if not optimizer:
+    if optimizer is None:
         st.warning("Optimizer results unavailable.")
         st.stop()
 
@@ -701,62 +703,20 @@ with tab7:
     vol = perf["volatility"]
     sharpe_m = perf["sharpe"]
 
-    # Drawdown
+    # -----------------------------
+    # DRAWDOWN
+    # -----------------------------
     drawdown_model = st.session_state.get("drawdown")
-
-    # Monte Carlo
-    mc_model = st.session_state.get("monte_carlo")
-
-    # Momentum
-    momentum_model = st.session_state.get("momentum", {})
-
-    # Fundamentals for signals
-    fundamentals_model = fundamentals_df.to_dict(orient="index")
-    tickers_model = tickers
-
-    # Max drawdown
     if isinstance(drawdown_model, pd.DataFrame) and not drawdown_model.empty:
         max_dd_m = float(drawdown_model["Drawdown"].min())
     else:
         max_dd_m = None
     max_dd_text = f"{max_dd_m:.2%}" if isinstance(max_dd_m, (int, float, np.floating)) else "N/A"
 
-    # Sector text
-    sector_text = ", ".join([f"{s}: {w:.1%}" for s, w in sector_weights_model.items()])
-
-    # Fundamentals summary
-    fund_summary = []
-    for t in tickers_model:
-        f = fundamentals_model.get(t, {})
-        fund_summary.append({
-            "Ticker": t,
-            "PE": f.get("PE"),
-            "PB": f.get("PB"),
-            "Dividend Yield": f.get("DividendYield"),
-            "Beta": f.get("Beta"),
-            "MarketCap": f.get("MarketCap"),
-            "Sector": f.get("Sector", "Unknown"),
-        })
-    fund_df = pd.DataFrame(fund_summary)
-
-    # Portfolio grade
-    grade = "C"
-    if sharpe_m > 1.2 and er > 0.12:
-        grade = "A"
-    elif sharpe_m > 0.8 and er > 0.08:
-        grade = "B"
-    elif sharpe_m < 0.3 or er < 0.03:
-        grade = "D"
-
-    # Risk bucket
-    if vol < 0.12:
-        risk_bucket = "Low Risk"
-    elif vol < 0.20:
-        risk_bucket = "Moderate Risk"
-    else:
-        risk_bucket = "High Risk"
-
-    # Monte Carlo commentary
+    # -----------------------------
+    # MONTE CARLO
+    # -----------------------------
+    mc_model = st.session_state.get("monte_carlo")
     mc_comment = ""
     if isinstance(mc_model, pd.DataFrame) and not mc_model.empty:
         final_vals = mc_model.iloc[-1]
@@ -768,12 +728,14 @@ with tab7:
             f"a **median outcome of {p50:.2f}x**, and a **best-case outcome of {p95:.2f}x**."
         )
 
-    # Portfolio overview
+    # -----------------------------
+    # PORTFOLIO OVERVIEW
+    # -----------------------------
     st.markdown("### Portfolio Overview")
     st.write(
         f"""
-**Portfolio Grade:** {grade}  
-**Risk Bucket:** {risk_bucket}  
+**Portfolio Grade:** {"A" if sharpe_m > 1.2 else "B" if sharpe_m > 0.8 else "C" if sharpe_m > 0.3 else "D"}  
+**Risk Bucket:** {"Low Risk" if vol < 0.12 else "Moderate Risk" if vol < 0.20 else "High Risk"}  
 **Expected Annual Return:** {er:.2%}  
 **Annualized Volatility:** {vol:.2%}  
 **Sharpe Ratio:** {sharpe_m:.2f}  
@@ -818,53 +780,53 @@ with tab7:
             st.write("• Shallow drawdowns indicate strong downside resilience.")
 
     # Sector commentary
-    if sector_text:
-        st.markdown("### Sector Exposure")
-        st.write(f"**Sector Weights:** {sector_text}")
+    st.markdown("### Sector Exposure")
+    sector_text = ", ".join([f"{s}: {w:.1%}" for s, w in sector_weights_model.items()])
+    st.write(f"**Sector Weights:** {sector_text}")
 
     # Monte Carlo commentary
     if mc_comment:
         st.markdown("### Monte Carlo Outlook")
         st.write(mc_comment)
 
-    # Sector profile from fundamentals
-    if "Sector" in fund_df.columns:
-        sectors_from_fund = fund_df["Sector"].fillna("Unknown").value_counts().to_dict()
-        if sectors_from_fund:
-            st.markdown("### Sector Profile (Fundamentals)")
-            sector_lines = [f"{s}: {c} name(s)" for s, c in sectors_from_fund.items()]
-            st.write("• " + "; ".join(sector_lines))
+    # -----------------------------
+    # FUNDAMENTALS SUMMARY
+    # -----------------------------
+    fund_df = fundamentals_df[["PE", "PB", "DividendYield", "Beta", "MarketCap", "Sector"]].copy()
+    fund_df["Ticker"] = fund_df.index
+    st.markdown("### Fundamentals Summary")
+    st.dataframe(fund_df)
 
-    # AI Buy/Hold/Sell Signals
+    # -----------------------------
+    # AI BUY / HOLD / SELL SIGNALS
+    # -----------------------------
     st.markdown("### AI Buy / Hold / Sell Signals")
 
+    momentum_model = st.session_state.get("momentum", {})
+
     signals = []
-    for _, row in fund_df.iterrows():
-        t = row["Ticker"]
-        pe = row.get("PE")
-        pb = row.get("PB")
-        dy = row.get("Dividend Yield")
-        beta = row.get("Beta")
+    for t in tickers:
+        row = fund_df.loc[t]
+
+        pe = row["PE"]
+        pb = row["PB"]
+        dy = row["DividendYield"]
+        beta = row["Beta"]
         momentum_val = momentum_model.get(t, 0)
 
         score = 0
         conviction = 0
 
         if pe is not None and not pd.isna(pe) and 0 < pe < 40:
-            score += 1
-            conviction += 20
+            score += 1; conviction += 20
         if pb is not None and not pd.isna(pb) and 0 < pb < 8:
-            score += 1
-            conviction += 15
+            score += 1; conviction += 15
         if dy is not None and not pd.isna(dy) and dy > 0.005:
-            score += 1
-            conviction += 15
+            score += 1; conviction += 15
         if beta is not None and not pd.isna(beta) and beta < 1.3:
-            score += 1
-            conviction += 20
+            score += 1; conviction += 20
         if momentum_val is not None and momentum_val > 0:
-            score += 1
-            conviction += 30
+            score += 1; conviction += 30
 
         rating = "Buy" if score >= 4 else "Hold" if score >= 2 else "Sell"
         conviction = min(100, max(0, conviction))
@@ -884,7 +846,9 @@ with tab7:
     signals_df = pd.DataFrame(signals)
     st.dataframe(signals_df)
 
-    # Signal summary
+    # -----------------------------
+    # SIGNAL SUMMARY
+    # -----------------------------
     st.markdown("### AI Signal Summary")
     buys = signals_df[signals_df["Rating"] == "Buy"]["Ticker"].tolist()
     holds = signals_df[signals_df["Rating"] == "Hold"]["Ticker"].tolist()
@@ -897,7 +861,9 @@ with tab7:
     if sells:
         st.write(f"• **Sell signals:** {', '.join(sells)} exhibit weaker fundamentals or elevated risk.")
 
-    # Portfolio-level signal
+    # -----------------------------
+    # PORTFOLIO-LEVEL SIGNAL
+    # -----------------------------
     st.markdown("### AI Portfolio-Level Signal")
     buy_count = len(buys)
     sell_count = len(sells)
@@ -909,23 +875,6 @@ with tab7:
     else:
         st.warning("**AI Portfolio Signal: HOLD** — Mixed signals across the portfolio.")
 
-    # Final commentary
-    st.markdown("### AI Commentary on Signals")
-    if buy_count > sell_count:
-        st.write(
-            "The portfolio demonstrates broad fundamental strength, with multiple tickers showing "
-            "attractive valuation, healthy risk profiles, and supportive momentum."
-        )
-    elif sell_count >= buy_count + 2:
-        st.write(
-            "The portfolio exhibits widespread fundamental weakness. Several names show elevated risk, "
-            "poor valuation, or weak momentum. Rebalancing may be warranted."
-        )
-    else:
-        st.write(
-            "The portfolio presents a balanced but indecisive signal profile. Monitoring key metrics "
-            "and maintaining diversification is recommended."
-        )
 # ---------------------------------------------------------
 # TAB 8 — BUY ANALYSIS
 # ---------------------------------------------------------

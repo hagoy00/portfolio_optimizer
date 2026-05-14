@@ -243,24 +243,10 @@ if spy_returns is not None and not spy_returns.empty:
 else:
     portfolio_beta = np.nan
 
-# Sector weights
-fdf_for_sector = pd.DataFrame(fundamentals).reindex(valid_tickers)
-if "Sector" not in fdf_for_sector.columns:
-    fdf_for_sector["Sector"] = "Unknown"
-
-sector_map = fdf_for_sector["Sector"].fillna("Unknown").to_dict()
-w_series = pd.Series(global_weights, index=valid_tickers)
-sector_weights = w_series.groupby(sector_map).sum().sort_values(ascending=False).to_dict()
-
 # ---------------------------------------------------------
-# RUN OPTIMIZER / BUY / MC
+# LOAD FUNDAMENTALS ONCE (FOR ALL VALID TICKERS)
 # ---------------------------------------------------------
-optimizer_results = None
-buy_results = None
-mc_results = None
-
-if run_button:
-   fundamentals = []
+fundamentals = []
 for t in valid_tickers:
     f = load_fundamentals(t)
     fundamentals.append({
@@ -273,9 +259,38 @@ for t in valid_tickers:
         "Sector": f.get("Sector", "Unknown")
     })
 
+fundamentals_df = pd.DataFrame(fundamentals).set_index("Ticker")
+
+# ---------------------------------------------------------
+# SECTOR WEIGHTS (USE fundamentals_df)
+# ---------------------------------------------------------
+fdf_for_sector = fundamentals_df.reindex(valid_tickers)
+
+if "Sector" not in fdf_for_sector.columns:
+    fdf_for_sector["Sector"] = "Unknown"
+
+fdf_for_sector["Sector"] = fdf_for_sector["Sector"].fillna("Unknown")
+
+sector_map = fdf_for_sector["Sector"].to_dict()
+w_series = pd.Series(global_weights, index=valid_tickers)
+sector_weights = (
+    w_series.groupby(sector_map)
+    .sum()
+    .sort_values(ascending=False)
+    .to_dict()
+)
+
+# ---------------------------------------------------------
+# RUN OPTIMIZER / BUY / MC
+# ---------------------------------------------------------
+optimizer_results = None
+buy_results = None
+mc_results = None
+
+if run_button:
     cov_matrix = returns_df[valid_tickers].cov()
     optimizer_results = run_optimizer(returns_df[valid_tickers], cov_matrix)
-    buy_results = run_buy_analysis(tickers, fundamentals_df, close)
+    buy_results = run_buy_analysis(valid_tickers, fundamentals_df, close)
     mc_results = run_monte_carlo_simulation(returns_df[valid_tickers], mc_sims, mc_horizon)
 
     st.session_state["model"] = {

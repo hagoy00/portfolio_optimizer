@@ -176,7 +176,7 @@ st.write(fundamentals)  # show raw list
 
 st.markdown("### DEBUG — Fundamentals DataFrame")
 st.write("Shape:", fundamentals_df.shape)
-st.write("Columns:", fundamentals
+st.write("Columns:", fundamentals)
 
 # SAFE CHECK
 if fundamentals_df.empty:

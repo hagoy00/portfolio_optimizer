@@ -260,7 +260,18 @@ buy_results = None
 mc_results = None
 
 if run_button:
-    fundamentals = load_fundamentals(valid_tickers)
+   fundamentals = []
+for t in valid_tickers:
+    f = load_fundamentals(t)
+    fundamentals.append({
+        "Ticker": t,
+        "PE": f["PE"],
+        "PB": f["PB"],
+        "DividendYield": f["DividendYield"],
+        "Beta": f["Beta"],
+        "MarketCap": f["MarketCap"],
+        "Sector": f.get("Sector", "Unknown")
+    })
 
     cov_matrix = returns_df[valid_tickers].cov()
     optimizer_results = run_optimizer(returns_df[valid_tickers], cov_matrix)
@@ -472,9 +483,6 @@ with tab4:
     fig.update_layout(height=400)
     st.plotly_chart(fig, use_container_width=True)
 
-# ---------------------------------------------------------
-# TAB 5 — FUNDAMENTALS
-# ---------------------------------------------------------
 # ---------------------------------------------------------
 # TAB 5 — FUNDAMENTALS
 # ---------------------------------------------------------

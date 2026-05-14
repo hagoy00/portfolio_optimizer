@@ -283,11 +283,30 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
     "Buy Analysis",
     "Optimizer"
 ])
+
 # ---------------------------------------------------------
-# TAB 1 — OVERVIEW
+# Tab 1 
 # ---------------------------------------------------------
 with tab1:
     st.subheader("Portfolio Overview")
+
+    # ---------------------------------------------------------
+    # FUNDAMENTALS MUST BE LOADED BEFORE ANY METRICS
+    # ---------------------------------------------------------
+    fundamentals = []
+    for t in valid_tickers:
+        f = load_fundamentals(t)
+        fundamentals.append({
+            "Ticker": t,
+            "PE": f["PE"],
+            "PB": f["PB"],
+            "DividendYield": f["DividendYield"],
+            "Beta": f["Beta"],
+            "MarketCap": f["MarketCap"]
+        })
+
+    fundamentals_df = pd.DataFrame(fundamentals)
+    st.dataframe(fundamentals_df)
 
     # --- FIRST ROW OF METRICS ---
     col1, col2, col3 = st.columns(3)

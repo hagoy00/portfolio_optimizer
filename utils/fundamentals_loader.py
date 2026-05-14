@@ -4,6 +4,7 @@ import numpy as np
 from bs4 import BeautifulSoup
 import yfinance as yf
 
+HEADERS = {"User-Agent": "Mozilla/5.0"}
 
 def safe_float(x):
     try:
@@ -24,69 +25,67 @@ def compute_beta(ticker):
         return None
 
 
-def scrape_yahoo_fundamentals(ticker):
-    url = f"https://finance.yahoo.com/quote/{ticker}"
-    headers = {"User-Agent": "Mozilla/5.0"}
+def scrape_key_statistics(ticker):
+    url = f"https://finance.yahoo.com/quote/{ticker}/key-statistics"
+    r = requests.get(url, headers=HEADERS, timeout=10)
+    soup = BeautifulSoup(r.text, "html.parser")
 
-    try:
-        r = requests.get(url, headers=headers, timeout=10)
-        soup = BeautifulSoup(r.text, "html.parser")
+    stats = {}
 
-        data = {}
+    for row in soup.select("table tbody tr"):
+        cols = row.find_all("td")
+        if len(cols) == 2:
+            key = cols[0].text.strip()
+            val = cols[1].text.strip()
+            stats[key] = val
 
-        # Summary table
-        rows = soup.select("table tbody tr")
-        for row in rows:
-            cols = row.find_all("td")
-            if len(cols) == 2:
-                key = cols[0].text.strip()
-                val = cols[1].text.strip()
-                data[key] = val
+    return stats
 
-        # Sector (from profile page)
-        profile_url = f"https://finance.yahoo.com/quote/{ticker}/profile"
-        r2 = requests.get(profile_url, headers=headers, timeout=10)
-        soup2 = BeautifulSoup(r2.text, "html.parser")
 
-        sector = None
-        sector_tag = soup2.find("span", string="Sector")
-        if sector_tag:
-            sector = sector_tag.find_next("span").text.strip()
+def scrape_profile_sector(ticker):
+    url = f"https://finance.yahoo.com/quote/{ticker}/profile"
+    r = requests.get(url, headers=HEADERS, timeout=10)
+    soup = BeautifulSoup(r.text, "html.parser")
 
-        # Compute Beta
-        beta = compute_beta(ticker)
-
-        return {
-            "PE": safe_float(data.get("PE Ratio (TTM)")),
-            "PB": safe_float(data.get("Price/Book (mrq)")),
-            "EPS": safe_float(data.get("EPS (TTM)")),
-            "ROE": safe_float(data.get("Return on Equity (ttm)")),
-            "DividendYield": safe_float(
-                data.get("Forward Dividend & Yield", "").split("(")[-1].replace(")", "")
-            ),
-            "DebtToEquity": safe_float(data.get("Total Debt/Equity (mrq)")),
-            "MarketCap": data.get("Market Cap"),
-            "Sector": sector if sector else "Unknown",
-            "Beta": beta,
-        }
-
-    except Exception as e:
-        print(f"Scrape error for {ticker}: {e}")
-        return {
-            "PE": None,
-            "PB": None,
-            "EPS": None,
-            "ROE": None,
-            "DividendYield": None,
-            "DebtToEquity": None,
-            "MarketCap": None,
-            "Sector": "Unknown",
-            "Beta": None,
-        }
+    tag = soup.find("span", string="Sector")
+    if tag:
+        return tag.find_next("span").text.strip()
+    return "Unknown"
 
 
 def load_fundamentals(tickers):
     results = {}
+
     for t in tickers:
-        results[t] = scrape_yahoo_fundamentals(t)
+        try:
+            stats = scrape_key_statistics(t)
+            sector = scrape_profile_sector(t)
+            beta = compute_beta(t)
+
+            results[t] = {
+                "PE": safe_float(stats.get("Trailing P/E")),
+                "PB": safe_float(stats.get("Price/Book (mrq)")),
+                "EPS": safe_float(stats.get("Diluted EPS (ttm)")),
+                "ROE": safe_float(stats.get("Return on Equity (ttm)")),
+                "DividendYield": safe_float(stats.get("Forward Annual Dividend Yield")),
+                "DebtToEquity": safe_float(stats.get("Total Debt/Equity (mrq)")),
+                "MarketCap": stats.get("Market Cap (intraday)"),
+                "Sector": sector,
+                "Beta": beta,
+            }
+
+        except Exception as e:
+            print(f"Yahoo scrape error for {t}: {e}")
+            results[t] = {
+                "PE": None,
+                "PB": None,
+                "EPS": None,
+                "ROE": None,
+                "DividendYield": None,
+                "DebtToEquity": None,
+                "MarketCap": None,
+                "Sector": "Unknown",
+                "Beta": None,
+            }
+
     return pd.DataFrame(results).T

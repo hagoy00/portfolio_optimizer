@@ -76,7 +76,7 @@ def compute_score(momentum, risk, fundamentals):
         m = safe_val(momentum.get(t))
         r = safe_val(risk.get(t))
 
-        pe = safe_val(fundamentals[t].get("PE"))
+        pe = safe_val(fundamentals.loc[t, "PE"])
         pb = safe_val(fundamentals[t].get("PB"))
         dy = safe_val(fundamentals[t].get("DividendYield"))
 

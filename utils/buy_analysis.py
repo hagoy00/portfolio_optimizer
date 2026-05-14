@@ -53,20 +53,39 @@ def compute_momentum(prices, window=60):
 # =========================================================
 # RISK (ANNUALIZED VOLATILITY)
 # =========================================================
-def compute_risk(prices, window=60):
+
+def compute_momentum(prices, window=60):
+    """
+    Computes annualized momentum using last N days of returns.
+    Ensures output index matches ticker symbols exactly.
+    """
+
     if prices is None or prices.empty:
         return pd.Series(dtype=float)
 
-    try:
-        returns = prices.pct_change().dropna()
-        if len(returns) < window:
-            vol = returns.std() * np.sqrt(252)
-        else:
-            vol = returns.rolling(window).std().iloc[-1] * np.sqrt(252)
-        return vol
-    except Exception:
-        return pd.Series({c: None for c in prices.columns})
+    # Ensure columns are clean ticker symbols
+    prices = prices.copy()
+    prices.columns = [str(c).upper() for c in prices.columns]
 
+    try:
+        # Daily returns
+        returns = prices.pct_change().dropna()
+
+        # If insufficient data, fallback to mean return
+        if len(returns) < window:
+            return returns.mean() * 252
+
+        # Annualized momentum over last N days
+        momentum = returns.tail(window).mean() * 252
+
+        # Ensure index matches tickers
+        momentum.index = prices.columns
+
+        return momentum
+
+    except Exception:
+        # Return None for each ticker if something breaks
+        return pd.Series({c: None for c in prices.columns})
 
 # =========================================================
 # COMPOSITE SCORING MODEL

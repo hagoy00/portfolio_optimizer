@@ -2,9 +2,6 @@ import yfinance as yf
 import pandas as pd
 import numpy as np
 
-# ---------------------------------------------------------
-# SAFE VALUE CONVERSION
-# ---------------------------------------------------------
 def safe_get(x):
     try:
         if x is None or x == "" or x == "None":
@@ -14,15 +11,7 @@ def safe_get(x):
         return None
 
 
-# ---------------------------------------------------------
-# MAIN FUNDAMENTALS LOADER
-# ---------------------------------------------------------
 def load_fundamentals(tickers):
-    """
-    Loads fundamentals for a list of tickers.
-    Returns a DataFrame indexed by ticker.
-    """
-
     results = {}
 
     for t in tickers:
@@ -30,33 +19,69 @@ def load_fundamentals(tickers):
             yf_t = yf.Ticker(t)
 
             # -------------------------------------------------
-            # 1. fast_info (most reliable, fastest)
+            # 1. FAST INFO (partial, unreliable now)
             # -------------------------------------------------
             fi = yf_t.fast_info
 
-            pe = safe_get(fi.get("trailing_pe"))
-            pb = safe_get(fi.get("price_to_book"))
-            eps = safe_get(fi.get("eps"))
-            beta = safe_get(fi.get("beta"))
+            price = safe_get(fi.get("last_price"))
             marketcap = safe_get(fi.get("market_cap"))
 
             # -------------------------------------------------
-            # 2. get_info() (new API)
+            # 2. get_info() (most complete)
             # -------------------------------------------------
             try:
                 info = yf_t.get_info()
             except:
                 info = {}
 
+            pe = safe_get(info.get("trailingPE"))
+            pb = safe_get(info.get("priceToBook"))
+            beta = safe_get(info.get("beta"))
+            eps = safe_get(info.get("trailingEps"))
             dy = safe_get(info.get("dividendYield"))
             roe = safe_get(info.get("returnOnEquity"))
             dte = safe_get(info.get("debtToEquity"))
             sector = info.get("sector")
 
             # -------------------------------------------------
-            # 3. Fallback sector if missing
+            # 3. FALLBACKS
             # -------------------------------------------------
-            if sector is None or sector == "":
+
+            # Compute PE if missing
+            if pe is None and price is not None and eps not in (None, 0):
+                pe = price / eps
+
+            # Compute PB if missing
+            if pb is None:
+                try:
+                    bs = yf_t.balance_sheet
+                    equity = bs.loc["Total Stockholder Equity"].iloc[0]
+                    shares = marketcap / price if (marketcap and price) else None
+                    if equity and shares:
+                        pb = price / (equity / shares)
+                except:
+                    pass
+
+            # Compute Beta if missing (using covariance)
+            if beta is None:
+                try:
+                    hist = yf_t.history(period="1y")["Close"].pct_change().dropna()
+                    spy = yf.Ticker("SPY").history(period="1y")["Close"].pct_change().dropna()
+                    beta = np.cov(hist, spy)[0][1] / np.var(spy)
+                except:
+                    pass
+
+            # Compute MarketCap if missing
+            if marketcap is None and price is not None:
+                try:
+                    shares = info.get("sharesOutstanding")
+                    if shares:
+                        marketcap = price * shares
+                except:
+                    pass
+
+            # Sector fallback
+            if not sector:
                 sector = "Unknown"
 
             # -------------------------------------------------
@@ -75,7 +100,6 @@ def load_fundamentals(tickers):
             }
 
         except Exception:
-            # HARD FAILSAFE
             results[t] = {
                 "PE": None,
                 "PB": None,
@@ -88,5 +112,4 @@ def load_fundamentals(tickers):
                 "MarketCap": None,
             }
 
-    # Return DataFrame indexed by ticker
     return pd.DataFrame(results).T

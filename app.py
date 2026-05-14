@@ -157,7 +157,8 @@ else:
 # ---------------------------------------------------------
 fundamentals = []
 for t in valid_tickers:
-    f = load_fundamentals(t)
+    f = load_fundamentals([t]).loc[t]
+ 
     fundamentals.append({
         "Ticker": t,
         "PE": f["PE"],

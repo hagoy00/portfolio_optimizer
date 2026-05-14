@@ -158,6 +158,13 @@ else:
 fundamentals = []
 for t in valid_tickers:
     f = load_fundamentals([t])  # returns a DataFrame with index = ticker
+    f = load_fundamentals([t])
+
+    st.write("DEBUG — ticker:", t)
+    st.write("DEBUG — load_fundamentals([t]) returned:")
+    st.write(f)
+    st.write("DEBUG — f.index:", getattr(f, "index", "NO INDEX"))
+
     row = f.loc[t]
 
     fundamentals.append({

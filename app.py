@@ -157,16 +157,17 @@ else:
 # ---------------------------------------------------------
 fundamentals = []
 for t in valid_tickers:
-    f = load_fundamentals([t]).loc[t]
- 
+    f = load_fundamentals([t])  # returns a DataFrame with index = ticker
+    row = f.loc[t]
+
     fundamentals.append({
         "Ticker": t,
-        "PE": f["PE"],
-        "PB": f["PB"],
-        "DividendYield": f["DividendYield"],
-        "Beta": f["Beta"],
-        "MarketCap": f["MarketCap"],
-        "Sector": f.get("Sector", "Unknown")
+        "PE": row["PE"],
+        "PB": row["PB"],
+        "DividendYield": row["DividendYield"],
+        "Beta": row["Beta"],
+        "MarketCap": row["MarketCap"],
+        "Sector": row.get("Sector", "Unknown")
     })
 
 # THIS IS THE CORRECT AND ONLY VERSION

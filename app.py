@@ -161,18 +161,14 @@ fundamentals_df = pd.DataFrame(fundamentals).set_index("Ticker")
 # Clean sector labels
 fundamentals_df["Sector"] = fundamentals_df["Sector"].fillna("Unknown").replace("", "Unknown")
 
-st.markdown("### DEBUG — Fundamentals Raw Input")
 st.write(fundamentals)
 
-st.markdown("### DEBUG — Fundamentals DataFrame")
 st.write("Shape:", fundamentals_df.shape)
 st.write("Columns:", fundamentals_df.columns.tolist())
 st.dataframe(fundamentals_df)
 
-st.markdown("### DEBUG — Fundamentals Raw Input")
 st.write(fundamentals)  # show raw list
 
-st.markdown("### DEBUG — Fundamentals DataFrame")
 st.write("Shape:", fundamentals_df.shape)
 st.write("Columns:", fundamentals)
 

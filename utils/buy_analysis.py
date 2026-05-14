@@ -71,7 +71,8 @@ def compute_score(momentum, risk, fundamentals):
 
     scores = {}
 
-    for t in fundamentals.keys():
+    for t in fundamentals.index:
+ 
         m = safe_val(momentum.get(t))
         r = safe_val(risk.get(t))
 

@@ -10,6 +10,8 @@ from utils.optimizer_core import run_optimizer
 from utils.buy_analysis import run_buy_analysis
 from utils.analytics import run_monte_carlo_simulation
 
+DEBUG — Fundamentals for AAPL:
+<the DataFrame>
 
 # ---------------------------------------------------------
 # FUNCTION: LOAD TICKERS BASED ON UNIVERSE

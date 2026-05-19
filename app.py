@@ -197,8 +197,7 @@ if not fundamentals or len(fundamentals) == 0:
 
 # Convert dict → DataFrame
 fundamentals_df = pd.DataFrame(fundamentals)
-DEBUG — Fundamentals for AAPL:
-<the DataFrame>   
+
 # ---------------------------------------------------------
 # FIX: Ensure weights_dict contains ALL valid tickers
 # ---------------------------------------------------------

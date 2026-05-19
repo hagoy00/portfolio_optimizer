@@ -254,8 +254,19 @@ else:
 # LOAD FUNDAMENTALS ONCE (FOR ALL VALID TICKERS)
 # ---------------------------------------------------------
 fundamentals = []
+
 for t in tickers:
-    info = yf.Ticker(t).info
+    ticker_obj = yf.Ticker(t)
+
+    # Fast info (market cap, beta, etc.)
+    fast = ticker_obj.fast_info
+
+    # Full info (sector, PE, PB, EPS, etc.)
+    try:
+        info = ticker_obj.get_info()
+    except:
+        info = {}
+
     fundamentals.append({
         "Ticker": t,
         "PE": info.get("trailingPE"),
@@ -264,8 +275,8 @@ for t in tickers:
         "ROE": info.get("returnOnEquity"),
         "DividendYield": info.get("dividendYield"),
         "DebtToEquity": info.get("debtToEquity"),
-        "Beta": info.get("beta"),
-        "MarketCap": info.get("marketCap"),
+        "Beta": fast.get("beta"),
+        "MarketCap": fast.get("market_cap"),
         "Sector": info.get("sector")
     })
 

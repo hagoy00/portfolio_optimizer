@@ -246,16 +246,19 @@ else:
 # LOAD FUNDAMENTALS ONCE (FOR ALL VALID TICKERS)
 # ---------------------------------------------------------
 fundamentals = []
-for t in valid_tickers:
-    f = load_fundamentals(t)
+for t in tickers:
+    info = yf.Ticker(t).info
     fundamentals.append({
         "Ticker": t,
-        "PE": f["PE"],
-        "PB": f["PB"],
-        "DividendYield": f["DividendYield"],
-        "Beta": f["Beta"],
-        "MarketCap": f["MarketCap"],
-        "Sector": f.get("Sector", "Unknown")
+        "PE": info.get("trailingPE"),
+        "PB": info.get("priceToBook"),
+        "EPS": info.get("trailingEps"),
+        "ROE": info.get("returnOnEquity"),
+        "DividendYield": info.get("dividendYield"),
+        "DebtToEquity": info.get("debtToEquity"),
+        "Beta": info.get("beta"),
+        "MarketCap": info.get("marketCap"),
+        "Sector": info.get("sector")
     })
 
 # ---------------------------------------------------------

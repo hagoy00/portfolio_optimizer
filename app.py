@@ -10,9 +10,6 @@ from utils.optimizer_core import run_optimizer
 from utils.buy_analysis import run_buy_analysis
 from utils.analytics import run_monte_carlo_simulation
 
-DEBUG — Fundamentals for AAPL:
-<the DataFrame>
-
 # ---------------------------------------------------------
 # FUNCTION: LOAD TICKERS BASED ON UNIVERSE
 # ---------------------------------------------------------
@@ -200,7 +197,8 @@ if not fundamentals or len(fundamentals) == 0:
 
 # Convert dict → DataFrame
 fundamentals_df = pd.DataFrame(fundamentals)
-    
+DEBUG — Fundamentals for AAPL:
+<the DataFrame>   
 # ---------------------------------------------------------
 # FIX: Ensure weights_dict contains ALL valid tickers
 # ---------------------------------------------------------

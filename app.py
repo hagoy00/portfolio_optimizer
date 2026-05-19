@@ -128,32 +128,32 @@ valid_tickers = [t.strip().upper() for t in valid_tickers]
 
 fundamentals = []
 
-for t in valid_tickers:
-    f = load_fundamentals([t])   # returns DataFrame indexed by ticker
+fundamentals = []
 
-    # --- SAFETY: force DataFrame format ---
+for t in valid_tickers:
+    f = load_fundamentals(t)   # FIXED: pass string, not list
+
+    # Ensure DataFrame format
     if isinstance(f, dict):
         f = pd.DataFrame([f], index=[t])
-
     elif isinstance(f, pd.DataFrame):
         if t not in f.index:
             f.index = [t]
 
-    # Now safe
     row = f.loc[t]
 
     fundamentals.append({
-    "Ticker": t,
-    "PE": float(row.get("PE")) if pd.notna(row.get("PE")) else None,
-    "PB": float(row.get("PB")) if pd.notna(row.get("PB")) else None,
-    "EPS": float(row.get("EPS")) if pd.notna(row.get("EPS")) else None,
-    "ROE": float(row.get("ROE")) if pd.notna(row.get("ROE")) else None,
-    "DividendYield": float(row.get("DividendYield")) if pd.notna(row.get("DividendYield")) else None,
-    "DebtToEquity": float(row.get("DebtToEquity")) if pd.notna(row.get("DebtToEquity")) else None,
-    "Beta": float(row.get("Beta")) if pd.notna(row.get("Beta")) else None,
-    "MarketCap": float(row.get("MarketCap")) if pd.notna(row.get("MarketCap")) else None,
-    "Sector": str(row.get("Sector")) if row.get("Sector") else "Unknown"
-})
+        "Ticker": t,
+        "PE": float(row.get("PE")) if pd.notna(row.get("PE")) else None,
+        "PB": float(row.get("PB")) if pd.notna(row.get("PB")) else None,
+        "EPS": float(row.get("EPS")) if pd.notna(row.get("EPS")) else None,
+        "ROE": float(row.get("ROE")) if pd.notna(row.get("ROE")) else None,
+        "DividendYield": float(row.get("DividendYield")) if pd.notna(row.get("DividendYield")) else None,
+        "DebtToEquity": float(row.get("DebtToEquity")) if pd.notna(row.get("DebtToEquity")) else None,
+        "Beta": float(row.get("Beta")) if pd.notna(row.get("Beta")) else None,
+        "MarketCap": float(row.get("MarketCap")) if pd.notna(row.get("MarketCap")) else None,
+        "Sector": str(row.get("Sector")) if row.get("Sector") else "Unknown"
+    })
 
 # Convert to DataFrame
 fundamentals_df = pd.DataFrame(fundamentals).set_index("Ticker")

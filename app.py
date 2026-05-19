@@ -131,6 +131,12 @@ fundamentals = []
 for t in valid_tickers:
     f = load_fundamentals(t)
 
+    # STEP 6 — Debug printout
+    print("\n==============================")
+    print(f"DEBUG — Fundamentals for {t}:")
+    print(f)
+    print("==============================\n")
+
     # Ensure DataFrame format
     if isinstance(f, dict):
         f = pd.DataFrame([f], index=[t])

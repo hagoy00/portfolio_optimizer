@@ -4,21 +4,87 @@ import numpy as np
 import yfinance as yf
 
 
+# -----------------------------
+# Ticker Normalization (Fixes BRK.B → BRK-B, BF.B → BF-B)
+# -----------------------------
+def normalize_ticker(t):
+    return t.replace(".", "-")
+
+
+# -----------------------------
+# Main Fundamentals Loader
+# -----------------------------
 def load_fundamentals(ticker):
     """
-    Load fundamentals for a single ticker using Finnhub.
+    Load fundamentals for a single ticker using Finnhub,
+    with fallback to yfinance for missing fields.
     Returns a single-row DataFrame indexed by the ticker.
     """
 
+    ticker = normalize_ticker(ticker)
+
     try:
-        # Finnhub company profile (sector, market cap, etc.)
+        # -----------------------------
+        # 1. Finnhub profile (sector, market cap)
+        # -----------------------------
         profile = finnhub_client.company_profile2(symbol=ticker)
 
-        # Finnhub financial metrics (PE, PB, EPS, ROE, etc.)
+        # -----------------------------
+        # 2. Finnhub financial metrics (PE, PB, EPS, ROE, etc.)
+        # -----------------------------
         metrics = finnhub_client.company_basic_financials(ticker, "all")
         data = metrics.get("metric", {})
 
-        # Build DataFrame
+        # -----------------------------
+        # 3. Fallback to yfinance for missing fields
+        # -----------------------------
+        yf_t = yf.Ticker(ticker)
+        yf_fast = yf_t.fast_info
+        try:
+            yf_info = yf_t.get_info()
+        except:
+            yf_info = {}
+
+        # PE fallback
+        if data.get("peNormalizedAnnual") is None:
+            data["peNormalizedAnnual"] = yf_info.get("trailingPE")
+
+        # PB fallback
+        if data.get("pbAnnual") is None:
+            data["pbAnnual"] = yf_info.get("priceToBook")
+
+        # EPS fallback
+        if data.get("epsNormalizedAnnual") is None:
+            data["epsNormalizedAnnual"] = yf_info.get("trailingEps")
+
+        # ROE fallback
+        if data.get("roeAnnual") is None:
+            data["roeAnnual"] = yf_info.get("returnOnEquity")
+
+        # Dividend Yield fallback
+        if data.get("dividendYieldIndicatedAnnual") is None:
+            data["dividendYieldIndicatedAnnual"] = yf_info.get("dividendYield")
+
+        # Debt-to-Equity fallback
+        if data.get("totalDebtToEquityAnnual") is None:
+            data["totalDebtToEquityAnnual"] = yf_info.get("debtToEquity")
+
+        # Market Cap fallback
+        if profile.get("marketCapitalization") is None:
+            profile["marketCapitalization"] = yf_fast.get("market_cap")
+
+        # Sector fallback
+        if profile.get("finnhubIndustry") is None:
+            profile["finnhubIndustry"] = yf_info.get("sector")
+
+        # Beta fallback
+        beta_value = compute_beta(ticker)
+        if beta_value is None:
+            beta_value = yf_fast.get("beta")
+
+        # -----------------------------
+        # 4. Build final DataFrame
+        # -----------------------------
         return pd.DataFrame([{
             "PE": data.get("peNormalizedAnnual"),
             "PB": data.get("pbAnnual"),
@@ -27,8 +93,8 @@ def load_fundamentals(ticker):
             "DividendYield": data.get("dividendYieldIndicatedAnnual"),
             "DebtToEquity": data.get("totalDebtToEquityAnnual"),
             "MarketCap": profile.get("marketCapitalization"),
-            "Sector": profile.get("finnhubIndustry"),
-            "Beta": compute_beta(ticker),
+            "Sector": profile.get("finnhubIndustry") or "Unknown",
+            "Beta": beta_value,
         }], index=[ticker])
 
     except Exception as e:

@@ -258,8 +258,6 @@ for t in valid_tickers:
         "Sector": f.get("Sector", "Unknown")
     })
 
-fundamentals_df = pd.DataFrame(fundamentals).set_index("Ticker")
-
 # ---------------------------------------------------------
 # SAFE SECTOR WEIGHTS (REPLACE OLD BLOCK)
 # ---------------------------------------------------------

@@ -2,6 +2,7 @@ import finnhub
 import pandas as pd
 import numpy as np
 import yfinance as yf
+import streamlit as st
 
 
 # -----------------------------
@@ -12,8 +13,9 @@ def normalize_ticker(t):
 
 
 # -----------------------------
-# Main Fundamentals Loader
+# Main Fundamentals Loader (CACHED)
 # -----------------------------
+@st.cache_data(show_spinner=False)
 def load_fundamentals(ticker):
     """
     Load fundamentals for a single ticker using Finnhub,
@@ -100,7 +102,6 @@ def load_fundamentals(ticker):
     except Exception as e:
         print(f"Finnhub error for {ticker}: {e}")
 
-        # Return empty fundamentals if Finnhub fails
         return pd.DataFrame([{
             "PE": None,
             "PB": None,

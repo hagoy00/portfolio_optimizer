@@ -856,50 +856,56 @@ with tab7:
     st.dataframe(fund_df)
 
     # -----------------------------
-    # AI BUY / HOLD / SELL SIGNALS
-    # -----------------------------
-    st.markdown("### AI Buy / Hold / Sell Signals")
+# AI BUY / HOLD / SELL SIGNALS
+# -----------------------------
+st.markdown("### AI Buy / Hold / Sell Signals")
 
-    momentum_model = st.session_state.get("momentum", {})
+momentum_model = st.session_state.get("momentum", {})
 
-    signals = []
-    for t in tickers:
-        row = fund_df.loc[t]
+def safe_float(x):
+    try:
+        return float(x)
+    except:
+        return None
 
-        pe = row["PE"]
-        pb = row["PB"]
-        dy = row["DividendYield"]
-        beta = row["Beta"]
-        momentum_val = momentum_model.get(t, 0)
+signals = []
+for t in tickers:
+    row = fund_df.loc[t]
 
-        score = 0
-        conviction = 0
+    pe = safe_float(row["PE"])
+    pb = safe_float(row["PB"])
+    dy = safe_float(row["DividendYield"])
+    beta = safe_float(row["Beta"])
+    momentum_val = momentum_model.get(t, 0)
 
-        if pe is not None and not pd.isna(pe) and 0 < pe < 40:
-            score += 1; conviction += 20
-        if pb is not None and not pd.isna(pb) and 0 < pb < 8:
-            score += 1; conviction += 15
-        if dy is not None and not pd.isna(dy) and dy > 0.005:
-            score += 1; conviction += 15
-        if beta is not None and not pd.isna(beta) and beta < 1.3:
-            score += 1; conviction += 20
-        if momentum_val is not None and momentum_val > 0:
-            score += 1; conviction += 30
+    score = 0
+    conviction = 0
 
-        rating = "Buy" if score >= 4 else "Hold" if score >= 2 else "Sell"
-        conviction = min(100, max(0, conviction))
+    if pe is not None and 0 < pe < 40:
+        score += 1; conviction += 20
+    if pb is not None and 0 < pb < 8:
+        score += 1; conviction += 15
+    if dy is not None and dy > 0.005:
+        score += 1; conviction += 15
+    if beta is not None and beta < 1.3:
+        score += 1; conviction += 20
+    if momentum_val is not None and momentum_val > 0:
+        score += 1; conviction += 30
 
-        signals.append({
-            "Ticker": t,
-            "PE": pe,
-            "PB": pb,
-            "DividendYield": dy,
-            "Beta": beta,
-            "Momentum": momentum_val,
-            "Score": score,
-            "Conviction": conviction,
-            "Rating": rating
-        })
+    rating = "Buy" if score >= 4 else "Hold" if score >= 2 else "Sell"
+    conviction = min(100, max(0, conviction))
+
+    signals.append({
+        "Ticker": t,
+        "PE": pe,
+        "PB": pb,
+        "DividendYield": dy,
+        "Beta": beta,
+        "Momentum": momentum_val,
+        "Score": score,
+        "Conviction": conviction,
+        "Rating": rating
+    })
 
     signals_df = pd.DataFrame(signals)
     st.dataframe(signals_df)

@@ -128,17 +128,20 @@ valid_tickers = [t.strip().upper() for t in valid_tickers]
 
 fundamentals = []
 
-fundamentals = []
-
 for t in valid_tickers:
-    f = load_fundamentals(t)   # FIXED: pass string, not list
+    f = load_fundamentals(t)
 
     # Ensure DataFrame format
     if isinstance(f, dict):
         f = pd.DataFrame([f], index=[t])
+
     elif isinstance(f, pd.DataFrame):
-        if t not in f.index:
-            f.index = [t]
+        # If multiple rows returned, keep only the first
+        if len(f) > 1:
+            f = f.iloc[[0]]
+
+        # Now safe to set index
+        f.index = [t]
 
     row = f.loc[t]
 

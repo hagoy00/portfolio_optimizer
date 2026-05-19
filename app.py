@@ -251,33 +251,27 @@ else:
     portfolio_beta = np.nan
 
 # ---------------------------------------------------------
-# LOAD FUNDAMENTALS ONCE (FOR ALL VALID TICKERS)
+# STEP 9 — LOAD FUNDAMENTALS USING THE NEW LOADER
 # ---------------------------------------------------------
 fundamentals = []
 
 for t in tickers:
-    ticker_obj = yf.Ticker(t)
+    f = load_fundamentals(t)   # <-- your new unified loader
 
-    # Fast info (market cap, beta, etc.)
-    fast = ticker_obj.fast_info
-
-    # Full info (sector, PE, PB, EPS, etc.)
-    try:
-        info = ticker_obj.get_info()
-    except:
-        info = {}
+    # Convert DataFrame row → dict
+    row = f.iloc[0].to_dict()
 
     fundamentals.append({
         "Ticker": t,
-        "PE": info.get("trailingPE"),
-        "PB": info.get("priceToBook"),
-        "EPS": info.get("trailingEps"),
-        "ROE": info.get("returnOnEquity"),
-        "DividendYield": info.get("dividendYield"),
-        "DebtToEquity": info.get("debtToEquity"),
-        "Beta": fast.get("beta"),
-        "MarketCap": fast.get("market_cap"),
-        "Sector": info.get("sector")
+        "PE": row.get("PE"),
+        "PB": row.get("PB"),
+        "EPS": row.get("EPS"),
+        "ROE": row.get("ROE"),
+        "DividendYield": row.get("DividendYield"),
+        "DebtToEquity": row.get("DebtToEquity"),
+        "Beta": row.get("Beta"),
+        "MarketCap": row.get("MarketCap"),
+        "Sector": row.get("Sector")
     })
 
 # ---------------------------------------------------------

@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import yfinance as yf
+
 from datetime import datetime, timedelta
 
 from utils.data_loader import load_price_data
@@ -104,40 +105,60 @@ run_button = st.sidebar.button("Run Analysis")
 mc_sims = st.sidebar.slider("Monte Carlo Simulations", 200, 3000, 500)
 mc_horizon = st.sidebar.slider("Monte Carlo Horizon (days)", 50, 500, 252)
 
-import yfinance as yf
-
 # ---------------------------------------------------------
 # Load Price Data (robust loader + SPY auto-include)
 # ---------------------------------------------------------
 def load_price_data(tickers, start, end):
     try:
-        raw = yf.download(tickers, start=start, end=end)
+        raw = yf.download(tickers, start=start, end=end, auto_adjust=False)
 
         if raw is None or raw.empty:
             return pd.DataFrame()
 
-        # MultiIndex case
+        # ---------------------------------------------------------
+        # CASE 1 — MultiIndex (most common for multiple tickers)
+        # ---------------------------------------------------------
         if isinstance(raw.columns, pd.MultiIndex):
-            # Case: ('Adj Close', 'AAPL')
-            if "Adj Close" in raw.columns.get_level_values(0):
-                adj = raw["Adj Close"]
 
-            # Case: ('AAPL', 'Adj Close')
-            elif "Adj Close" in raw.columns.get_level_values(1):
-                adj = raw.xs("Adj Close", level=1, axis=1)
+            # Normalize column names to lowercase
+            raw.columns = pd.MultiIndex.from_tuples(
+                [(lvl0.lower(), lvl1) for lvl0, lvl1 in raw.columns]
+            )
 
-            # Fallback to Close
+            # Try adjclose first
+            if "adj close" in raw.columns.get_level_values(0):
+                adj = raw["adj close"]
+
+            # Try close
+            elif "close" in raw.columns.get_level_values(0):
+                adj = raw["close"]
+
             else:
-                adj = raw.xs("Close", level=1, axis=1)
+                raise ValueError("No close or adjclose column found in MultiIndex data")
 
+        # ---------------------------------------------------------
+        # CASE 2 — SingleIndex (single ticker)
+        # ---------------------------------------------------------
         else:
-            # Single-level columns
-            if "Adj Close" in raw.columns:
-                adj = raw["Adj Close"]
-            elif "Close" in raw.columns:
-                adj = raw["Close"]
+            # Normalize to lowercase
+            raw.columns = [c.lower().replace(" ", "") for c in raw.columns]
+
+            if "adjclose" in raw.columns:
+                adj = raw["adjclose"]
+            elif "close" in raw.columns:
+                adj = raw["close"]
             else:
-                return pd.DataFrame()
+                raise ValueError("No close or adjclose column found in single-index data")
+
+        # Ensure DataFrame
+        if isinstance(adj, pd.Series):
+            adj = adj.to_frame()
+
+        return adj
+
+    except Exception as e:
+        st.error(f"Price load failed: {e}")
+        return pd.DataFrame()
 
         # Ensure DataFrame
         if isinstance(adj, pd.Series):

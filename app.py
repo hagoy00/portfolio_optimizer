@@ -403,7 +403,7 @@ try:
 
     annual_return = portfolio_returns.mean() * 252
     annual_volatility = portfolio_returns.std() * (252 ** 0.5)
-    sharpe_ratio = annual_return / annual_volatility
+    sharpe_ratio = annual_return / annual_volatility if annual_volatility > 0 else 0
 
     max_drawdown = (portfolio_returns.cummax() - portfolio_returns).max()
 
@@ -411,20 +411,19 @@ try:
     avg_corr = corr_matrix.where(~np.eye(corr_matrix.shape[0], dtype=bool)).mean().mean()
     diversification_score = max(0, min(10, (1 - avg_corr) * 10))
 
-# Compute portfolio beta vs SPY (safe version)
-if "SPY" in prices.columns:
-    spy_returns = prices["SPY"].pct_change().dropna()
-    common_index = portfolio_returns.index.intersection(spy_returns.index)
+    # Compute portfolio beta vs SPY (safe version)
+    if "SPY" in prices.columns:
+        spy_returns = prices["SPY"].pct_change().dropna()
+        common_index = portfolio_returns.index.intersection(spy_returns.index)
 
-    if len(common_index) > 0:
-        covariance = portfolio_returns.loc[common_index].cov(spy_returns.loc[common_index])
-        market_variance = spy_returns.loc[common_index].var()
-        portfolio_beta = covariance / market_variance if market_variance > 0 else 0
+        if len(common_index) > 0:
+            covariance = portfolio_returns.loc[common_index].cov(spy_returns.loc[common_index])
+            market_variance = spy_returns.loc[common_index].var()
+            portfolio_beta = covariance / market_variance if market_variance > 0 else 0
+        else:
+            portfolio_beta = 0
     else:
         portfolio_beta = 0
-else:
-    portfolio_beta = 0
-
 
 except Exception as e:
     st.error(f"Portfolio metrics failed: {e}")

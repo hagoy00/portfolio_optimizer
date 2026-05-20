@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -412,13 +411,18 @@ try:
     avg_corr = corr_matrix.where(~np.eye(corr_matrix.shape[0], dtype=bool)).mean().mean()
     diversification_score = max(0, min(10, (1 - avg_corr) * 10))
 
-    if "SPY" in returns_df.columns:
-        spy_returns = returns_df["SPY"]
-        covariance = portfolio_returns.cov(spy_returns)
-        market_variance = spy_returns.var()
-        portfolio_beta = covariance / market_variance
+if "SPY" in prices.columns:
+    spy_returns = prices["SPY"].pct_change().dropna()
+    common_index = portfolio_returns.index.intersection(spy_returns.index)
+    if len(common_index) > 0:
+        covariance = portfolio_returns.loc[common_index].cov(spy_returns.loc[common_index])
+        market_variance = spy_returns.loc[common_index].var()
+        portfolio_beta = covariance / market_variance if market_variance > 0 else 0
     else:
-        portfolio_beta = float("nan")
+        portfolio_beta = 0
+else:
+    portfolio_beta = 0
+
 
 except Exception as e:
     st.error(f"Portfolio metrics failed: {e}")

@@ -295,6 +295,21 @@ if "SPY" not in prices.columns:
 # Clean returns
 returns_df = prices.pct_change().ffill().bfill()
 
+# ---------------------------------------------------------
+# REALIGN WEIGHTS TO MATCH RETURNS_DF COLUMNS
+# ---------------------------------------------------------
+aligned_tickers = [t for t in portfolio_tickers if t in returns_df.columns]
+
+aligned_weights = np.array([ticker_to_weight[t] for t in aligned_tickers], dtype=float)
+
+if aligned_weights.sum() > 0:
+    aligned_weights = aligned_weights / aligned_weights.sum()
+else:
+    aligned_weights = np.array([1 / len(aligned_tickers)] * len(aligned_tickers))
+
+valid_tickers = aligned_tickers
+weights = aligned_weights
+
 # DO NOT OVERWRITE valid_tickers
 # valid_tickers must remain portfolio_tickers
 

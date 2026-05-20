@@ -399,7 +399,7 @@ with tab2:
     ax.set_title("Histogram of Daily Returns")
     st.pyplot(fig)
 
-# ---------------------------------------------------------
+    # ---------------------------------------------------------
 # TAB 3 — RISK & DRAWDOWN ANALYSIS (CRASH-PROOF VERSION)
 # ---------------------------------------------------------
 with tab3:
@@ -418,7 +418,6 @@ with tab3:
     rolling_vol = ret.rolling(30).std() * np.sqrt(252)
 
     # === Portfolio Beta (use global value) ===
-    # portfolio_beta already computed globally
     beta_value = portfolio_beta if not np.isnan(portfolio_beta) else 0.0
 
     # === Value at Risk (95%) ===
@@ -450,6 +449,41 @@ with tab3:
     ax.set_title("Return Distribution with VaR")
     ax.legend()
     st.pyplot(fig)
+
+    # ---------------------------------------------------------
+    # RISK CONTRIBUTION BREAKDOWN (CORRECT VERSION)
+    # ---------------------------------------------------------
+    st.markdown("### Risk Contribution Breakdown")
+
+    # Compute returns matrix for tickers
+    returns = prices.pct_change().dropna()
+
+    # Covariance matrix
+    cov = returns.cov()
+
+    # Portfolio weights (from sliders)
+    w = np.array(weights)
+
+    # Marginal contribution to risk
+    marginal = cov @ w
+
+    # Risk contribution
+    risk_contribution = w * marginal
+
+    # Normalize to percentages
+    risk_contribution = risk_contribution / risk_contribution.sum()
+
+    # Plot
+    fig2, ax2 = plt.subplots()
+    ax2.pie(
+        risk_contribution,
+        labels=tickers,
+        autopct="%1.1f%%",
+        startangle=90
+    )
+    ax2.axis("equal")
+    st.pyplot(fig2)
+
 
     # ---------------------------------------------------------
     # RISK CONTRIBUTION — CRASH‑PROOF VERSION

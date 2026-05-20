@@ -368,6 +368,34 @@ sector_map = {
 # ---------------------------------------------------------
 weights = np.array([1 / len(valid_tickers)] * len(valid_tickers))
 
+
+# ---------------------------------------------------------
+# REALIGN RETURNS_DF AND WEIGHTS BEFORE PORTFOLIO METRICS
+# ---------------------------------------------------------
+
+# Clean returns
+returns_df = prices[portfolio_tickers].pct_change().ffill().bfill()
+
+# Remove SPY if it sneaks in
+if "SPY" in returns_df.columns:
+    returns_df = returns_df.drop(columns=["SPY"])
+
+# Align tickers
+aligned_tickers = [t for t in portfolio_tickers if t in returns_df.columns]
+
+# Align weights
+aligned_weights = np.array([ticker_to_weight[t] for t in aligned_tickers], dtype=float)
+
+# Normalize
+if aligned_weights.sum() > 0:
+    aligned_weights = aligned_weights / aligned_weights.sum()
+else:
+    aligned_weights = np.array([1 / len(aligned_tickers)] * len(aligned_tickers))
+
+# Replace global tickers + weights
+valid_tickers = aligned_tickers
+weights = aligned_weights
+
 # ---------------------------------------------------------
 # PORTFOLIO METRICS (GLOBAL)
 # ---------------------------------------------------------

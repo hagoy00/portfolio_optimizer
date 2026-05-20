@@ -411,9 +411,11 @@ try:
     avg_corr = corr_matrix.where(~np.eye(corr_matrix.shape[0], dtype=bool)).mean().mean()
     diversification_score = max(0, min(10, (1 - avg_corr) * 10))
 
+# Compute portfolio beta vs SPY (safe version)
 if "SPY" in prices.columns:
     spy_returns = prices["SPY"].pct_change().dropna()
     common_index = portfolio_returns.index.intersection(spy_returns.index)
+
     if len(common_index) > 0:
         covariance = portfolio_returns.loc[common_index].cov(spy_returns.loc[common_index])
         market_variance = spy_returns.loc[common_index].var()

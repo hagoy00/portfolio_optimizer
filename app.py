@@ -285,11 +285,8 @@ if prices is None or prices.empty:
 # ---------------------------------------------------------
 # 2. Load or create weights
 # ---------------------------------------------------------
-# If user has weights stored in session_state (sliders, optimizer, etc.)
 if "weights" in st.session_state and len(st.session_state.weights) == len(tickers):
     weights = np.array(st.session_state.weights, dtype=float)
-
-# Otherwise default to equal weights
 else:
     if len(tickers) > 0:
         weights = np.array([1 / len(tickers)] * len(tickers), dtype=float)
@@ -304,10 +301,8 @@ portfolio_tickers = [t for t in tickers if t in prices.columns and t != "SPY"]
 # ---------------------------------------------------------
 # 4. Compute returns
 # ---------------------------------------------------------
-# Full returns (including SPY for beta)
 returns_full = prices.pct_change().dropna()
 
-# Portfolio-only returns (SPY removed)
 if len(portfolio_tickers) > 0:
     returns = prices[portfolio_tickers].pct_change().dropna()
 else:
@@ -331,8 +326,15 @@ if len(portfolio_tickers) > 0:
 else:
     portfolio_returns = pd.Series(dtype=float)
 
-# 7. Load fundamentals (always returns a DataFrame)
-fundamentals = load_fundamentals(portfolio_tickers)
+# ---------------------------------------------------------
+# 7. Load fundamentals (ALWAYS use multi‑ticker loader)
+# ---------------------------------------------------------
+fundamentals = load_fundamentals_multi(portfolio_tickers)
+
+# SAFETY CHECK — fundamentals must be a DataFrame
+if not isinstance(fundamentals, pd.DataFrame):
+    st.error("Fundamentals loader returned invalid data.")
+    st.stop()
 
 # ---------------------------------------------------------
 # 8. Store valid tickers globally
@@ -658,6 +660,14 @@ with tab3:
         st.dataframe(vol_df.style.format({
             "Value": "{:.2%}"
         }))
+
+        # ---------------------------------------------------------
+        # SAFETY CHECK — ADD THIS HERE
+        # ---------------------------------------------------------
+        if not isinstance(fundamentals, pd.DataFrame):
+            st.error("Fundamentals loader returned invalid data.")
+            st.stop()
+
 # ---------------------------------------------------------
 # Tab 4 Sector Exposure
 # ---------------------------------------------------------

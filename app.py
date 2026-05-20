@@ -628,7 +628,7 @@ with tab4:
     st.subheader("Sector Exposure")
 
     # Fundamentals must exist
-    if fundamentals is None or len(fundamentals) == 0:
+    if fundamentals is None or fundamentals.empty:
         st.info("Sector data unavailable.")
         st.stop()
 

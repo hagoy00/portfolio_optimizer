@@ -178,35 +178,29 @@ if prices is None or prices.empty:
     st.stop()
     
 # ---------------------------------------------------------
-# FUNDAMENTALS LOADER (WORKING VERSION)
+# FUNDAMENTALS LOADER (ALWAYS RETURNS A DATAFRAME)
 # ---------------------------------------------------------
 def load_fundamentals(tickers):
-    data = {}
+    rows = []
 
     for t in tickers:
         try:
             info = yf.Ticker(t).info
+        except:
+            info = {}
 
-            data[t] = {
-                "Sector": info.get("sector", "Unknown"),
-                "PE": info.get("trailingPE"),
-                "PB": info.get("priceToBook"),
-                "DividendYield": info.get("dividendYield"),
-                "Beta": info.get("beta"),
-                "MarketCap": info.get("marketCap")
-            }
+        rows.append({
+            "Ticker": t,
+            "Sector": info.get("sector", "Unknown"),
+            "PE": info.get("trailingPE"),
+            "PB": info.get("priceToBook"),
+            "DividendYield": info.get("dividendYield"),
+            "Beta": info.get("beta"),
+            "MarketCap": info.get("marketCap")
+        })
 
-        except Exception:
-            data[t] = {
-                "Sector": "Unknown",
-                "PE": None,
-                "PB": None,
-                "DividendYield": None,
-                "Beta": None,
-                "MarketCap": None
-            }
-
-    return pd.DataFrame(data).T
+    df = pd.DataFrame(rows).set_index("Ticker")
+    return df
 
 # ---------------------------------------------------------
 # FUNDAMENTALS LOADER (ALWAYS RETURNS A DATAFRAME)

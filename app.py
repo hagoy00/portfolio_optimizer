@@ -365,6 +365,46 @@ if len(valid_tickers) == 0:
     st.stop()
 
 # ---------------------------------------------------------
+# MULTI‑TICKER FUNDAMENTALS LOADER (ALWAYS RETURNS A DATAFRAME)
+# ---------------------------------------------------------
+def load_fundamentals_multi(tickers):
+    frames = []
+
+    for t in tickers:
+        try:
+            df = load_fundamentals(t)   # your single‑ticker loader
+
+            if isinstance(df, pd.DataFrame):
+                frames.append(df)
+            else:
+                raise ValueError("Single‑ticker loader returned non‑DataFrame")
+
+        except Exception as e:
+            print(f"Error loading fundamentals for {t}: {e}")
+
+            frames.append(pd.DataFrame([{
+                "PE": None,
+                "PB": None,
+                "EPS": None,
+                "ROE": None,
+                "DividendYield": None,
+                "DebtToEquity": None,
+                "MarketCap": None,
+                "Sector": "Unknown",
+                "Beta": None,
+            }], index=[t]))
+
+    if len(frames) == 0:
+        return pd.DataFrame()
+
+    df_all = pd.concat(frames)
+
+    if "Sector" in df_all.columns:
+        df_all["Sector"] = df_all["Sector"].fillna("Unknown").replace("", "Unknown")
+
+    return df_all
+
+# ---------------------------------------------------------
 # Auto-detect Fundamentals (PE, PB, Beta, DivYield, MarketCap, Sector)
 # ---------------------------------------------------------
 @st.cache_data

@@ -281,6 +281,7 @@ if not isinstance(fundamentals, pd.DataFrame):
     st.stop()
 
 # 8. Store valid tickers globally
+#valid_tickers = portfolio_tickers
 valid_tickers = portfolio_tickers
 
 # Ensure SPY exists for Beta
@@ -396,7 +397,8 @@ else:
     aligned_weights = np.array([1 / len(aligned_tickers)] * len(aligned_tickers))
 
 # Replace global tickers + weights
-valid_tickers = aligned_tickers
+#valid_tickers = aligned_tickers
+valid_tickers = portfolio_tickers
 weights = aligned_weights
 
 # ---------------------------------------------------------

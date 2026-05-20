@@ -367,6 +367,10 @@ sector_map = {
 # ---------------------------------------------------------
 weights = np.array([1 / len(valid_tickers)] * len(valid_tickers))
 
+# ---------------------------------------------------------
+# BUILD TICKER → WEIGHT MAP
+# ---------------------------------------------------------
+ticker_to_weight = {t: 1 / len(portfolio_tickers) for t in portfolio_tickers}
 
 # ---------------------------------------------------------
 # REALIGN RETURNS_DF AND WEIGHTS BEFORE PORTFOLIO METRICS

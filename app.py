@@ -314,8 +314,10 @@ if aligned_weights.sum() > 0:
 else:
     aligned_weights = np.array([1 / len(aligned_tickers)] * len(aligned_tickers))
 
+# Replace global tickers + weights
 valid_tickers = aligned_tickers
 weights = aligned_weights
+
 
 # DO NOT OVERWRITE valid_tickers
 # valid_tickers must remain portfolio_tickers

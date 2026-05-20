@@ -622,8 +622,8 @@ with tab4:
     # Fundamentals must exist
     
     if fundamentals.empty:
-    st.info("Sector data unavailable.")
-    st.stop()
+        st.info("Sector data unavailable.")
+        st.stop()
 
     # Ensure Sector column exists
     if "Sector" not in fundamentals.columns:

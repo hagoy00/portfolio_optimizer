@@ -616,7 +616,7 @@ with tab3:
 # ---------------------------------------------------------
 # Tab 4 Sector Exposure
 # ---------------------------------------------------------
- with tab4:
+with tab4:
     st.subheader("Sector Exposure")
 
     # Fundamentals must exist

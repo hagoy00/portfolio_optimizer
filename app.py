@@ -368,136 +368,28 @@ with tab2:
     st.pyplot(fig)
 
 # ---------------------------------------------------------
-# TAB 3 — RISK & DRAWDOWN ANALYSIS (CRASH-PROOF VERSION)
+# TAB 1 — OVERVIEW
 # ---------------------------------------------------------
-with tab3:
-    st.subheader("Risk & Drawdown Analysis")
+with tab1:
+    st.subheader("Portfolio Overview")
 
-    # Use aligned portfolio returns
-    ret = pd.Series(portfolio_returns, name="Portfolio Return")
+    # --- FIRST ROW OF METRICS (col1, col2, col3) ---
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Annual Return", f"{annual_return:.2%}")
+    with col2:
+        st.metric("Volatility", f"{annual_volatility:.2%}")
+    with col3:
+        st.metric("Sharpe Ratio", f"{sharpe_ratio:.2f}")
 
-    # === Drawdown ===
-    cum_ret = (1 + ret).cumprod()
-    running_max = cum_ret.cummax()
-    drawdown = (cum_ret - running_max) / running_max
-    max_dd = drawdown.min()
-
-    # === Rolling Volatility ===
-    rolling_vol = ret.rolling(30).std() * np.sqrt(252)
-
-    # === Portfolio Beta (use global value) ===
-    beta_value = portfolio_beta if not np.isnan(portfolio_beta) else 0.0
-
-    # === Value at Risk (95%) ===
-    var_95 = np.percentile(ret.dropna(), 5)
-
-    # === Conditional VaR (CVaR) ===
-    cvar_95 = ret[ret <= var_95].mean() if len(ret[ret <= var_95]) > 0 else 0
-
-    # === Display Metrics ===
-    colA, colB, colC, colD = st.columns(4)
-    colA.metric("Max Drawdown", f"{max_dd:.2%}")
-    colB.metric("Rolling Vol (30d)", f"{rolling_vol.iloc[-1]:.2%}")
-    colC.metric("Beta vs SPY", f"{beta_value:.2f}")
-    colD.metric("CVaR (95%)", f"{cvar_95:.2%}")
-
-    # === Drawdown Chart ===
-    st.markdown("### Drawdown")
-    st.area_chart(drawdown)
-
-    # === Rolling Volatility Chart ===
-    st.markdown("### Rolling Volatility (30-day)")
-    st.line_chart(rolling_vol)
-
-    # === VaR Distribution Chart ===
-    st.markdown("### Distribution of Daily Returns (for VaR)")
-    fig, ax = plt.subplots()
-    ax.hist(ret.dropna(), bins=40, alpha=0.7)
-    ax.axvline(var_95, color="red", linestyle="--", label=f"VaR 95%: {var_95:.2%}")
-    ax.set_title("Return Distribution with VaR")
-    ax.legend()
-    st.pyplot(fig)
-
-        # ---------------------------------------------------------
-    # RISK CONTRIBUTION BREAKDOWN (CLEAN, ALIGNED VERSION)
-    # ---------------------------------------------------------
-    st.markdown("### Risk Contribution Breakdown")
-
-    # Full returns (including SPY if present) for market stats
-    returns_full = prices.pct_change().dropna()
-
-    # Market volatility from SPY (if available)
-    if "SPY" in returns_full.columns:
-        market_vol = returns_full["SPY"].std() * np.sqrt(252)
-    else:
-        market_vol = 0.0
-
-    # ---------------------------------------------------------
-    # PORTFOLIO RETURNS MATRIX (EXCLUDING SPY)
-    # ---------------------------------------------------------
-    # Drop SPY from portfolio risk calculations
-    prices_port = prices.copy()
-    if "SPY" in prices_port.columns:
-        prices_port = prices_port.drop(columns=["SPY"])
-
-    returns = prices_port.pct_change().dropna()
-
-    # Covariance matrix for portfolio tickers
-    cov = returns.cov()
-
-    # Portfolio weights (from sliders) aligned to portfolio tickers
-    w_full = np.array(weights)
-    ticker_to_weight = dict(zip(tickers, w_full))
-
-    # Only keep tickers that exist in prices_port
-    portfolio_tickers = [t for t in tickers if t in prices_port.columns]
-
-    # Guard: if nothing valid, skip
-    if len(portfolio_tickers) == 0:
-        st.warning("No valid tickers with price data for risk contribution.")
-    else:
-        valid_weights = np.array([ticker_to_weight[t] for t in portfolio_tickers])
-
-        # Rebuild covariance for valid tickers
-        cov_valid = returns[portfolio_tickers].cov()
-
-        # Marginal contribution to risk
-        marginal_valid = cov_valid @ valid_weights
-
-        # Risk contribution
-        risk_contribution_valid = valid_weights * marginal_valid
-        risk_contribution_valid = risk_contribution_valid / risk_contribution_valid.sum()
-
-        # ---------------------------------------------------------
-        # PLOT RISK CONTRIBUTION
-        # ---------------------------------------------------------
-        fig2, ax2 = plt.subplots()
-        ax2.pie(
-            risk_contribution_valid,
-            labels=portfolio_tickers,
-            autopct="%1.1f%%",
-            startangle=90
-        )
-        ax2.axis("equal")
-        st.pyplot(fig2)
-
-        # ---------------------------------------------------------
-        # MARGINAL RISK CONTRIBUTION TABLE
-        # ---------------------------------------------------------
-        st.markdown("### Marginal Risk Contribution Table")
-
-        mrc_df = pd.DataFrame({
-            "Ticker": portfolio_tickers,
-            "Weight": valid_weights,
-            "Marginal Risk": marginal_valid,
-            "Risk Contribution %": risk_contribution_valid
-        })
-
-        st.dataframe(mrc_df.style.format({
-            "Weight": "{:.2%}",
-            "Marginal Risk": "{:.4f}",
-            "Risk Contribution %": "{:.2%}"
-        }))
+    # --- SECOND ROW OF METRICS (col4, col5, col6) ---
+    col4, col5, col6 = st.columns(3)
+    with col4:
+        st.metric("Max Drawdown", f"{max_drawdown:.2%}")
+    with col5:
+        st.metric("Beta vs SPY", f"{portfolio_beta:.2f}")
+    with col6:
+        st.metric("Diversification Score", f"{diversification_score:.1f}/10")
 
         # ---------------------------------------------------------
         # RISK PARITY TARGET WEIGHTS

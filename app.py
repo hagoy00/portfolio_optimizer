@@ -1,4 +1,4 @@
-import streamlit as st
+load_fundamentals_multi(portfolio_tickers)import streamlit as st
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -274,6 +274,9 @@ portfolio_returns = returns @ valid_weights if len(portfolio_tickers) > 0 else p
 
 # 7. Load fundamentals (NOW WORKS)
 fundamentals = load_fundamentals_multi(portfolio_tickers)
+
+st.write("DEBUG — fundamentals head:")
+st.write(fundamentals.head())
 
 # SAFETY CHECK
 if not isinstance(fundamentals, pd.DataFrame):

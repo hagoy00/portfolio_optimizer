@@ -293,8 +293,10 @@ if "SPY" not in prices.columns:
         st.warning("SPY could not be loaded. Beta vs SPY unavailable.")
 
 # Clean returns
-returns_df = prices.pct_change().ffill().bfill().dropna(how="all")
-valid_tickers = list(returns_df.columns)
+returns_df = prices.pct_change().ffill().bfill()
+
+# DO NOT OVERWRITE valid_tickers
+# valid_tickers must remain portfolio_tickers
 
 if len(valid_tickers) == 0:
     st.error("No valid tickers after cleaning returns.")

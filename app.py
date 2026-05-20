@@ -209,6 +209,31 @@ def load_fundamentals(tickers):
     return pd.DataFrame(data).T
 
 # ---------------------------------------------------------
+# FUNDAMENTALS LOADER (ALWAYS RETURNS A DATAFRAME)
+# ---------------------------------------------------------
+def load_fundamentals(tickers):
+    rows = []
+
+    for t in tickers:
+        try:
+            info = yf.Ticker(t).info
+        except:
+            info = {}
+
+        rows.append({
+            "Ticker": t,
+            "Sector": info.get("sector", "Unknown"),
+            "PE": info.get("trailingPE"),
+            "PB": info.get("priceToBook"),
+            "DividendYield": info.get("dividendYield"),
+            "Beta": info.get("beta"),
+            "MarketCap": info.get("marketCap")
+        })
+
+    df = pd.DataFrame(rows).set_index("Ticker")
+    return df
+
+# ---------------------------------------------------------
 # GLOBAL DATA PIPELINE (REQUIRED FOR ALL TABS)
 # ---------------------------------------------------------
 

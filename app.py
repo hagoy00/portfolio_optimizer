@@ -185,13 +185,13 @@ def load_fundamentals(ticker):
     try:
         yf_t = yf.Ticker(ticker)
 
-        # Try new YF endpoints
+        # New YFinance API (2024+)
         try:
             info = yf_t.get_info()
         except:
             info = {}
 
-        # Try fast_info
+        # Fast info fallback
         fi = yf_t.fast_info or {}
 
         return pd.DataFrame([{
@@ -200,7 +200,7 @@ def load_fundamentals(ticker):
             "DividendYield": info.get("dividendYield") or fi.get("dividend_yield"),
             "Beta": info.get("beta") or fi.get("beta"),
             "MarketCap": info.get("marketCap") or fi.get("market_cap"),
-            "Sector": info.get("sector", "Unknown")
+            "Sector": info.get("sector") or "Unknown"
         }], index=[ticker])
 
     except Exception:
@@ -212,7 +212,6 @@ def load_fundamentals(ticker):
             "MarketCap": None,
             "Sector": "Unknown"
         }], index=[ticker])
-
 
 # ---------------------------------------------------------
 # MULTI‑TICKER FUNDAMENTALS LOADER

@@ -619,12 +619,10 @@ with tab3:
         st.dataframe(vol_df.style.format({
             "Value": "{:.2%}"
         }))
-
- 
 # ---------------------------------------------------------
-# TAB 4 — SECTOR EXPOSURE (CLEAN + FIXED)
+# Tab 4 Sector Exposure
 # ---------------------------------------------------------
-with tab4:
+ with tab4:
     st.subheader("Sector Exposure")
 
     # Fundamentals must exist

@@ -313,9 +313,12 @@ with tab1:
 with tab2:
     st.subheader("Performance Analysis")
 
+    # === Portfolio Return Series (required for rolling metrics) ===
+    ret = pd.Series(portfolio_returns, name="Portfolio Return")
+
     # === Cumulative Returns ===
     st.markdown("### Cumulative Returns")
-    cum_returns = (1 + portfolio_returns).cumprod()
+    cum_returns = (1 + ret).cumprod()
     st.line_chart(cum_returns)
 
     # === Rolling Sharpe (30-day) ===

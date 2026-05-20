@@ -176,36 +176,78 @@ prices = load_price_data(tickers, start_date, end_date)
 if prices is None or prices.empty:
     st.error("Price data could not be loaded.")
     st.stop()
-  # ---------------------------------------------------------
-# GLOBAL DATA PIPELINE (CRITICAL FOR ALL TABS)
+    
+# ---------------------------------------------------------
+# GLOBAL DATA PIPELINE (REQUIRED FOR ALL TABS)
 # ---------------------------------------------------------
 
-# 1. Remove SPY from portfolio tickers (SPY is only for beta)
+# 1. Load prices (already done above)
+# prices = load_price_data(tickers, start_date, end_date)
+
+if prices is None or prices.empty:
+    st.error("Price data could not be loaded.")
+    st.stop()
+
+# ---------------------------------------------------------
+# 2. Load or create weights
+# ---------------------------------------------------------
+# If user has weights stored in session_state (sliders, optimizer, etc.)
+if "weights" in st.session_state and len(st.session_state.weights) == len(tickers):
+    weights = np.array(st.session_state.weights, dtype=float)
+
+# Otherwise default to equal weights
+else:
+    if len(tickers) > 0:
+        weights = np.array([1 / len(tickers)] * len(tickers), dtype=float)
+    else:
+        weights = np.array([])
+
+# ---------------------------------------------------------
+# 3. Remove SPY from portfolio tickers (SPY is only for beta)
+# ---------------------------------------------------------
 portfolio_tickers = [t for t in tickers if t in prices.columns and t != "SPY"]
 
-# 2. Compute returns for all tickers (including SPY)
+# ---------------------------------------------------------
+# 4. Compute returns
+# ---------------------------------------------------------
+# Full returns (including SPY for beta)
 returns_full = prices.pct_change().dropna()
 
-# 3. Compute portfolio-only returns (SPY removed)
-returns = prices[portfolio_tickers].pct_change().dropna()
-
-# 4. Align weights to portfolio tickers
-ticker_to_weight = dict(zip(tickers, weights))
-valid_weights = np.array([ticker_to_weight[t] for t in portfolio_tickers])
-
-# 5. Compute portfolio returns
+# Portfolio-only returns (SPY removed)
 if len(portfolio_tickers) > 0:
-    portfolio_returns = (returns @ valid_weights)
+    returns = prices[portfolio_tickers].pct_change().dropna()
+else:
+    returns = pd.DataFrame()
+
+# ---------------------------------------------------------
+# 5. Align weights to portfolio tickers
+# ---------------------------------------------------------
+ticker_to_weight = dict(zip(tickers, weights))
+
+if len(portfolio_tickers) > 0:
+    valid_weights = np.array([ticker_to_weight[t] for t in portfolio_tickers])
+else:
+    valid_weights = np.array([])
+
+# ---------------------------------------------------------
+# 6. Compute portfolio returns
+# ---------------------------------------------------------
+if len(portfolio_tickers) > 0:
+    portfolio_returns = returns @ valid_weights
 else:
     portfolio_returns = pd.Series(dtype=float)
 
-# 6. Load fundamentals (if available)
+# ---------------------------------------------------------
+# 7. Load fundamentals (if your app uses them)
+# ---------------------------------------------------------
 try:
     fundamentals = load_fundamentals(portfolio_tickers)
 except:
     fundamentals = None
 
-# 7. Store valid tickers globally
+# ---------------------------------------------------------
+# 8. Store valid tickers globally
+# ---------------------------------------------------------
 valid_tickers = portfolio_tickers
 
 # ---------------------------------------------------------

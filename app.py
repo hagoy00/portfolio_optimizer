@@ -450,121 +450,126 @@ with tab3:
     ax.legend()
     st.pyplot(fig)
 
-    # ---------------------------------------------------------
-    # RISK CONTRIBUTION BREAKDOWN (WITH FIX)
+        # ---------------------------------------------------------
+    # RISK CONTRIBUTION BREAKDOWN (CLEAN, ALIGNED VERSION)
     # ---------------------------------------------------------
     st.markdown("### Risk Contribution Breakdown")
 
-    # ---------------------------------------------------------
-    # REMOVE SPY FROM PORTFOLIO ANALYSIS (CRITICAL FIX)
-    # ---------------------------------------------------------
-    if "SPY" in returns.columns:
-        returns = returns.drop(columns=["SPY"])
-    if "SPY" in prices.columns:
-        prices = prices.drop(columns=["SPY"])
+    # Full returns (including SPY if present) for market stats
+    returns_full = prices.pct_change().dropna()
 
-    # Compute returns matrix for tickers
-    returns = prices.pct_change().dropna()
+    # Market volatility from SPY (if available)
+    if "SPY" in returns_full.columns:
+        market_vol = returns_full["SPY"].std() * np.sqrt(252)
+    else:
+        market_vol = 0.0
 
-    # Covariance matrix
+    # ---------------------------------------------------------
+    # PORTFOLIO RETURNS MATRIX (EXCLUDING SPY)
+    # ---------------------------------------------------------
+    # Drop SPY from portfolio risk calculations
+    prices_port = prices.copy()
+    if "SPY" in prices_port.columns:
+        prices_port = prices_port.drop(columns=["SPY"])
+
+    returns = prices_port.pct_change().dropna()
+
+    # Covariance matrix for portfolio tickers
     cov = returns.cov()
 
-    # Portfolio weights (from sliders)
-    w = np.array(weights)
+    # Portfolio weights (from sliders) aligned to portfolio tickers
+    w_full = np.array(weights)
+    ticker_to_weight = dict(zip(tickers, w_full))
 
-    # Marginal contribution to risk
-    marginal = cov @ w
+    # Only keep tickers that exist in prices_port
+    portfolio_tickers = [t for t in tickers if t in prices_port.columns]
 
-    # Raw risk contribution
-    risk_contribution = w * marginal
+    # Guard: if nothing valid, skip
+    if len(portfolio_tickers) == 0:
+        st.warning("No valid tickers with price data for risk contribution.")
+    else:
+        valid_weights = np.array([ticker_to_weight[t] for t in portfolio_tickers])
 
-    # Normalize
-    risk_contribution = risk_contribution / risk_contribution.sum()
+        # Rebuild covariance for valid tickers
+        cov_valid = returns[portfolio_tickers].cov()
 
-    # ---------------------------------------------------------
-    # FIX: ALIGN TICKERS, WEIGHTS, AND RISK CONTRIBUTION
-    # ---------------------------------------------------------
-    valid_tickers = list(prices.columns)
+        # Marginal contribution to risk
+        marginal_valid = cov_valid @ valid_weights
 
-    ticker_to_weight = dict(zip(tickers, w))
-    valid_weights = np.array([ticker_to_weight[t] for t in valid_tickers])
+        # Risk contribution
+        risk_contribution_valid = valid_weights * marginal_valid
+        risk_contribution_valid = risk_contribution_valid / risk_contribution_valid.sum()
 
-    cov_valid = returns[valid_tickers].cov()
-    marginal_valid = cov_valid @ valid_weights
-    risk_contribution_valid = valid_weights * marginal_valid
-    risk_contribution_valid = risk_contribution_valid / risk_contribution_valid.sum()
+        # ---------------------------------------------------------
+        # PLOT RISK CONTRIBUTION
+        # ---------------------------------------------------------
+        fig2, ax2 = plt.subplots()
+        ax2.pie(
+            risk_contribution_valid,
+            labels=portfolio_tickers,
+            autopct="%1.1f%%",
+            startangle=90
+        )
+        ax2.axis("equal")
+        st.pyplot(fig2)
 
-    # ---------------------------------------------------------
-    # PLOT RISK CONTRIBUTION
-    # ---------------------------------------------------------
-    fig2, ax2 = plt.subplots()
-    ax2.pie(
-        risk_contribution_valid,
-        labels=valid_tickers,
-        autopct="%1.1f%%",
-        startangle=90
-    )
-    ax2.axis("equal")
-    st.pyplot(fig2)
+        # ---------------------------------------------------------
+        # MARGINAL RISK CONTRIBUTION TABLE
+        # ---------------------------------------------------------
+        st.markdown("### Marginal Risk Contribution Table")
 
-    # ---------------------------------------------------------
-    # MARGINAL RISK CONTRIBUTION TABLE
-    # ---------------------------------------------------------
-    st.markdown("### Marginal Risk Contribution Table")
+        mrc_df = pd.DataFrame({
+            "Ticker": portfolio_tickers,
+            "Weight": valid_weights,
+            "Marginal Risk": marginal_valid,
+            "Risk Contribution %": risk_contribution_valid
+        })
 
-    mrc_df = pd.DataFrame({
-        "Ticker": valid_tickers,
-        "Weight": valid_weights,
-        "Marginal Risk": marginal_valid,
-        "Risk Contribution %": risk_contribution_valid
-    })
+        st.dataframe(mrc_df.style.format({
+            "Weight": "{:.2%}",
+            "Marginal Risk": "{:.4f}",
+            "Risk Contribution %": "{:.2%}"
+        }))
 
-    st.dataframe(mrc_df.style.format({
-        "Weight": "{:.2%}",
-        "Marginal Risk": "{:.4f}",
-        "Risk Contribution %": "{:.2%}"
-    }))
+        # ---------------------------------------------------------
+        # RISK PARITY TARGET WEIGHTS
+        # ---------------------------------------------------------
+        st.markdown("### Risk Parity Target Weights")
 
-    # ---------------------------------------------------------
-    # RISK PARITY TARGET WEIGHTS
-    # ---------------------------------------------------------
-    st.markdown("### Risk Parity Target Weights")
+        inv_marginal = 1 / np.abs(marginal_valid)
+        rp_weights = inv_marginal / inv_marginal.sum()
 
-    inv_marginal = 1 / np.abs(marginal_valid)
-    rp_weights = inv_marginal / inv_marginal.sum()
+        rp_df = pd.DataFrame({
+            "Ticker": portfolio_tickers,
+            "Risk Parity Weight": rp_weights
+        })
 
-    rp_df = pd.DataFrame({
-        "Ticker": valid_tickers,
-        "Risk Parity Weight": rp_weights
-    })
+        st.dataframe(rp_df.style.format({
+            "Risk Parity Weight": "{:.2%}"
+        }))
 
-    st.dataframe(rp_df.style.format({
-        "Risk Parity Weight": "{:.2%}"
-    }))
+        # ---------------------------------------------------------
+        # VOLATILITY DECOMPOSITION
+        # ---------------------------------------------------------
+        st.markdown("### Volatility Decomposition")
 
-    # ---------------------------------------------------------
-    # VOLATILITY DECOMPOSITION
-    # ---------------------------------------------------------
-    st.markdown("### Volatility Decomposition")
+        # Total portfolio volatility (using valid tickers only)
+        total_vol = np.sqrt(valid_weights.T @ cov_valid @ valid_weights)
 
-    # Systematic risk = beta * market volatility
-    market_vol = returns["SPY"].std() * np.sqrt(252) if "SPY" in returns.columns else 0
-    systematic_vol = beta_value * market_vol
+        # Systematic risk = beta * market volatility
+        systematic_vol = beta_value * market_vol
 
-    # Total portfolio volatility
-    total_vol = np.sqrt(valid_weights.T @ cov_valid @ valid_weights)
+        # Idiosyncratic risk
+        idiosyncratic_vol = max(total_vol - systematic_vol, 0)
 
-    # Idiosyncratic risk
-    idiosyncratic_vol = max(total_vol - systematic_vol, 0)
+        vol_df = pd.DataFrame({
+            "Component": ["Total Volatility", "Systematic (Market) Risk", "Idiosyncratic Risk"],
+            "Value": [total_vol, systematic_vol, idiosyncratic_vol]
+        })
 
-    vol_df = pd.DataFrame({
-        "Component": ["Total Volatility", "Systematic (Market) Risk", "Idiosyncratic Risk"],
-        "Value": [total_vol, systematic_vol, idiosyncratic_vol]
-    })
-
-    st.dataframe(vol_df.style.format({
-        "Value": "{:.2%}"
-    }))
+        st.dataframe(vol_df.style.format({
+            "Value": "{:.2%}"
+        }))
  
 # ---------------------------------------------------------
 # TAB 4 — SECTOR EXPOSURE

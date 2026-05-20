@@ -283,10 +283,6 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
     "Optimizer"
 ])
 
-
-# ---------------------------------------------------------
-# TAB 1 — OVERVIEW
-# ---------------------------------------------------------
 # ---------------------------------------------------------
 # TAB 1 — OVERVIEW
 # ---------------------------------------------------------
@@ -310,86 +306,157 @@ with tab1:
         st.metric("Beta vs SPY", f"{portfolio_beta:.2f}")
     with col6:
         st.metric("Diversification Score", f"{diversification_score:.1f}/10")
+
 # ---------------------------------------------------------
-# Tab 2 Performance Tab
+# TAB 2 — PERFORMANCE
 # ---------------------------------------------------------
 with tab2:
-    st.subheader("Performance Metrics")
+    st.subheader("Performance Analysis")
 
-    # Use aligned portfolio returns
+    # === Cumulative Returns ===
+    st.markdown("### Cumulative Returns")
+    cum_returns = (1 + portfolio_returns).cumprod()
+    st.line_chart(cum_returns)
+
+    # === Rolling Sharpe (30-day) ===
+    st.markdown("### Rolling Sharpe Ratio (30-day)")
+    rolling_sharpe = (
+        ret.rolling(30).mean() /
+        ret.rolling(30).std().replace(0, np.nan)
+    ) * np.sqrt(252)
+    st.line_chart(rolling_sharpe)
+
+    # === Rolling Beta vs SPY ===
+    st.markdown("### Rolling Beta vs SPY")
+
+    if "SPY" in prices.columns:
+        spy_ret = prices["SPY"].pct_change().dropna()
+        rolling_beta = (
+            ret.rolling(60).cov(spy_ret) /
+            spy_ret.rolling(60).var()
+        )
+        st.line_chart(rolling_beta)
+    else:
+        st.info("SPY data unavailable — cannot compute rolling beta.")
+
+# ---------------------------------------------------------
+# TAB 3 — RISK & DRAWDOWN ANALYSIS
+# ---------------------------------------------------------
+with tab3:
+    st.subheader("Risk & Drawdown Analysis")
+
+    # === Portfolio Return Series ===
     ret = pd.Series(portfolio_returns, name="Portfolio Return")
 
-    # Cumulative return
+    # === Drawdown ===
     cum_ret = (1 + ret).cumprod()
+    running_max = cum_ret.cummax()
+    drawdown = (cum_ret - running_max) / running_max
+    max_dd = drawdown.min()
 
-    # Rolling metrics
+    # === Rolling Volatility ===
     rolling_vol = ret.rolling(30).std() * np.sqrt(252)
-    rolling_sharpe = (ret.rolling(30).mean() * 252) / rolling_vol
 
-    # Drawdown
-    cum_max = cum_ret.cummax()
-    dd = (cum_ret - cum_max) / cum_max
+    # === Portfolio Beta ===
+    beta_value = portfolio_beta if not np.isnan(portfolio_beta) else 0.0
 
-    # Performance stats
-    mu = ret.mean() * 252
-    vol = ret.std() * np.sqrt(252)
-    sharpe_local = mu / vol if vol > 0 else 0
-    sortino = (ret.mean() * 252) / (ret[ret < 0].std() * np.sqrt(252)) if ret[ret < 0].std() > 0 else 0
-    calmar = mu / abs(dd.min()) if dd.min() != 0 else 0
-    max_dd = dd.min()
+    # === VaR & CVaR ===
+    var_95 = np.percentile(ret.dropna(), 5)
+    cvar_95 = ret[ret <= var_95].mean() if len(ret[ret <= var_95]) > 0 else 0
 
-    # Display metrics
-    colA, colB, colC, colD, colE, colF = st.columns(6)
-    colA.metric("Expected Return", f"{mu:.2%}")
-    colB.metric("Volatility", f"{vol:.2%}")
-    colC.metric("Sharpe Ratio", f"{sharpe_local:.2f}")
-    colD.metric("Sortino Ratio", f"{sortino:.2f}")
-    colE.metric("Calmar Ratio", f"{calmar:.2f}")
-    colF.metric("Max Drawdown", f"{max_dd:.2%}")
+    # === Display Metrics ===
+    colA, colB, colC, colD = st.columns(4)
+    colA.metric("Max Drawdown", f"{max_dd:.2%}")
+    colB.metric("Rolling Vol (30d)", f"{rolling_vol.iloc[-1]:.2%}")
+    colC.metric("Beta vs SPY", f"{beta_value:.2f}")
+    colD.metric("CVaR (95%)", f"{cvar_95:.2%}")
 
-    # Charts
-    st.markdown("### Cumulative Return")
-    st.line_chart(cum_ret)
+    # === Drawdown Chart ===
+    st.markdown("### Drawdown")
+    st.area_chart(drawdown)
 
+    # === Rolling Volatility Chart ===
     st.markdown("### Rolling Volatility (30-day)")
     st.line_chart(rolling_vol)
 
-    st.markdown("### Rolling Sharpe Ratio (30-day)")
-    st.line_chart(rolling_sharpe)
-
-    st.markdown("### Drawdown")
-    st.area_chart(dd)
-
-    st.markdown("### Distribution of Daily Returns")
-    hist_data = pd.Series(portfolio_returns).dropna()
+    # === VaR Distribution Chart ===
+    st.markdown("### Distribution of Daily Returns (for VaR)")
     fig, ax = plt.subplots()
-    ax.hist(hist_data, bins=40, alpha=0.7)
-    ax.set_title("Histogram of Daily Returns")
+    ax.hist(ret.dropna(), bins=40, alpha=0.7)
+    ax.axvline(var_95, color="red", linestyle="--", label=f"VaR 95%: {var_95:.2%}")
+    ax.set_title("Return Distribution with VaR")
+    ax.legend()
     st.pyplot(fig)
 
-# ---------------------------------------------------------
-# TAB 1 — OVERVIEW
-# ---------------------------------------------------------
-with tab1:
-    st.subheader("Portfolio Overview")
+    # ---------------------------------------------------------
+    # RISK CONTRIBUTION BREAKDOWN (SPY-SAFE + FULLY ALIGNED)
+    # ---------------------------------------------------------
+    st.markdown("### Risk Contribution Breakdown")
 
-    # --- FIRST ROW OF METRICS (col1, col2, col3) ---
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.metric("Annual Return", f"{annual_return:.2%}")
-    with col2:
-        st.metric("Volatility", f"{annual_volatility:.2%}")
-    with col3:
-        st.metric("Sharpe Ratio", f"{sharpe_ratio:.2f}")
+    # Full returns including SPY for market stats
+    returns_full = prices.pct_change().dropna()
 
-    # --- SECOND ROW OF METRICS (col4, col5, col6) ---
-    col4, col5, col6 = st.columns(3)
-    with col4:
-        st.metric("Max Drawdown", f"{max_drawdown:.2%}")
-    with col5:
-        st.metric("Beta vs SPY", f"{portfolio_beta:.2f}")
-    with col6:
-        st.metric("Diversification Score", f"{diversification_score:.1f}/10")
+    # Market volatility from SPY
+    if "SPY" in returns_full.columns:
+        market_vol = returns_full["SPY"].std() * np.sqrt(252)
+    else:
+        market_vol = 0.0
+
+    # Portfolio-only prices (drop SPY)
+    prices_port = prices.copy()
+    if "SPY" in prices_port.columns:
+        prices_port = prices_port.drop(columns=["SPY"])
+
+    returns = prices_port.pct_change().dropna()
+
+    # Only tickers that exist in price data
+    portfolio_tickers = [t for t in tickers if t in prices_port.columns]
+
+    if len(portfolio_tickers) == 0:
+        st.warning("No valid tickers available for risk analysis.")
+    else:
+        # Align weights
+        ticker_to_weight = dict(zip(tickers, weights))
+        valid_weights = np.array([ticker_to_weight[t] for t in portfolio_tickers])
+
+        # Covariance matrix
+        cov_valid = returns[portfolio_tickers].cov()
+
+        # Marginal risk
+        marginal_valid = cov_valid @ valid_weights
+
+        # Risk contribution
+        risk_contribution_valid = valid_weights * marginal_valid
+        risk_contribution_valid /= risk_contribution_valid.sum()
+
+        # === Pie Chart ===
+        fig2, ax2 = plt.subplots()
+        ax2.pie(
+            risk_contribution_valid,
+            labels=portfolio_tickers,
+            autopct="%1.1f%%",
+            startangle=90
+        )
+        ax2.axis("equal")
+        st.pyplot(fig2)
+
+        # ---------------------------------------------------------
+        # MARGINAL RISK CONTRIBUTION TABLE
+        # ---------------------------------------------------------
+        st.markdown("### Marginal Risk Contribution Table")
+
+        mrc_df = pd.DataFrame({
+            "Ticker": portfolio_tickers,
+            "Weight": valid_weights,
+            "Marginal Risk": marginal_valid,
+            "Risk Contribution %": risk_contribution_valid
+        })
+
+        st.dataframe(mrc_df.style.format({
+            "Weight": "{:.2%}",
+            "Marginal Risk": "{:.4f}",
+            "Risk Contribution %": "{:.2%}"
+        }))
 
         # ---------------------------------------------------------
         # RISK PARITY TARGET WEIGHTS
@@ -413,13 +480,8 @@ with tab1:
         # ---------------------------------------------------------
         st.markdown("### Volatility Decomposition")
 
-        # Total portfolio volatility (using valid tickers only)
         total_vol = np.sqrt(valid_weights.T @ cov_valid @ valid_weights)
-
-        # Systematic risk = beta * market volatility
         systematic_vol = beta_value * market_vol
-
-        # Idiosyncratic risk
         idiosyncratic_vol = max(total_vol - systematic_vol, 0)
 
         vol_df = pd.DataFrame({
@@ -430,6 +492,7 @@ with tab1:
         st.dataframe(vol_df.style.format({
             "Value": "{:.2%}"
         }))
+
  
 # ---------------------------------------------------------
 # TAB 4 — SECTOR EXPOSURE

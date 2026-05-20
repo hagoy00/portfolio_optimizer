@@ -287,6 +287,9 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
 # ---------------------------------------------------------
 # TAB 1 — OVERVIEW
 # ---------------------------------------------------------
+# ---------------------------------------------------------
+# TAB 1 — OVERVIEW
+# ---------------------------------------------------------
 with tab1:
     st.subheader("Portfolio Overview")
 
@@ -296,7 +299,6 @@ with tab1:
         st.metric("Annual Return", f"{annual_return:.2%}")
     with col2:
         st.metric("Volatility", f"{annual_volatility:.2%}")
-        #st.metric("Volatility", f"{portfolio_volatility:.2%}")
     with col3:
         st.metric("Sharpe Ratio", f"{sharpe_ratio:.2f}")
 
@@ -308,42 +310,8 @@ with tab1:
         st.metric("Beta vs SPY", f"{portfolio_beta:.2f}")
     with col6:
         st.metric("Diversification Score", f"{diversification_score:.1f}/10")
-
-    # ---------------------------------------------------------
-    # RISK CONTRIBUTION PIE CHART — CRASH‑PROOF VERSION
-    # ---------------------------------------------------------
-    st.subheader("Risk Contribution Breakdown")
-
-    if len(valid_tickers) == 0:
-        st.info("No valid tickers available.")
-    else:
-        # Equal contribution for each ticker (always valid)
-        n = len(valid_tickers)
-        risk_contribution = np.array([1.0 / n] * n, dtype=float)
-
-        # Safety: ensure non-negative and normalized
-        risk_contribution = np.clip(risk_contribution, 0, None)
-        total = risk_contribution.sum()
-        if total == 0 or np.isnan(total):
-            risk_contribution = np.array([1.0 / n] * n, dtype=float)
-        else:
-            risk_contribution = risk_contribution / total
-
-        # Force labels to match wedge count
-        valid_tickers = valid_tickers[:len(risk_contribution)]
-
-        # Render pie chart
-        fig, ax = plt.subplots(figsize=(6, 6))
-        ax.pie(
-            risk_contribution,
-            labels=valid_tickers,
-            autopct="%1.1f%%",
-            startangle=90
-        )
-        ax.axis("equal")
-        st.pyplot(fig)
 # ---------------------------------------------------------
-# Performance Tab
+# Tab 2 Performance Tab
 # ---------------------------------------------------------
 with tab2:
     st.subheader("Performance Metrics")

@@ -330,36 +330,6 @@ if len(valid_tickers) == 0:
     st.stop()
 
 # ---------------------------------------------------------
-# Auto-detect Fundamentals (PE, PB, Beta, DivYield, MarketCap, Sector)
-# ---------------------------------------------------------
-@st.cache_data
-def load_fundamentals_auto(tickers):
-    fundamentals = {}
-    for t in tickers:
-        try:
-            info = yf.Ticker(t).info
-            fundamentals[t] = {
-                "PE": info.get("trailingPE"),
-                "PB": info.get("priceToBook"),
-                "DividendYield": info.get("dividendYield"),
-                "Beta": info.get("beta"),
-                "MarketCap": info.get("marketCap"),
-                "Sector": info.get("sector", "Unknown")
-            }
-        except:
-            fundamentals[t] = {
-                "PE": None,
-                "PB": None,
-                "DividendYield": None,
-                "Beta": None,
-                "MarketCap": None,
-                "Sector": "Unknown"
-            }
-    return fundamentals
-
-fundamentals = load_fundamentals_multi(valid_tickers)
-
-# ---------------------------------------------------------
 # Auto Sector Detection (no manual map needed)
 # ---------------------------------------------------------
 sector_map = {

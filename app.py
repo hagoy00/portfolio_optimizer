@@ -620,9 +620,10 @@ with tab4:
     st.subheader("Sector Exposure")
 
     # Fundamentals must exist
-    if fundamentals is None or fundamentals.empty:
-        st.info("Sector data unavailable.")
-        st.stop()
+    
+    if fundamentals.empty:
+    st.info("Sector data unavailable.")
+    st.stop()
 
     # Ensure Sector column exists
     if "Sector" not in fundamentals.columns:
@@ -737,6 +738,17 @@ with tab5:
     st.subheader("Commentary")
     commentary = [f"- **{ticker}**: score {row['score']:.1f}" for ticker, row in ranked_df.iterrows()]
     st.markdown("\n".join(commentary))
+
+# Ensure fundamentals is a DataFrame
+if fundamentals is None:
+    fundamentals = pd.DataFrame()
+
+if isinstance(fundamentals, dict):
+    fundamentals = pd.DataFrame(fundamentals).T
+
+if not isinstance(fundamentals, pd.DataFrame):
+    st.error("Fundamentals data is in an unexpected format.")
+    st.stop()
 
 # ---------------------------------------------------------
 # Tab 6 Weights

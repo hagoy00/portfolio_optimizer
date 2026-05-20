@@ -179,17 +179,20 @@ if prices is None or prices.empty:
     st.stop()
     
 # ---------------------------------------------------------
-# SINGLE‑TICKER FUNDAMENTALS LOADER
+# SINGLE‑TICKER FUNDAMENTALS LOADER (MODERN + RELIABLE)
 # ---------------------------------------------------------
 def load_fundamentals(ticker):
     try:
         yf_t = yf.Ticker(ticker)
-        fi = yf_t.fast_info
 
+        # Try new YF endpoints
         try:
-            info = yf_t.info
+            info = yf_t.get_info()
         except:
             info = {}
+
+        # Try fast_info
+        fi = yf_t.fast_info or {}
 
         return pd.DataFrame([{
             "PE": info.get("trailingPE") or fi.get("pe_ratio"),

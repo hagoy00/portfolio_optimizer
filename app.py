@@ -185,21 +185,40 @@ def load_fundamentals(tickers):
 
     for t in tickers:
         try:
-            info = yf.Ticker(t).info
-        except:
-            info = {}
+            yf_t = yf.Ticker(t)
 
-        rows.append({
-            "Ticker": t,
-            "Sector": info.get("sector", "Unknown"),
-            "PE": info.get("trailingPE"),
-            "PB": info.get("priceToBook"),
-            "DividendYield": info.get("dividendYield"),
-            "Beta": info.get("beta"),
-            "MarketCap": info.get("marketCap")
-        })
+            # Try fast_info first (more reliable)
+            fi = yf_t.fast_info
+
+            # Try .info as fallback
+            try:
+                info = yf_t.info
+            except:
+                info = {}
+
+            rows.append({
+                "Ticker": t,
+                "Sector": info.get("sector", "Unknown"),
+                "PE": info.get("trailingPE") or fi.get("pe_ratio"),
+                "PB": info.get("priceToBook") or fi.get("pb_ratio"),
+                "DividendYield": info.get("dividendYield") or fi.get("dividend_yield"),
+                "Beta": info.get("beta") or fi.get("beta"),
+                "MarketCap": info.get("marketCap") or fi.get("market_cap")
+            })
+
+        except Exception:
+            rows.append({
+                "Ticker": t,
+                "Sector": "Unknown",
+                "PE": None,
+                "PB": None,
+                "DividendYield": None,
+                "Beta": None,
+                "MarketCap": None
+            })
 
     df = pd.DataFrame(rows).set_index("Ticker")
+    df["Sector"] = df["Sector"].fillna("Unknown").replace("", "Unknown")
     return df
 
 # ---------------------------------------------------------

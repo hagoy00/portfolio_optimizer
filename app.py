@@ -451,7 +451,7 @@ with tab3:
     st.pyplot(fig)
 
     # ---------------------------------------------------------
-    # RISK CONTRIBUTION BREAKDOWN (CORRECT VERSION)
+    # RISK CONTRIBUTION BREAKDOWN (WITH FIX)
     # ---------------------------------------------------------
     st.markdown("### Risk Contribution Breakdown")
 
@@ -467,17 +467,32 @@ with tab3:
     # Marginal contribution to risk
     marginal = cov @ w
 
-    # Risk contribution
+    # Raw risk contribution
     risk_contribution = w * marginal
 
-    # Normalize to percentages
+    # Normalize
     risk_contribution = risk_contribution / risk_contribution.sum()
 
-    # Plot
+    # ---------------------------------------------------------
+    # FIX: ALIGN TICKERS, WEIGHTS, AND RISK CONTRIBUTION
+    # ---------------------------------------------------------
+    valid_tickers = list(prices.columns)
+
+    ticker_to_weight = dict(zip(tickers, w))
+    valid_weights = np.array([ticker_to_weight[t] for t in valid_tickers])
+
+    cov_valid = returns[valid_tickers].cov()
+    marginal_valid = cov_valid @ valid_weights
+    risk_contribution_valid = valid_weights * marginal_valid
+    risk_contribution_valid = risk_contribution_valid / risk_contribution_valid.sum()
+
+    # ---------------------------------------------------------
+    # PLOT RISK CONTRIBUTION
+    # ---------------------------------------------------------
     fig2, ax2 = plt.subplots()
     ax2.pie(
-        risk_contribution,
-        labels=tickers,
+        risk_contribution_valid,
+        labels=valid_tickers,
         autopct="%1.1f%%",
         startangle=90
     )
@@ -490,10 +505,10 @@ with tab3:
     st.markdown("### Marginal Risk Contribution Table")
 
     mrc_df = pd.DataFrame({
-        "Ticker": tickers,
-        "Weight": w,
-        "Marginal Risk": marginal,
-        "Risk Contribution %": risk_contribution
+        "Ticker": valid_tickers,
+        "Weight": valid_weights,
+        "Marginal Risk": marginal_valid,
+        "Risk Contribution %": risk_contribution_valid
     })
 
     st.dataframe(mrc_df.style.format({
@@ -507,11 +522,11 @@ with tab3:
     # ---------------------------------------------------------
     st.markdown("### Risk Parity Target Weights")
 
-    inv_marginal = 1 / np.abs(marginal)
+    inv_marginal = 1 / np.abs(marginal_valid)
     rp_weights = inv_marginal / inv_marginal.sum()
 
     rp_df = pd.DataFrame({
-        "Ticker": tickers,
+        "Ticker": valid_tickers,
         "Risk Parity Weight": rp_weights
     })
 
@@ -529,9 +544,9 @@ with tab3:
     systematic_vol = beta_value * market_vol
 
     # Total portfolio volatility
-    total_vol = np.sqrt(w.T @ cov @ w)
+    total_vol = np.sqrt(valid_weights.T @ cov_valid @ valid_weights)
 
-    # Idiosyncratic risk = remainder
+    # Idiosyncratic risk
     idiosyncratic_vol = max(total_vol - systematic_vol, 0)
 
     vol_df = pd.DataFrame({
@@ -542,7 +557,7 @@ with tab3:
     st.dataframe(vol_df.style.format({
         "Value": "{:.2%}"
     }))
-
+ 
 # ---------------------------------------------------------
 # TAB 4 — SECTOR EXPOSURE
 #--------------------------------------------------------

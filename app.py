@@ -455,6 +455,14 @@ with tab3:
     # ---------------------------------------------------------
     st.markdown("### Risk Contribution Breakdown")
 
+    # ---------------------------------------------------------
+    # REMOVE SPY FROM PORTFOLIO ANALYSIS (CRITICAL FIX)
+    # ---------------------------------------------------------
+    if "SPY" in returns.columns:
+        returns = returns.drop(columns=["SPY"])
+    if "SPY" in prices.columns:
+        prices = prices.drop(columns=["SPY"])
+
     # Compute returns matrix for tickers
     returns = prices.pct_change().dropna()
 

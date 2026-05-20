@@ -332,7 +332,11 @@ fundamentals = load_fundamentals_multi(valid_tickers)
 # ---------------------------------------------------------
 # Auto Sector Detection (no manual map needed)
 # ---------------------------------------------------------
-sector_map = {t: fundamentals[t].get("Sector", "Unknown") for t in valid_tickers}
+sector_map = {
+    t: fundamentals.loc[t, "Sector"] if t in fundamentals.index else "Unknown"
+    for t in valid_tickers
+}
+#sector_map = {t: fundamentals[t].get("Sector", "Unknown") for t in valid_tickers}
 
 # ---------------------------------------------------------
 # PREP FOR METRICS

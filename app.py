@@ -179,171 +179,110 @@ if prices is None or prices.empty:
     st.stop()
     
 # ---------------------------------------------------------
-# FUNDAMENTALS LOADER (ALWAYS RETURNS A DATAFRAME)
+# SINGLE‑TICKER FUNDAMENTALS LOADER
 # ---------------------------------------------------------
-def load_fundamentals(tickers):
-    rows = []
+def load_fundamentals(ticker):
+    try:
+        yf_t = yf.Ticker(ticker)
+        fi = yf_t.fast_info
+
+        try:
+            info = yf_t.info
+        except:
+            info = {}
+
+        return pd.DataFrame([{
+            "PE": info.get("trailingPE") or fi.get("pe_ratio"),
+            "PB": info.get("priceToBook") or fi.get("pb_ratio"),
+            "DividendYield": info.get("dividendYield") or fi.get("dividend_yield"),
+            "Beta": info.get("beta") or fi.get("beta"),
+            "MarketCap": info.get("marketCap") or fi.get("market_cap"),
+            "Sector": info.get("sector", "Unknown")
+        }], index=[ticker])
+
+    except Exception:
+        return pd.DataFrame([{
+            "PE": None,
+            "PB": None,
+            "DividendYield": None,
+            "Beta": None,
+            "MarketCap": None,
+            "Sector": "Unknown"
+        }], index=[ticker])
+
+
+# ---------------------------------------------------------
+# MULTI‑TICKER FUNDAMENTALS LOADER
+# ---------------------------------------------------------
+def load_fundamentals_multi(tickers):
+    frames = []
 
     for t in tickers:
         try:
-            yf_t = yf.Ticker(t)
-
-            # Try fast_info first (more reliable)
-            fi = yf_t.fast_info
-
-            # Try .info as fallback
-            try:
-                info = yf_t.info
-            except:
-                info = {}
-
-            rows.append({
-                "Ticker": t,
-                "Sector": info.get("sector", "Unknown"),
-                "PE": info.get("trailingPE") or fi.get("pe_ratio"),
-                "PB": info.get("priceToBook") or fi.get("pb_ratio"),
-                "DividendYield": info.get("dividendYield") or fi.get("dividend_yield"),
-                "Beta": info.get("beta") or fi.get("beta"),
-                "MarketCap": info.get("marketCap") or fi.get("market_cap")
-            })
-
+            df = load_fundamentals(t)
+            if isinstance(df, pd.DataFrame):
+                frames.append(df)
+            else:
+                raise ValueError("Single‑ticker loader returned non‑DataFrame")
         except Exception:
-            rows.append({
-                "Ticker": t,
-                "Sector": "Unknown",
+            frames.append(pd.DataFrame([{
                 "PE": None,
                 "PB": None,
                 "DividendYield": None,
                 "Beta": None,
-                "MarketCap": None
-            })
+                "MarketCap": None,
+                "Sector": "Unknown"
+            }], index=[t]))
 
-    df = pd.DataFrame(rows).set_index("Ticker")
-    df["Sector"] = df["Sector"].fillna("Unknown").replace("", "Unknown")
-    return df
+    if len(frames) == 0:
+        return pd.DataFrame()
 
-# ---------------------------------------------------------
-# FUNDAMENTALS LOADER (ALWAYS RETURNS A DATAFRAME)
-# ---------------------------------------------------------
-def load_fundamentals(tickers):
-    rows = []
+    df_all = pd.concat(frames)
+    df_all["Sector"] = df_all["Sector"].fillna("Unknown").replace("", "Unknown")
+    return df_all
 
-    for t in tickers:
-        try:
-            yf_t = yf.Ticker(t)
-
-            # Try fast_info first (more reliable)
-            fi = yf_t.fast_info
-
-            # Try .info as fallback
-            try:
-                info = yf_t.info
-            except:
-                info = {}
-
-            rows.append({
-                "Ticker": t,
-                "Sector": info.get("sector", "Unknown"),
-                "PE": info.get("trailingPE") or fi.get("pe_ratio"),
-                "PB": info.get("priceToBook") or fi.get("pb_ratio"),
-                "DividendYield": info.get("dividendYield") or fi.get("dividend_yield"),
-                "Beta": info.get("beta") or fi.get("beta"),
-                "MarketCap": info.get("marketCap") or fi.get("market_cap")
-            })
-
-        except Exception:
-            # Safe fallback row
-            rows.append({
-                "Ticker": t,
-                "Sector": "Unknown",
-                "PE": None,
-                "PB": None,
-                "DividendYield": None,
-                "Beta": None,
-                "MarketCap": None
-            })
-
-    # Convert to DataFrame ALWAYS
-    df = pd.DataFrame(rows).set_index("Ticker")
-
-    # Normalize missing sectors
-    df["Sector"] = df["Sector"].fillna("Unknown").replace("", "Unknown")
-
-    return df
 
 # ---------------------------------------------------------
 # GLOBAL DATA PIPELINE (REQUIRED FOR ALL TABS)
 # ---------------------------------------------------------
 
-# 1. Load prices (already done above)
-# prices = load_price_data(tickers, start_date, end_date)
-
+# 1. Load prices
 if prices is None or prices.empty:
     st.error("Price data could not be loaded.")
     st.stop()
 
-# ---------------------------------------------------------
 # 2. Load or create weights
-# ---------------------------------------------------------
 if "weights" in st.session_state and len(st.session_state.weights) == len(tickers):
     weights = np.array(st.session_state.weights, dtype=float)
 else:
-    if len(tickers) > 0:
-        weights = np.array([1 / len(tickers)] * len(tickers), dtype=float)
-    else:
-        weights = np.array([])
+    weights = np.array([1 / len(tickers)] * len(tickers), dtype=float) if len(tickers) > 0 else np.array([])
 
-# ---------------------------------------------------------
-# 3. Remove SPY from portfolio tickers (SPY is only for beta)
-# ---------------------------------------------------------
+# 3. Remove SPY from portfolio tickers
 portfolio_tickers = [t for t in tickers if t in prices.columns and t != "SPY"]
 
-# ---------------------------------------------------------
 # 4. Compute returns
-# ---------------------------------------------------------
 returns_full = prices.pct_change().dropna()
+returns = prices[portfolio_tickers].pct_change().dropna() if len(portfolio_tickers) > 0 else pd.DataFrame()
 
-if len(portfolio_tickers) > 0:
-    returns = prices[portfolio_tickers].pct_change().dropna()
-else:
-    returns = pd.DataFrame()
-
-# ---------------------------------------------------------
-# 5. Align weights to portfolio tickers
-# ---------------------------------------------------------
+# 5. Align weights
 ticker_to_weight = dict(zip(tickers, weights))
+valid_weights = np.array([ticker_to_weight[t] for t in portfolio_tickers]) if len(portfolio_tickers) > 0 else np.array([])
 
-if len(portfolio_tickers) > 0:
-    valid_weights = np.array([ticker_to_weight[t] for t in portfolio_tickers])
-else:
-    valid_weights = np.array([])
-
-# ---------------------------------------------------------
 # 6. Compute portfolio returns
-# ---------------------------------------------------------
-if len(portfolio_tickers) > 0:
-    portfolio_returns = returns @ valid_weights
-else:
-    portfolio_returns = pd.Series(dtype=float)
+portfolio_returns = returns @ valid_weights if len(portfolio_tickers) > 0 else pd.Series(dtype=float)
 
-# ---------------------------------------------------------
-# 7. Load fundamentals (ALWAYS use multi‑ticker loader)
-# ---------------------------------------------------------
+# 7. Load fundamentals (NOW WORKS)
 fundamentals = load_fundamentals_multi(portfolio_tickers)
 
-# SAFETY CHECK — fundamentals must be a DataFrame
+# SAFETY CHECK
 if not isinstance(fundamentals, pd.DataFrame):
     st.error("Fundamentals loader returned invalid data.")
     st.stop()
 
-# ---------------------------------------------------------
 # 8. Store valid tickers globally
-# ---------------------------------------------------------
 valid_tickers = portfolio_tickers
 
-# ---------------------------------------------------------
-# Ensure SPY exists for Beta calculation
-# ---------------------------------------------------------
+# Ensure SPY exists for Beta
 if "SPY" not in prices.columns:
     spy_data = load_price_data(["SPY"], start_date, end_date)
     if spy_data is not None and not spy_data.empty:
@@ -351,58 +290,13 @@ if "SPY" not in prices.columns:
     else:
         st.warning("SPY could not be loaded. Beta vs SPY unavailable.")
 
-# ---------------------------------------------------------
-# Clean returns (keep SPY)
-# ---------------------------------------------------------
-returns_df = prices.pct_change()
-returns_df = returns_df.ffill().bfill()
-returns_df = returns_df.dropna(how="all")
-
+# Clean returns
+returns_df = prices.pct_change().ffill().bfill().dropna(how="all")
 valid_tickers = list(returns_df.columns)
 
 if len(valid_tickers) == 0:
     st.error("No valid tickers after cleaning returns.")
     st.stop()
-
-# ---------------------------------------------------------
-# MULTI‑TICKER FUNDAMENTALS LOADER (ALWAYS RETURNS A DATAFRAME)
-# ---------------------------------------------------------
-def load_fundamentals_multi(tickers):
-    frames = []
-
-    for t in tickers:
-        try:
-            df = load_fundamentals(t)   # your single‑ticker loader
-
-            if isinstance(df, pd.DataFrame):
-                frames.append(df)
-            else:
-                raise ValueError("Single‑ticker loader returned non‑DataFrame")
-
-        except Exception as e:
-            print(f"Error loading fundamentals for {t}: {e}")
-
-            frames.append(pd.DataFrame([{
-                "PE": None,
-                "PB": None,
-                "EPS": None,
-                "ROE": None,
-                "DividendYield": None,
-                "DebtToEquity": None,
-                "MarketCap": None,
-                "Sector": "Unknown",
-                "Beta": None,
-            }], index=[t]))
-
-    if len(frames) == 0:
-        return pd.DataFrame()
-
-    df_all = pd.concat(frames)
-
-    if "Sector" in df_all.columns:
-        df_all["Sector"] = df_all["Sector"].fillna("Unknown").replace("", "Unknown")
-
-    return df_all
 
 # ---------------------------------------------------------
 # Auto-detect Fundamentals (PE, PB, Beta, DivYield, MarketCap, Sector)

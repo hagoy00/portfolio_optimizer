@@ -389,7 +389,8 @@ def load_fundamentals_auto(tickers):
             }
     return fundamentals
 
-fundamentals = load_fundamentals_auto(valid_tickers)
+fundamentals = load_fundamentals_multi(valid_tickers)
+#fundamentals = load_fundamentals_auto(valid_tickers)
 
 # ---------------------------------------------------------
 # Auto Sector Detection (no manual map needed)

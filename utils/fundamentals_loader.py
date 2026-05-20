@@ -4,7 +4,6 @@ import numpy as np
 import yfinance as yf
 import streamlit as st
 
-
 # -----------------------------
 # Ticker Normalization (Fixes BRK.B → BRK-B, BF.B → BF-B)
 # -----------------------------
@@ -13,7 +12,7 @@ def normalize_ticker(t):
 
 
 # -----------------------------
-# Main Fundamentals Loader (CACHED)
+# Main Fundamentals Loader (Single Ticker)
 # -----------------------------
 @st.cache_data(show_spinner=False)
 def load_fundamentals(ticker):
@@ -38,10 +37,11 @@ def load_fundamentals(ticker):
         data = metrics.get("metric", {})
 
         # -----------------------------
-        # 3. Fallback to yfinance for missing fields
+        # 3. Fallback to yfinance
         # -----------------------------
         yf_t = yf.Ticker(ticker)
         yf_fast = yf_t.fast_info
+
         try:
             yf_info = yf_t.get_info()
         except:
@@ -80,7 +80,11 @@ def load_fundamentals(ticker):
             profile["finnhubIndustry"] = yf_info.get("sector")
 
         # Beta fallback
-        beta_value = compute_beta(ticker)
+        try:
+            beta_value = compute_beta(ticker)
+        except:
+            beta_value = None
+
         if beta_value is None:
             beta_value = yf_fast.get("beta")
 
@@ -113,3 +117,51 @@ def load_fundamentals(ticker):
             "Sector": "Unknown",
             "Beta": None,
         }], index=[ticker])
+
+
+# ---------------------------------------------------------
+# MULTI‑TICKER FUNDAMENTALS LOADER (ALWAYS RETURNS A DATAFRAME)
+# ---------------------------------------------------------
+def load_fundamentals_multi(tickers):
+    """
+    Loads fundamentals for a list of tickers.
+    Returns a combined DataFrame indexed by ticker.
+    Guarantees a DataFrame even if some tickers fail.
+    """
+
+    frames = []
+
+    for t in tickers:
+        try:
+            df = load_fundamentals(t)
+
+            if isinstance(df, pd.DataFrame):
+                frames.append(df)
+            else:
+                raise ValueError("Single‑ticker loader returned non‑DataFrame")
+
+        except Exception as e:
+            print(f"Error loading fundamentals for {t}: {e}")
+
+            frames.append(pd.DataFrame([{
+                "PE": None,
+                "PB": None,
+                "EPS": None,
+                "ROE": None,
+                "DividendYield": None,
+                "DebtToEquity": None,
+                "MarketCap": None,
+                "Sector": "Unknown",
+                "Beta": None,
+            }], index=[t]))
+
+    if len(frames) == 0:
+        return pd.DataFrame()
+
+    df_all = pd.concat(frames)
+
+    # Clean sector column
+    if "Sector" in df_all.columns:
+        df_all["Sector"] = df_all["Sector"].fillna("Unknown").replace("", "Unknown")
+
+    return df_all

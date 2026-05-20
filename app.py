@@ -399,7 +399,7 @@ with tab2:
     ax.set_title("Histogram of Daily Returns")
     st.pyplot(fig)
 
-    # ---------------------------------------------------------
+# ---------------------------------------------------------
 # TAB 3 — RISK & DRAWDOWN ANALYSIS (CRASH-PROOF VERSION)
 # ---------------------------------------------------------
 with tab3:
@@ -484,36 +484,69 @@ with tab3:
     ax2.axis("equal")
     st.pyplot(fig2)
 
+    # ---------------------------------------------------------
+    # MARGINAL RISK CONTRIBUTION TABLE
+    # ---------------------------------------------------------
+    st.markdown("### Marginal Risk Contribution Table")
+
+    mrc_df = pd.DataFrame({
+        "Ticker": tickers,
+        "Weight": w,
+        "Marginal Risk": marginal,
+        "Risk Contribution %": risk_contribution
+    })
+
+    st.dataframe(mrc_df.style.format({
+        "Weight": "{:.2%}",
+        "Marginal Risk": "{:.4f}",
+        "Risk Contribution %": "{:.2%}"
+    }))
 
     # ---------------------------------------------------------
-    # RISK CONTRIBUTION — CRASH‑PROOF VERSION
+    # RISK PARITY TARGET WEIGHTS
     # ---------------------------------------------------------
-    st.markdown("### Risk Contribution Breakdown")
+    st.markdown("### Risk Parity Target Weights")
 
-    if len(valid_tickers) == 0:
-        st.info("No valid tickers available.")
-    else:
-        n = len(valid_tickers)
-        risk_contribution = np.array([1.0 / n] * n, dtype=float)
+    inv_marginal = 1 / np.abs(marginal)
+    rp_weights = inv_marginal / inv_marginal.sum()
 
-        risk_contribution = np.clip(risk_contribution, 0, None)
-        total = risk_contribution.sum()
-        if total == 0 or np.isnan(total):
-            risk_contribution = np.array([1.0 / n] * n, dtype=float)
-        else:
-            risk_contribution = risk_contribution / total
+    rp_df = pd.DataFrame({
+        "Ticker": tickers,
+        "Risk Parity Weight": rp_weights
+    })
 
-        valid_tickers = valid_tickers[:len(risk_contribution)]
+    st.dataframe(rp_df.style.format({
+        "Risk Parity Weight": "{:.2%}"
+    }))
 
-        fig2, ax2 = plt.subplots()
-        ax2.pie(
-            risk_contribution,
-            labels=valid_tickers,
-            autopct="%1.1f%%",
-            startangle=90
-        )
-        ax2.axis("equal")
-        st.pyplot(fig2)
+    # ---------------------------------------------------------
+    # VOLATILITY DECOMPOSITION
+    # ---------------------------------------------------------
+    st.markdown("### Volatility Decomposition")
+
+    # Systematic risk = beta * market volatility
+    market_vol = returns["SPY"].std() * np.sqrt(252) if "SPY" in returns.columns else 0
+    systematic_vol = beta_value * market_vol
+
+    # Total portfolio volatility
+    total_vol = np.sqrt(w.T @ cov @ w)
+
+    # Idiosyncratic risk = remainder
+    idiosyncratic_vol = max(total_vol - systematic_vol, 0)
+
+    vol_df = pd.DataFrame({
+        "Component": ["Total Volatility", "Systematic (Market) Risk", "Idiosyncratic Risk"],
+        "Value": [total_vol, systematic_vol, idiosyncratic_vol]
+    })
+
+    st.dataframe(vol_df.style.format({
+        "Value": "{:.2%}"
+    }))
+
+# ---------------------------------------------------------
+# TAB 4 — SECTOR EXPOSURE
+#--------------------------------------------------------
+
 with tab4:
     st.subheader("Sector Exposure")
 
@@ -546,7 +579,7 @@ with tab4:
     fig.update_layout(height=400)
     st.plotly_chart(fig, use_container_width=True)
 # ---------------------------------------------------------
-# Fundamentals
+# Tab 5 Fundamentals
 # ---------------------------------------------------------
 with tab5:
     st.subheader("Fundamentals")
@@ -636,7 +669,7 @@ with tab5:
     st.markdown("\n".join(commentary))
 
 # ---------------------------------------------------------
-# Weights
+# Tab 6 Weights
 # ---------------------------------------------------------
 with tab6:
     st.header("Portfolio Weights")
@@ -686,7 +719,7 @@ with tab6:
     })
     st.dataframe(weights_df, use_container_width=True)
 # ---------------------------------------------------------
-# AI Commentary + Signals
+# Tab 7 AI Commentary + Signals
 # ---------------------------------------------------------
 with tab7:
     st.subheader("AI Portfolio Commentary")
@@ -937,7 +970,7 @@ with tab7:
             )
 
 # ---------------------------------------------------------
-# Buy Analysis
+# Tab 8 Buy Analysis
 # ---------------------------------------------------------
 with tab8:
     st.subheader("Buy Analysis")
@@ -1049,7 +1082,7 @@ with tab8:
 
         st.markdown("---")
 # ---------------------------------------------------------
-# Optimizer
+# Tab 9 Optimizer
 # ---------------------------------------------------------
 @st.cache_data(show_spinner=True)
 def run_optimizer_cached(returns, cov):

@@ -556,116 +556,16 @@ with tab3:
     st.pyplot(fig)
 
     # ---------------------------------------------------------
-    # RISK CONTRIBUTION BREAKDOWN (SPY-SAFE + FULLY ALIGNED)
+    # RISK CONTRIBUTION BREAKDOWN
     # ---------------------------------------------------------
     st.markdown("### Risk Contribution Breakdown")
 
     # Full returns including SPY for market stats
     returns_full = prices.pct_change().dropna()
 
-    # Market volatility from SPY
-    if "SPY" in returns_full.columns:
-        market_vol = returns_full["SPY"].std() * np.sqrt(252)
-    else:
-        market_vol = 0.0
-
-    # Portfolio-only prices (drop SPY)
-    prices_port = prices.copy()
-    if "SPY" in prices_port.columns:
-        prices_port = prices_port.drop(columns=["SPY"])
-
-    returns = prices_port.pct_change().dropna()
-
-    # Only tickers that exist in price data
-    portfolio_tickers = [t for t in tickers if t in prices_port.columns]
-
-    if len(portfolio_tickers) == 0:
-        st.warning("No valid tickers available for risk analysis.")
-    else:
-        # Align weights
-        ticker_to_weight = dict(zip(tickers, weights))
-        valid_weights = np.array([ticker_to_weight[t] for t in portfolio_tickers])
-
-        # Covariance matrix
-        cov_valid = returns[portfolio_tickers].cov()
-
-        # Marginal risk
-        marginal_valid = cov_valid @ valid_weights
-
-        # Risk contribution
-        risk_contribution_valid = valid_weights * marginal_valid
-        risk_contribution_valid /= risk_contribution_valid.sum()
-
-        # === Pie Chart ===
-        fig2, ax2 = plt.subplots()
-        ax2.pie(
-            risk_contribution_valid,
-            labels=portfolio_tickers,
-            autopct="%1.1f%%",
-            startangle=90
-        )
-        ax2.axis("equal")
-        st.pyplot(fig2)
-
-        # ---------------------------------------------------------
-        # MARGINAL RISK CONTRIBUTION TABLE
-        # ---------------------------------------------------------
-        st.markdown("### Marginal Risk Contribution Table")
-
-        mrc_df = pd.DataFrame({
-            "Ticker": portfolio_tickers,
-            "Weight": valid_weights,
-            "Marginal Risk": marginal_valid,
-            "Risk Contribution %": risk_contribution_valid
-        })
-
-        st.dataframe(mrc_df.style.format({
-            "Weight": "{:.2%}",
-            "Marginal Risk": "{:.4f}",
-            "Risk Contribution %": "{:.2%}"
-        }))
-
-        # ---------------------------------------------------------
-        # RISK PARITY TARGET WEIGHTS
-        # ---------------------------------------------------------
-        st.markdown("### Risk Parity Target Weights")
-
-        inv_marginal = 1 / np.abs(marginal_valid)
-        rp_weights = inv_marginal / inv_marginal.sum()
-
-        rp_df = pd.DataFrame({
-            "Ticker": portfolio_tickers,
-            "Risk Parity Weight": rp_weights
-        })
-
-        st.dataframe(rp_df.style.format({
-            "Risk Parity Weight": "{:.2%}"
-        }))
-
-        # ---------------------------------------------------------
-        # VOLATILITY DECOMPOSITION
-        # ---------------------------------------------------------
-        st.markdown("### Volatility Decomposition")
-
-        total_vol = np.sqrt(valid_weights.T @ cov_valid @ valid_weights)
-        systematic_vol = beta_value * market_vol
-        idiosyncratic_vol = max(total_vol - systematic_vol, 0)
-
-        vol_df = pd.DataFrame({
-            "Component": ["Total Volatility", "Systematic (Market) Risk", "Idiosyncratic Risk"],
-            "Value": [total_vol, systematic_vol, idiosyncratic_vol]
-        })
-
-        st.dataframe(vol_df.style.format({
-            "Value": "{:.2%}"
-        }))
-
-        # ---------------------------------------------------------
-        # SAFETY CHECK — ADD THIS HERE
-        # ---------------------------------------------------------
-        if not isinstance(fundamentals, pd.DataFrame):
-            st.error("Fundamentals loader returned invalid data.")
-            st.stop()
+    # Compute risk metrics (your existing logic goes here)
+    # Example placeholder:
+    # st.dataframe(risk_df)
 
 # ---------------------------------------------------------
 # Tab 4 Sector Exposure

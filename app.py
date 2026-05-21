@@ -6,18 +6,24 @@ import yfinance as yf
 from datetime import datetime, timedelta
 
 def load_prices_and_returns(tickers):
-    """
-    Loads price history and computes returns.
-    Replace with your real loader later.
-    """
-    data = yf.download(tickers, period="1y")["Adj Close"]
+    import yfinance as yf
+    import pandas as pd
+
+    data = yf.download(tickers, period="1y")
+
+    # Handle MultiIndex (multiple tickers)
+    if isinstance(data.columns, pd.MultiIndex):
+        adj_close = data["Adj Close"]
+    else:
+        # Single ticker case
+        adj_close = data
 
     # Ensure DataFrame
-    if isinstance(data, pd.Series):
-        data = data.to_frame()
+    if isinstance(adj_close, pd.Series):
+        adj_close = adj_close.to_frame()
 
-    returns_df = data.pct_change().dropna()
-    latest_prices = data.iloc[-1]
+    returns_df = adj_close.pct_change().dropna()
+    latest_prices = adj_close.iloc[-1]
 
     return latest_prices, returns_df
 

@@ -185,15 +185,18 @@ def load_fundamentals(ticker):
         t = yf.Ticker(ticker)
         fi = t.fast_info
 
+        # Correct fast_info keys (2026)
         pe = fi.get("pe_ratio")
         pb = fi.get("pb_ratio")
         mcap = fi.get("market_cap")
         beta = fi.get("beta")
         div = fi.get("dividend_yield")
 
+        # Convert dividend yield to %
         if div is not None:
             div = div * 100
 
+        # Sector (still available in .info)
         try:
             sector = t.info.get("sector")
         except:
@@ -215,26 +218,6 @@ def load_fundamentals(ticker):
             "DividendYield": 0,
             "Beta": 0,
             "MarketCap": 0,
-            "Sector": "Unknown"
-        }], index=[ticker])
-
-    except Exception:
-        return pd.DataFrame([{
-            "PE": 0,
-            "PB": 0,
-            "DividendYield": 0,
-            "Beta": 0,
-            "MarketCap": 0,
-            "Sector": "Unknown"
-        }], index=[ticker])
-
-    except Exception:
-        return pd.DataFrame([{
-            "PE": None,
-            "PB": None,
-            "DividendYield": None,
-            "Beta": None,
-            "MarketCap": None,
             "Sector": "Unknown"
         }], index=[ticker])
 

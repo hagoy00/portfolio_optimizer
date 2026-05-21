@@ -507,6 +507,11 @@ with tab3:
     # === Portfolio Beta ===
     beta_value = portfolio_beta if not np.isnan(portfolio_beta) else 0.0
 
+    # SAFETY CHECK — ensure returns exist
+    if ret.dropna().empty:
+        st.info("Not enough return data yet to compute VaR / CVaR.")
+        st.stop()
+        
     # === VaR & CVaR ===
     var_95 = np.percentile(ret.dropna(), 5)
     cvar_95 = ret[ret <= var_95].mean() if len(ret[ret <= var_95]) > 0 else 0

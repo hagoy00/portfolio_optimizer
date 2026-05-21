@@ -3,8 +3,23 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import yfinance as yf
-
 from datetime import datetime, timedelta
+
+def load_prices_and_returns(tickers):
+    """
+    Loads price history and computes returns.
+    Replace with your real loader later.
+    """
+    data = yf.download(tickers, period="1y")["Adj Close"]
+
+    # Ensure DataFrame
+    if isinstance(data, pd.Series):
+        data = data.to_frame()
+
+    returns_df = data.pct_change().dropna()
+    latest_prices = data.iloc[-1]
+
+    return latest_prices, returns_df
 
 from utils.data_loader import load_price_data
 from utils.fundamentals_loader import load_fundamentals

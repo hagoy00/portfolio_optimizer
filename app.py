@@ -185,18 +185,15 @@ def load_fundamentals(ticker):
         t = yf.Ticker(ticker)
         fi = t.fast_info
 
-        # Correct fast_info keys (2026)
         pe = fi.get("pe_ratio")
         pb = fi.get("pb_ratio")
         mcap = fi.get("market_cap")
         beta = fi.get("beta")
         div = fi.get("dividend_yield")
 
-        # Convert dividend yield to %
         if div is not None:
             div = div * 100
 
-        # Sector (still available in .info)
         try:
             sector = t.info.get("sector")
         except:

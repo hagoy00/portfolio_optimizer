@@ -180,39 +180,48 @@ if prices is None or prices.empty:
 # ---------------------------------------------------------
 # SINGLE‑TICKER FUNDAMENTALS LOADER (MODERN + RELIABLE)
 # ---------------------------------------------------------
-import yfinance as yf
-
 def load_fundamentals(ticker):
-    t = yf.Ticker(ticker)
-
-    # Fast info (reliable)
-    fi = t.fast_info
-
-    pe = fi.get("peRatio")
-    pb = fi.get("priceToBook")
-    mcap = fi.get("marketCap")
-    beta = fi.get("beta")
-    div = fi.get("dividendYield")
-
-    # Convert dividend yield to %
-    if div is not None:
-        div = div * 100
-
-    # Sector (info still works for this)
     try:
-        sector = t.info.get("sector")
-    except:
-        sector = "Unknown"
+        t = yf.Ticker(ticker)
 
-    # Guard clause: replace None with 0
-    return pd.DataFrame([{
-        "PE": pe or 0,
-        "PB": pb or 0,
-        "DividendYield": div or 0,
-        "Beta": beta or 0,
-        "MarketCap": mcap or 0,
-        "Sector": sector or "Unknown"
-    }], index=[ticker])
+        # Fast info (reliable)
+        fi = t.fast_info
+
+        pe = fi.get("peRatio")
+        pb = fi.get("priceToBook")
+        mcap = fi.get("marketCap")
+        beta = fi.get("beta")
+        div = fi.get("dividendYield")
+
+        # Convert dividend yield to %
+        if div is not None:
+            div = div * 100
+
+        # Sector (info still works for this)
+        try:
+            sector = t.info.get("sector")
+        except:
+            sector = "Unknown"
+
+        # Guard clause: replace None with 0
+        return pd.DataFrame([{
+            "PE": pe or 0,
+            "PB": pb or 0,
+            "DividendYield": div or 0,
+            "Beta": beta or 0,
+            "MarketCap": mcap or 0,
+            "Sector": sector or "Unknown"
+        }], index=[ticker])
+
+    except Exception:
+        return pd.DataFrame([{
+            "PE": 0,
+            "PB": 0,
+            "DividendYield": 0,
+            "Beta": 0,
+            "MarketCap": 0,
+            "Sector": "Unknown"
+        }], index=[ticker])
 
     except Exception:
         return pd.DataFrame([{

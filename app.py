@@ -1103,31 +1103,34 @@ def run_optimizer_cached(returns, cov):
 with tab9:
     st.subheader("Optimizer")
 
-    # Safety check — run button must be pressed
+    # -----------------------------------------------------
+    # SAFETY CHECK — User must press Run Analysis
+    # -----------------------------------------------------
     if not run_button:
         st.info("Run Analysis to generate optimizer results.")
         st.stop()
 
-    # -----------------------------
-    # Run Optimizer ONCE
-    # -----------------------------
+    # -----------------------------------------------------
+    # RUN OPTIMIZER ONCE
+    # -----------------------------------------------------
     cov_matrix = returns_df.cov()
     opt_results = run_optimizer_cached(returns_df, cov_matrix)
 
-    # -----------------------------
-    # Save data for other tabs
-    # -----------------------------
+    # -----------------------------------------------------
+    # SAVE RESULTS FOR OTHER TABS
+    # -----------------------------------------------------
     st.session_state["model"] = opt_results
     st.session_state["returns_df"] = returns_df
     st.session_state["portfolio_weights"] = opt_results["max_sharpe"]["weights"]
 
     st.success("Optimization complete!")
 
-    # -----------------------------
-    # Equal Weight Portfolio
-    # -----------------------------
+    # -----------------------------------------------------
+    # EQUAL WEIGHT PORTFOLIO
+    # -----------------------------------------------------
     st.markdown("### Equal Weight Portfolio")
     ew = opt_results["equal_weight"]
+
     st.write(f"**Expected Return:** {ew['expected_return']:.2%}")
     st.write(f"**Volatility:** {ew['volatility']:.2%}")
     st.write(f"**Sharpe Ratio:** {ew['sharpe']:.2f}")
@@ -1138,11 +1141,12 @@ with tab9:
     })
     st.dataframe(ew_df, key="ew_df")
 
-    # -----------------------------
-    # Maximum Sharpe Portfolio
-    # -----------------------------
+    # -----------------------------------------------------
+    # MAXIMUM SHARPE PORTFOLIO
+    # -----------------------------------------------------
     st.markdown("### Maximum Sharpe Portfolio")
     ms = opt_results["max_sharpe"]
+
     st.write(f"**Expected Return:** {ms['expected_return']:.2%}")
     st.write(f"**Volatility:** {ms['volatility']:.2%}")
     st.write(f"**Sharpe Ratio:** {ms['sharpe']:.2f}")
@@ -1153,9 +1157,9 @@ with tab9:
     })
     st.dataframe(ms_df, key="ms_df")
 
-    # -----------------------------
-    # Correlation Heatmap
-    # -----------------------------
+    # -----------------------------------------------------
+    # CORRELATION HEATMAP
+    # -----------------------------------------------------
     st.markdown("### Correlation Heatmap")
 
     corr = returns_df.corr()

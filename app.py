@@ -180,27 +180,39 @@ if prices is None or prices.empty:
 # ---------------------------------------------------------
 # SINGLE‑TICKER FUNDAMENTALS LOADER (MODERN + RELIABLE)
 # ---------------------------------------------------------
+import yfinance as yf
+
 def load_fundamentals(ticker):
+    t = yf.Ticker(ticker)
+
+    # Fast info (reliable)
+    fi = t.fast_info
+
+    pe = fi.get("peRatio")
+    pb = fi.get("priceToBook")
+    mcap = fi.get("marketCap")
+    beta = fi.get("beta")
+    div = fi.get("dividendYield")
+
+    # Convert dividend yield to %
+    if div is not None:
+        div = div * 100
+
+    # Sector (info still works for this)
     try:
-        yf_t = yf.Ticker(ticker)
+        sector = t.info.get("sector")
+    except:
+        sector = "Unknown"
 
-        # New YFinance API (2024+)
-        try:
-            info = yf_t.get_info()
-        except:
-            info = {}
-
-        # Fast info fallback
-        fi = yf_t.fast_info or {}
-
-        return pd.DataFrame([{
-            "PE": info.get("trailingPE") or fi.get("pe_ratio"),
-            "PB": info.get("priceToBook") or fi.get("pb_ratio"),
-            "DividendYield": info.get("dividendYield") or fi.get("dividend_yield"),
-            "Beta": info.get("beta") or fi.get("beta"),
-            "MarketCap": info.get("marketCap") or fi.get("market_cap"),
-            "Sector": info.get("sector") or "Unknown"
-        }], index=[ticker])
+    # Guard clause: replace None with 0
+    return pd.DataFrame([{
+        "PE": pe or 0,
+        "PB": pb or 0,
+        "DividendYield": div or 0,
+        "Beta": beta or 0,
+        "MarketCap": mcap or 0,
+        "Sector": sector or "Unknown"
+    }], index=[ticker])
 
     except Exception:
         return pd.DataFrame([{

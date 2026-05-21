@@ -1167,6 +1167,7 @@ with tab9:
     cov_matrix = returns_df.cov()
     opt_results = run_optimizer_cached(returns_df, cov_matrix)
     st.success("Optimization complete!")
+    st.session_state["portfolio_weights"] = opt_results["max_sharpe"]["weights"]
 
     # -----------------------------
     # Equal Weight Portfolio

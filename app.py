@@ -6,21 +6,31 @@ import yfinance as yf
 from datetime import datetime, timedelta
 
 def load_prices_and_returns(tickers):
-    import yfinance as yf
-    import pandas as pd
 
-    data = yf.download(tickers, period="1y")
+    data = yf.download(tickers, period="1y", auto_adjust=False)
 
-    # Handle MultiIndex (multiple tickers)
+    if data.empty:
+        raise ValueError("Yahoo Finance returned no data for the given tickers.")
+
     if isinstance(data.columns, pd.MultiIndex):
-        adj_close = data["Adj Close"]
+        if "Adj Close" in data.columns.get_level_values(0):
+            adj_close = data["Adj Close"]
+        elif "Close" in data.columns.get_level_values(0):
+            adj_close = data["Close"]
+        else:
+            raise KeyError("Neither 'Adj Close' nor 'Close' found.")
     else:
-        # Single ticker case
-        adj_close = data
+        if "Adj Close" in data.columns:
+            adj_close = data["Adj Close"].to_frame()
+        elif "Close" in data.columns:
+            adj_close = data["Close"].to_frame()
+        else:
+            raise KeyError("Neither 'Adj Close' nor 'Close' found.")
 
-    # Ensure DataFrame
-    if isinstance(adj_close, pd.Series):
-        adj_close = adj_close.to_frame()
+    adj_close = adj_close.dropna(axis=1, how="all")
+
+    if adj_close.empty:
+        raise ValueError("All tickers returned empty price data.")
 
     returns_df = adj_close.pct_change().dropna()
     latest_prices = adj_close.iloc[-1]
@@ -424,24 +434,19 @@ except Exception as e:
     st.error(f"Portfolio metrics failed: {e}")
     st.stop()
     
-def load_prices_and_returns(tickers):
-    """
-    Loads price history and computes returns.
-    Replace with your real loader later.
-    """
-    import yfinance as yf
-    import pandas as pd
+# ---------------------------------------------------------
+# RUN ANALYSIS — MUST BE ABOVE ALL TABS
+# ---------------------------------------------------------
+if run_button and tickers:
+    latest_prices, returns_df = load_prices_and_returns(tickers)
+    fundamentals = load_fundamentals(tickers)
 
-    data = yf.download(tickers, period="1y")["Adj Close"]
+    st.session_state["latest_prices"] = latest_prices
+    st.session_state["returns_df"] = returns_df
+    st.session_state["fundamentals"] = fundamentals
+    st.session_state["prices"] = latest_prices
+    st.session_state["tickers"] = tickers   # ⭐ REQUIRED
 
-    # Ensure DataFrame
-    if isinstance(data, pd.Series):
-        data = data.to_frame()
-
-    returns_df = data.pct_change().dropna()
-    latest_prices = data.iloc[-1]
-
-    return latest_prices, returns_df
 
 # ---------------------------------------------------------
 # RUN ANALYSIS — MUST BE ABOVE ALL TABS

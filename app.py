@@ -413,7 +413,7 @@ if run_button and tickers:
     st.session_state["latest_prices"] = latest_prices
     st.session_state["returns_df"] = returns_df
     st.session_state["fundamentals"] = fundamentals
-    st.session_state["prices"] = latest_prices  # used by Buy Analysis
+    st.session_state["prices"] = latest_prices
 
 # ---------------------------------------------------------
 # TABS START HERE

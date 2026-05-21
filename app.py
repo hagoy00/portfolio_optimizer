@@ -478,10 +478,17 @@ with tab2:
         st.info("SPY data unavailable — cannot compute rolling beta.")
 
 # ---------------------------------------------------------
-# TAB 3 — RISK & DRAWDOWN ANALYSIS
+# Tab 3 — RISK & DRAWDOWN ANALYSIS
 # ---------------------------------------------------------
 with tab3:
-    st.subheader("Risk & Drawdown Analysis")
+    st.subheader("Portfolio Weights & Shares")
+
+    # ⭐ GUARD CLAUSE ⭐
+    if "portfolio_weights" not in st.session_state:
+        st.info("Run the Optimizer tab first to calculate portfolio weights.")
+        st.stop()
+
+    portfolio_weights = st.session_state["portfolio_weights"]
 
     # === Portfolio Return Series ===
     ret = pd.Series(portfolio_returns, name="Portfolio Return")
@@ -583,7 +590,14 @@ with tab3:
 # Tab 4 Sector Exposure
 # ---------------------------------------------------------
 with tab4:
-    st.subheader("Sector Exposure")
+    st.subheader("Risk Contribution Breakdown")
+
+    # ⭐ GUARD CLAUSE ⭐
+    if "portfolio_weights" not in st.session_state:
+        st.info("Run the Optimizer tab first to calculate portfolio weights.")
+        st.stop()
+
+    portfolio_weights = st.session_state["portfolio_weights"]
 
     # Fundamentals must exist
     
@@ -619,7 +633,15 @@ with tab4:
 # Tab 5 Fundamentals
 # ---------------------------------------------------------
 with tab5:
-    st.subheader("Fundamentals")
+    st.subheader("Risk Contribution Breakdown")
+
+    # ⭐ GUARD CLAUSE ⭐
+    if "portfolio_weights" not in st.session_state:
+        st.info("Run the Optimizer tab first to calculate portfolio weights.")
+        st.stop()
+
+    portfolio_weights = st.session_state["portfolio_weights"]
+
     st.write("DEBUG — fundamentals head:")
     
     st.write(fundamentals.head())
@@ -731,7 +753,14 @@ if not isinstance(fundamentals, pd.DataFrame):
 # Tab 6 Weights
 # ---------------------------------------------------------
 with tab6:
-    st.header("Portfolio Weights")
+    st.subheader("Risk Contribution Breakdown")
+
+    # ⭐ GUARD CLAUSE ⭐
+    if "portfolio_weights" not in st.session_state:
+        st.info("Run the Optimizer tab first to calculate portfolio weights.")
+        st.stop()
+
+    portfolio_weights = st.session_state["portfolio_weights"]
 
     if len(valid_tickers) == 0:
         st.warning("No valid tickers available to assign weights.")
@@ -781,7 +810,16 @@ with tab6:
 # Tab 7 AI Commentary + Signals
 # ---------------------------------------------------------
 with tab7:
-    st.subheader("AI Portfolio Commentary")
+    
+    st.subheader("Risk Contribution Breakdown")
+
+    # ⭐ GUARD CLAUSE ⭐
+    if "portfolio_weights" not in st.session_state:
+        st.info("Run the Optimizer tab first to calculate portfolio weights.")
+        st.stop()
+
+    portfolio_weights = st.session_state["portfolio_weights"]
+
 
     # Safety check — model must exist
     model = st.session_state.get("model")
@@ -1032,7 +1070,15 @@ with tab7:
 # Tab 8 Buy Analysis
 # ---------------------------------------------------------
 with tab8:
-    st.subheader("Buy Analysis")
+    st.subheader("Risk Contribution Breakdown")
+
+    # ⭐ GUARD CLAUSE ⭐
+    if "portfolio_weights" not in st.session_state:
+        st.info("Run the Optimizer tab first to calculate portfolio weights.")
+        st.stop()
+
+    portfolio_weights = st.session_state["portfolio_weights"]
+
 
     # Safety check — model must exist
     model = st.session_state.get("model")
@@ -1140,6 +1186,7 @@ with tab8:
             st.markdown(f"- {w}")
 
         st.markdown("---")
+
 # ---------------------------------------------------------
 # Tab 9 Optimizer
 # ---------------------------------------------------------
@@ -1148,7 +1195,7 @@ def run_optimizer_cached(returns, cov):
     return run_optimizer(returns, cov)
 
 with tab9:
-    st.subheader("Optimizer")
+    st.subheader("Risk Contribution Breakdown")
 
     # Safety check — run button must be pressed
     if not run_button:
@@ -1160,13 +1207,15 @@ with tab9:
 
     # Save model for other tabs
     st.session_state["model"] = opt_results
-    
+
     # -----------------------------
     # Run Optimizer
     # -----------------------------
     cov_matrix = returns_df.cov()
     opt_results = run_optimizer_cached(returns_df, cov_matrix)
     st.success("Optimization complete!")
+
+    # ⭐ SAVE PORTFOLIO WEIGHTS FOR OTHER TABS ⭐
     st.session_state["portfolio_weights"] = opt_results["max_sharpe"]["weights"]
 
     # -----------------------------

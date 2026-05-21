@@ -183,27 +183,22 @@ if prices is None or prices.empty:
 def load_fundamentals(ticker):
     try:
         t = yf.Ticker(ticker)
-
-        # Fast info (reliable)
         fi = t.fast_info
 
-        pe = fi.get("peRatio")
-        pb = fi.get("priceToBook")
-        mcap = fi.get("marketCap")
+        pe = fi.get("pe_ratio")
+        pb = fi.get("pb_ratio")
+        mcap = fi.get("market_cap")
         beta = fi.get("beta")
-        div = fi.get("dividendYield")
+        div = fi.get("dividend_yield")
 
-        # Convert dividend yield to %
         if div is not None:
             div = div * 100
 
-        # Sector (info still works for this)
         try:
             sector = t.info.get("sector")
         except:
             sector = "Unknown"
 
-        # Guard clause: replace None with 0
         return pd.DataFrame([{
             "PE": pe or 0,
             "PB": pb or 0,
@@ -211,6 +206,16 @@ def load_fundamentals(ticker):
             "Beta": beta or 0,
             "MarketCap": mcap or 0,
             "Sector": sector or "Unknown"
+        }], index=[ticker])
+
+    except Exception:
+        return pd.DataFrame([{
+            "PE": 0,
+            "PB": 0,
+            "DividendYield": 0,
+            "Beta": 0,
+            "MarketCap": 0,
+            "Sector": "Unknown"
         }], index=[ticker])
 
     except Exception:
@@ -295,9 +300,6 @@ portfolio_returns = returns @ valid_weights if len(portfolio_tickers) > 0 else p
 
 # 7. Load fundamentals (NOW WORKS)
 fundamentals = load_fundamentals_multi(portfolio_tickers)
-
-st.write("DEBUG — fundamentals head:")
-st.write(fundamentals.head())
 
 # SAFETY CHECK
 if not isinstance(fundamentals, pd.DataFrame):
@@ -706,6 +708,9 @@ with tab4:
 # ---------------------------------------------------------
 with tab5:
     st.subheader("Fundamentals")
+    st.write("DEBUG — fundamentals head:")
+    
+    st.write(fundamentals.head())
 
     fundamentals_df = pd.DataFrame(fundamentals).T.drop("full_prices", errors="ignore")
     fundamentals_df = fundamentals_df.fillna(0)   # <--- ADD THIS LINE

@@ -534,7 +534,7 @@ with tab3:
     ax.set_title("Return Distribution with VaR")
     ax.legend()
     st.pyplot(fig)
-
+    
     # ---------------------------------------------------------
     # RISK CONTRIBUTION BREAKDOWN
     # ---------------------------------------------------------
@@ -543,10 +543,11 @@ with tab3:
     # Full returns including SPY for market stats
     returns_full = prices.pct_change().dropna()
 
-        # SAFETY CHECK — ensure portfolio_weights exists
+    # SAFETY CHECK — ensure portfolio_weights exists
     if "portfolio_weights" not in globals() or portfolio_weights is None:
         st.info("Portfolio weights not yet calculated. Go to the Optimizer tab first.")
         st.stop()
+
     # === Compute Covariance Matrix ===
     cov_matrix = returns_full[portfolio_tickers].cov()
 

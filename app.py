@@ -686,9 +686,10 @@ if fundamentals is None:
 if isinstance(fundamentals, dict):
     fundamentals = pd.DataFrame(fundamentals).T
 
-st.dataframe(vol_df.style.format({
-    "Value": "{:.2%}"
-}))
+# SAFETY CHECK — ADD THIS HERE
+if not isinstance(fundamentals, pd.DataFrame):
+    st.error("Fundamentals loader returned invalid data.")
+    st.stop()
 
 # ---------------------------------------------------------
 # SAFETY CHECK — ADD THIS HERE

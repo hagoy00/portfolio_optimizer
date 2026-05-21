@@ -115,9 +115,6 @@ def load_price_data(tickers, start, end):
             progress=False,
             group_by="ticker"
         )
-        
-st.write("DEBUG — prices shape:", prices.shape)
-st.write(prices.head())
 
         if raw is None or raw.empty:
             return pd.DataFrame()

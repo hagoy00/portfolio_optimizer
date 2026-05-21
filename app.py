@@ -429,6 +429,7 @@ except Exception as e:
 # ---------------------------------------------------------
 if run_button and tickers:
     latest_prices, returns_df = load_prices_and_returns(tickers)
+  
     fundamentals = load_fundamentals(tickers)
 
     st.session_state["latest_prices"] = latest_prices

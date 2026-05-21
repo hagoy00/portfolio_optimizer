@@ -543,7 +543,7 @@ with tab3:
     # Full returns including SPY for market stats
     returns_full = prices.pct_change().dropna()
 
-        # === Compute Covariance Matrix ===
+    # === Compute Covariance Matrix ===
     cov_matrix = returns_full[portfolio_tickers].cov()
 
     # === Portfolio Weights (ensure numpy array) ===
@@ -575,10 +575,6 @@ with tab3:
             "RiskContribution": "{:.2%}"
         })
     )
-
-    # Compute risk metrics (your existing logic goes here)
-    # Example placeholder:
-    # st.dataframe(risk_df)                                                                                    
 
 # ---------------------------------------------------------
 # Tab 4 Sector Exposure

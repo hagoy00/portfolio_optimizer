@@ -105,54 +105,60 @@ run_button = st.sidebar.button("Run Analysis")
 mc_sims = st.sidebar.slider("Monte Carlo Simulations", 200, 3000, 500)
 mc_horizon = st.sidebar.slider("Monte Carlo Horizon (days)", 50, 500, 252)
 
-# ---------------------------------------------------------
-# Load Price Data (robust loader + SPY auto-include)
-# ---------------------------------------------------------
 def load_price_data(tickers, start, end):
     try:
-        raw = yf.download(tickers, start=start, end=end, auto_adjust=False)
+        raw = yf.download(
+            tickers,
+            start=start,
+            end=end,
+            auto_adjust=False,
+            progress=False,
+            group_by="ticker"
+        )
+        
+st.write("DEBUG — prices shape:", prices.shape)
+st.write(prices.head())
 
         if raw is None or raw.empty:
             return pd.DataFrame()
 
         # ---------------------------------------------------------
-        # CASE 1 — MultiIndex (most common for multiple tickers)
+        # MULTI-TICKER (MultiIndex)
         # ---------------------------------------------------------
         if isinstance(raw.columns, pd.MultiIndex):
 
-            # Normalize column names to lowercase
-            raw.columns = pd.MultiIndex.from_tuples(
-                [(lvl0.lower(), lvl1) for lvl0, lvl1 in raw.columns]
-            )
+            # Case 1: Level 0 contains fields (Adj Close, Close, etc.)
+            if "Adj Close" in raw.columns.get_level_values(0):
+                adj = raw["Adj Close"]
 
-            # Try adjclose first
-            if "adj close" in raw.columns.get_level_values(0):
-                adj = raw["adj close"]
+            # Case 2: Level 1 contains fields
+            elif "Adj Close" in raw.columns.get_level_values(1):
+                adj = raw.xs("Adj Close", level=1, axis=1)
 
-            # Try close
-            elif "close" in raw.columns.get_level_values(0):
-                adj = raw["close"]
+            # Fallback to Close
+            elif "Close" in raw.columns.get_level_values(1):
+                adj = raw.xs("Close", level=1, axis=1)
 
             else:
-                raise ValueError("No close or adjclose column found in MultiIndex data")
+                return pd.DataFrame()
 
         # ---------------------------------------------------------
-        # CASE 2 — SingleIndex (single ticker)
+        # SINGLE-TICKER (flat columns)
         # ---------------------------------------------------------
         else:
-            # Normalize to lowercase
-            raw.columns = [c.lower().replace(" ", "") for c in raw.columns]
-
-            if "adjclose" in raw.columns:
-                adj = raw["adjclose"]
-            elif "close" in raw.columns:
-                adj = raw["close"]
+            if "Adj Close" in raw.columns:
+                adj = raw["Adj Close"]
+            elif "Close" in raw.columns:
+                adj = raw["Close"]
             else:
-                raise ValueError("No close or adjclose column found in single-index data")
+                return pd.DataFrame()
 
         # Ensure DataFrame
         if isinstance(adj, pd.Series):
             adj = adj.to_frame()
+
+        # Keep only requested tickers
+        adj = adj[[t for t in tickers if t in adj.columns]]
 
         return adj
 
@@ -160,23 +166,6 @@ def load_price_data(tickers, start, end):
         st.error(f"Price load failed: {e}")
         return pd.DataFrame()
 
-        # Ensure DataFrame
-        if isinstance(adj, pd.Series):
-            adj = adj.to_frame()
-
-        return adj
-
-    except Exception as e:
-        st.error(f"Price load failed: {e}")
-        return pd.DataFrame()
-
-# Load user tickers
-prices = load_price_data(tickers, start_date, end_date)
-
-if prices is None or prices.empty:
-    st.error("Price data could not be loaded.")
-    st.stop()
-    
 # ---------------------------------------------------------
 # SINGLE‑TICKER FUNDAMENTALS LOADER (MODERN + RELIABLE)
 # ---------------------------------------------------------

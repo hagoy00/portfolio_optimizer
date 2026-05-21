@@ -540,10 +540,12 @@ with tab3:
     returns_full = prices.pct_change().dropna()
 
     # SAFETY CHECK — ensure portfolio_weights exists
-    if "portfolio_weights" not in globals() or portfolio_weights is None:
-        st.info("Portfolio weights not yet calculated. Go to the Optimizer tab first.")
+    if "portfolio_weights" not in st.session_state:
+        st.info("Run the Optimizer tab first to calculate portfolio weights.")
         st.stop()
 
+    portfolio_weights = st.session_state["portfolio_weights"]
+            
     # === Compute Covariance Matrix ===
     cov_matrix = returns_full[portfolio_tickers].cov()
 

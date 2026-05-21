@@ -95,6 +95,11 @@ if not tickers:
 end_date = st.sidebar.date_input("End Date", value=datetime.today())
 start_date = st.sidebar.date_input("Start Date", value=end_date - timedelta(days=365))
 
+prices = load_price_data(tickers, start_date, end_date)
+
+st.write("DEBUG — prices shape:", prices.shape)
+st.write(prices.head())
+
 if start_date >= end_date:
     st.sidebar.error("Start date must be before end date.")
     st.stop()

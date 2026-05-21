@@ -1103,28 +1103,24 @@ def run_optimizer_cached(returns, cov):
 with tab9:
     st.subheader("Optimizer")
 
-    # -----------------------------------------------------
-    # SAFETY CHECK — User must press Run Analysis
-    # -----------------------------------------------------
-    if not run_button:
-        st.info("Run Analysis to generate optimizer results.")
+    # Correct guard clause
+    if "returns_df" not in st.session_state:
+        st.info("Run Analysis first to load data.")
         st.stop()
 
-    # -----------------------------------------------------
-    # RUN OPTIMIZER ONCE
-    # -----------------------------------------------------
+    returns_df = st.session_state["returns_df"]
+
+    # Run optimizer
     cov_matrix = returns_df.cov()
     opt_results = run_optimizer_cached(returns_df, cov_matrix)
 
-    # -----------------------------------------------------
-    # SAVE RESULTS FOR OTHER TABS
-    # -----------------------------------------------------
+    # Save results
     st.session_state["model"] = opt_results
-    st.session_state["returns_df"] = returns_df
     st.session_state["portfolio_weights"] = opt_results["max_sharpe"]["weights"]
+    st.session_state["returns_df"] = returns_df
 
     st.success("Optimization complete!")
-
+    
     # -----------------------------------------------------
     # EQUAL WEIGHT PORTFOLIO
     # -----------------------------------------------------

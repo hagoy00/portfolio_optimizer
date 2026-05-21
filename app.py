@@ -543,9 +543,42 @@ with tab3:
     # Full returns including SPY for market stats
     returns_full = prices.pct_change().dropna()
 
+        # === Compute Covariance Matrix ===
+    cov_matrix = returns_full[portfolio_tickers].cov()
+
+    # === Portfolio Weights (ensure numpy array) ===
+    w = np.array(portfolio_weights)
+
+    # === Total Portfolio Variance ===
+    portfolio_var = np.dot(w.T, np.dot(cov_matrix, w))
+    portfolio_vol = np.sqrt(portfolio_var)
+
+    # === Marginal Contribution to Risk (MCTR) ===
+    mctr = np.dot(cov_matrix, w) / portfolio_vol
+
+    # === Risk Contribution (RC) ===
+    rc = w * mctr
+
+    # === Normalize to % of total risk ===
+    rc_pct = rc / rc.sum()
+
+    # === Build DataFrame ===
+    risk_df = pd.DataFrame({
+        "Ticker": portfolio_tickers,
+        "Weight": w,
+        "RiskContribution": rc_pct
+    })
+
+    st.dataframe(
+        risk_df.style.format({
+            "Weight": "{:.2%}",
+            "RiskContribution": "{:.2%}"
+        })
+    )
+
     # Compute risk metrics (your existing logic goes here)
     # Example placeholder:
-    # st.dataframe(risk_df)
+    # st.dataframe(risk_df)                                                                                    
 
 # ---------------------------------------------------------
 # Tab 4 Sector Exposure

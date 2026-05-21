@@ -404,6 +404,18 @@ except Exception as e:
     st.stop()
 
 # ---------------------------------------------------------
+# RUN ANALYSIS — MUST BE ABOVE ALL TABS
+# ---------------------------------------------------------
+if run_button and tickers:
+    latest_prices, returns_df = load_prices_and_returns(tickers)
+    fundamentals = load_fundamentals(tickers)
+
+    st.session_state["latest_prices"] = latest_prices
+    st.session_state["returns_df"] = returns_df
+    st.session_state["fundamentals"] = fundamentals
+    st.session_state["prices"] = latest_prices  # used by Buy Analysis
+
+# ---------------------------------------------------------
 # TABS START HERE
 # ---------------------------------------------------------
 tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
@@ -417,6 +429,7 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
     "Buy Analysis",
     "Optimizer"
 ])
+
 
 # ---------------------------------------------------------
 # TAB 1 — OVERVIEW

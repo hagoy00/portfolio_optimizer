@@ -332,127 +332,50 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
 ])
 
 # ---------------------------------------------------------
-# TAB 3 — RISK & DRAWDOWN ANALYSIS (FINAL VERSION)
+# TAB 1 — OVERVIEW (FINAL CLEAN VERSION)
 # ---------------------------------------------------------
-with tab3:
-    st.header("Risk & Drawdown Analysis")
+with tab1:
+    st.header("Portfolio Overview")
+
+    # --- FIRST ROW OF METRICS ---
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Annual Return", f"{annual_return:.2%}")
+    with col2:
+        st.metric("Volatility", f"{annual_volatility:.2%}")
+    with col3:
+        st.metric("Sharpe Ratio", f"{sharpe_ratio:.2f}")
+
+    # --- SECOND ROW OF METRICS ---
+    col4, col5, col6 = st.columns(3)
+    with col4:
+        st.metric("Max Drawdown", f"{max_drawdown:.2%}")
+    with col5:
+        st.metric("Beta vs SPY", f"{portfolio_beta:.2f}")
+    with col6:
+        st.metric("Number of Holdings", len(valid_tickers))
 
     # ---------------------------------------------------------
-    # SAFETY CHECKS
+    # PRICE CHART (OPTIONAL BUT USEFUL)
     # ---------------------------------------------------------
-    if returns_df.empty:
-        st.error("Return data unavailable. Check price loader.")
-        st.stop()
+    st.subheader("Price History")
 
-    # ---------------------------------------------------------
-    # PORTFOLIO RETURNS (EQUAL-WEIGHT, ALWAYS VALID)
-    # ---------------------------------------------------------
-    portfolio_returns = returns_df.mean(axis=1)
-    ret = pd.Series(portfolio_returns, name="Portfolio Return")
+    fig = go.Figure()
+    for t in valid_tickers:
+        fig.add_trace(go.Scatter(
+            x=prices.index,
+            y=prices[t],
+            mode="lines",
+            name=t
+        ))
 
-    # ---------------------------------------------------------
-    # DRAWDOWN
-    # ---------------------------------------------------------
-    cum_ret = (1 + ret).cumprod()
-    running_max = cum_ret.cummax()
-    drawdown = (cum_ret - running_max) / running_max
-    max_dd = drawdown.min()
+    fig.update_layout(
+        height=400,
+        title="Price History",
+        legend=dict(orientation="h", yanchor="bottom", y=-0.3)
+    )
 
-    # ---------------------------------------------------------
-    # ROLLING VOLATILITY
-    # ---------------------------------------------------------
-    rolling_vol = ret.rolling(30).std() * np.sqrt(252)
-
-    # ---------------------------------------------------------
-    # BETA VS SPY (FROM STEP 4)
-    # ---------------------------------------------------------
-    beta_value = portfolio_beta if not np.isnan(portfolio_beta) else 0.0
-
-    # ---------------------------------------------------------
-    # VAR & CVAR
-    # ---------------------------------------------------------
-    var_95 = np.percentile(ret.dropna(), 5)
-    cvar_95 = ret[ret <= var_95].mean() if len(ret[ret <= var_95]) > 0 else 0
-
-    # ---------------------------------------------------------
-    # DISPLAY METRICS
-    # ---------------------------------------------------------
-    colA, colB, colC, colD = st.columns(4)
-    colA.metric("Max Drawdown", f"{max_dd:.2%}")
-    colB.metric("Rolling Vol (30d)", f"{rolling_vol.iloc[-1]:.2%}")
-    colC.metric("Beta vs SPY", f"{beta_value:.2f}")
-    colD.metric("CVaR (95%)", f"{cvar_95:.2%}")
-
-    # ---------------------------------------------------------
-    # CHARTS
-    # ---------------------------------------------------------
-    st.markdown("### Drawdown")
-    st.area_chart(drawdown)
-
-    st.markdown("### Rolling Volatility (30-day)")
-    st.line_chart(rolling_vol)
-
-    st.markdown("### Distribution of Daily Returns (for VaR)")
-    fig, ax = plt.subplots()
-    ax.hist(ret.dropna(), bins=40, alpha=0.7)
-    ax.axvline(var_95, color="red", linestyle="--", label=f"VaR 95%: {var_95:.2%}")
-    ax.set_title("Return Distribution with VaR")
-    ax.legend()
-    st.pyplot(fig)
-
-    # ---------------------------------------------------------
-    # TRUE RISK CONTRIBUTION (MCTR-BASED)
-    # ---------------------------------------------------------
-    st.markdown("### Risk Contribution Breakdown")
-
-    try:
-        if "weights" not in st.session_state:
-            st.info("Weights not set yet. Go to the Optimizer or Weights tab to set weights.")
-        else:
-            weights = np.array(st.session_state.weights, dtype=float)
-
-            # Align weights with valid tickers
-            if len(weights) != len(valid_tickers):
-                st.warning("Weights length does not match number of valid tickers. Using equal weights instead.")
-                weights = np.array([1/len(valid_tickers)] * len(valid_tickers))
-
-            cov_matrix = returns_df[valid_tickers].cov().values
-
-            # Portfolio volatility
-            portfolio_volatility = np.sqrt(weights.T @ cov_matrix @ weights)
-
-            if portfolio_volatility <= 0 or np.isnan(portfolio_volatility):
-                st.warning("Portfolio volatility is zero or NaN. Cannot compute risk contribution.")
-            else:
-                # Marginal Contribution to Risk
-                mctr = (cov_matrix @ weights) / portfolio_volatility
-
-                # Risk Contribution
-                risk_contribution = weights * mctr
-
-                # Normalize to 100%
-                risk_contribution = risk_contribution / risk_contribution.sum()
-
-                # Display Pie Chart
-                fig2, ax2 = plt.subplots()
-                ax2.pie(
-                    risk_contribution,
-                    labels=valid_tickers,
-                    autopct="%1.1f%%",
-                    startangle=90
-                )
-                ax2.axis("equal")
-                st.pyplot(fig2)
-
-                # Display Table
-                rc_df = pd.DataFrame({
-                    "Ticker": valid_tickers,
-                    "Risk Contribution %": (risk_contribution * 100).round(2)
-                })
-                st.dataframe(rc_df, use_container_width=True)
-
-    except Exception as e:
-        st.error(f"Risk Contribution failed: {e}")
+    st.plotly_chart(fig, use_container_width=True)
 
 # ---------------------------------------------------------
 # Performance Tab TAB 2

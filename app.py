@@ -170,18 +170,24 @@ valid_tickers = list(returns_df.columns)
 @st.cache_data
 def load_fundamentals_auto(tickers):
     fundamentals = {}
+
     for t in tickers:
         try:
-            info = yf.Ticker(t).info
+            yf_t = yf.Ticker(t)
+
+            fast = yf_t.fast_info
+            info = yf_t.get_info()  # safer than .info
+
             fundamentals[t] = {
-                "PE": info.get("trailingPE"),
-                "PB": info.get("priceToBook"),
-                "DividendYield": info.get("dividendYield"),
+                "PE": fast.get("trailing_pe") or info.get("trailingPE"),
+                "PB": fast.get("price_to_book") or info.get("priceToBook"),
+                "DividendYield": fast.get("dividend_yield") or info.get("dividendYield"),
                 "Beta": info.get("beta"),
-                "MarketCap": info.get("marketCap"),
-                "Sector": info.get("sector", "Unknown")
+                "MarketCap": fast.get("market_cap") or info.get("marketCap"),
+                "Sector": info.get("sector") or "Unknown"
             }
-        except:
+
+        except Exception:
             fundamentals[t] = {
                 "PE": None,
                 "PB": None,
@@ -190,6 +196,7 @@ def load_fundamentals_auto(tickers):
                 "MarketCap": None,
                 "Sector": "Unknown"
             }
+
     return fundamentals
 
 # Load fundamentals for valid tickers

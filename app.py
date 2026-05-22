@@ -4,13 +4,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import yfinance as yf
 from datetime import datetime, timedelta
-
-from utils.data_loader import load_price_data
-from utils.fundamentals_loader import load_fundamentals
-from utils.optimizer_core import run_optimizer
-from utils.buy_analysis import run_buy_analysis
-from utils.analytics import run_monte_carlo_simulation
 import plotly.graph_objects as go
+from scipy.optimize import minimize
 
 # ---------------------------------------------------------
 # Page config + sticky header
@@ -34,7 +29,7 @@ st.markdown("""
     font-weight: 900;
     color: #1E90FF;
 
-    text-align: center;   /* ⭐ CENTER THE TITLE */
+    text-align: center;
 
     border-bottom: 1px solid #E5E5E5;
     box-shadow: 0 1px 4px rgba(0,0,0,0.10);
@@ -42,17 +37,14 @@ st.markdown("""
     z-index: 9999;
 }
 
-/* Remove Streamlit header */
 header[data-testid="stHeader"] {
     display: none !important;
 }
 
-/* Remove white overlay */
 div[data-testid="stAppViewContainer"] {
     background-color: transparent !important;
 }
 
-/* Push content down */
 div[data-testid="stAppViewContainer"] .block-container {
     padding-top: 100px !important;
 }
@@ -74,7 +66,6 @@ def safe_val(x):
     except:
         pass
     return x
-import yfinance as yf
 
 # ---------------------------------------------------------
 # Sidebar inputs
@@ -105,8 +96,9 @@ mc_sims = st.sidebar.slider("Monte Carlo Simulations", 200, 3000, 500)
 mc_horizon = st.sidebar.slider("Monte Carlo Horizon (days)", 50, 500, 252)
 
 # ---------------------------------------------------------
-# Load Price Data (robust loader + SPY auto-include)
+# Load Price Data (robust loader)
 # ---------------------------------------------------------
+@st.cache_data
 def load_price_data(tickers, start, end):
     try:
         raw = yf.download(
@@ -120,6 +112,7 @@ def load_price_data(tickers, start, end):
         if raw is None or raw.empty:
             return pd.DataFrame()
 
+        # Multi-index (multi-ticker)
         if isinstance(raw.columns, pd.MultiIndex):
             if "Adj Close" in raw.columns.get_level_values(0):
                 adj = raw["Adj Close"]
@@ -129,6 +122,8 @@ def load_price_data(tickers, start, end):
                 adj = raw["Close"]
             else:
                 adj = raw.xs("Close", level=1, axis=1)
+
+        # Single ticker
         else:
             if "Adj Close" in raw.columns:
                 adj = raw[["Adj Close"]]
@@ -141,19 +136,6 @@ def load_price_data(tickers, start, end):
             adj = adj.to_frame()
 
         adj = adj.dropna(axis=1, how="all")
-
-        if "SPY" not in adj.columns:
-            spy = yf.download("SPY", start=start, end=end, progress=False)
-            if isinstance(spy.columns, pd.MultiIndex):
-                if "Adj Close" in spy.columns.get_level_values(0):
-                    spy = spy["Adj Close"]
-                elif "Adj Close" in spy.columns.get_level_values(1):
-                    spy = spy.xs("Adj Close", level=1, axis=1)
-                else:
-                    spy = spy.xs("Close", level=1, axis=1)
-            else:
-                spy = spy["Adj Close"] if "Adj Close" in spy.columns else spy["Close"]
-            adj["SPY"] = spy
 
         return adj
 

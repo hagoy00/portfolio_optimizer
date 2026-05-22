@@ -287,23 +287,27 @@ rolling_max = cum_returns.cummax()
 drawdown = (cum_returns - rolling_max) / rolling_max
 max_drawdown = drawdown.min()
 
-
 # ---------------------------------------------------------
-# STEP 4 — GLOBAL COMMENTARY INPUTS
+# STEP 4 — GLOBAL COMMENTARY INPUTS (FIXED)
 # ---------------------------------------------------------
 
-# Ensure weights exist
+# Ensure weights exist (aligned to valid_tickers)
 if "weights" in st.session_state:
     commentary_weights = st.session_state.weights
 else:
     commentary_weights = np.array([1/len(valid_tickers)] * len(valid_tickers))
 
-# Build a combined fundamentals + weights table
-commentary_df = fundamentals_df.copy()
-commentary_df["Weight"] = commentary_weights
+# Build weights as a Series indexed by valid_tickers
+weights_series = pd.Series(commentary_weights, index=valid_tickers)
 
-# Remove SPY if still present
-commentary_df = commentary_df[commentary_df.index != "SPY"]
+# Align fundamentals to valid_tickers
+commentary_df = fundamentals_df.reindex(valid_tickers).copy()
+
+# Attach weights aligned by index
+commentary_df["Weight"] = weights_series.reindex(commentary_df.index)
+
+# Drop any rows with missing fundamentals if needed
+commentary_df = commentary_df.dropna(subset=["Score"])
 
 # Sort by fundamentals score
 commentary_df = commentary_df.sort_values("Score", ascending=False)

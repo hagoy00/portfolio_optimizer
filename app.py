@@ -598,7 +598,9 @@ with tab4:
     fundamentals_df["Sector"] = fundamentals_df["Sector"].fillna("Unknown")
 
     # Use sidebar tickers (valid_tickers)
-    fdf = fundamentals_df.reindex(valid_tickers)
+    #fdf = fundamentals_df.reindex(valid_tickers)
+    fdf = fundamentals_df.reindex(valid_tickers).copy()
+    fdf["Sector"] = fdf["Sector"].fillna("Unknown")
 
     # Load weights from session_state
     if "weights" in st.session_state:

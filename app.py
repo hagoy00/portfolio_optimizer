@@ -61,16 +61,13 @@ def load_prices_and_returns(tickers):
 # ---------------------------------------------------------
 st.sidebar.header("Portfolio Settings")
 
-# Normalize tickers from text input
-if tickers_input.strip() == "":
-    tickers = []
-else:
-    tickers = [t.strip().upper() for t in tickers_input.replace(",", " ").split() if t.strip()]
+# Normalize tickers from text input (spaces or commas)
+tickers_raw = st.sidebar.text_input(
+    "Tickers (space or comma separated)",
+    value="AAPL MSFT GOOGL"
+)
 
-if "," in tickers_input:
-    tickers = [t.strip().upper() for t in tickers_input.split(",") if t.strip()]
-else:
-    tickers = [t.strip().upper() for t in tickers_input.split(" ") if t.strip()]
+tickers = [t.strip().upper() for t in tickers_raw.replace(",", " ").split() if t.strip()]
 
 run_button = st.sidebar.button("Run Analysis")
 

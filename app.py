@@ -658,8 +658,9 @@ with tab5:
     commentary = [f"- **{ticker}**: score {row['score']:.1f}" for ticker, row in ranked_df.iterrows()]
     st.markdown("\n".join(commentary))
 
+
 # ---------------------------------------------------------
-# Weights
+# TAB 6 — PORTFOLIO WEIGHTS (FULLY FIXED VERSION)
 # ---------------------------------------------------------
 with tab6:
     st.header("Portfolio Weights")
@@ -669,35 +670,43 @@ with tab6:
         st.stop()
 
     # ---------------------------------------------------------
-    # DEFAULT WEIGHTS (equal weight for all valid tickers)
+    # INITIALIZE SESSION STATE WEIGHTS (only once)
     # ---------------------------------------------------------
-    weights_dict = {t: 1/len(valid_tickers) for t in valid_tickers}
+    if "weights" not in st.session_state or len(st.session_state.weights) != len(valid_tickers):
+        st.session_state.weights = np.array(
+            [1 / len(valid_tickers)] * len(valid_tickers),
+            dtype=float
+        )
 
     st.subheader("Adjust Weights")
 
     # ---------------------------------------------------------
     # SLIDERS — USER-ADJUSTABLE WEIGHTS
     # ---------------------------------------------------------
-    for t in valid_tickers:
-        weights_dict[t] = st.slider(
+    new_weights = []
+    for i, t in enumerate(valid_tickers):
+        w_val = st.slider(
             f"{t} Weight",
             min_value=0.0,
             max_value=1.0,
-            value=float(weights_dict[t]),
-            key=f"weight_{t}"
+            value=float(st.session_state.weights[i]),
+            key=f"weight_slider_{t}"
         )
+        new_weights.append(w_val)
 
     # ---------------------------------------------------------
-    # NORMALIZE WEIGHTS (so they sum to 1)
+    # NORMALIZE WEIGHTS (sum to 1)
     # ---------------------------------------------------------
-    total = sum(weights_dict.values())
+    new_weights = np.array(new_weights, dtype=float)
+    total = new_weights.sum()
+
     if total > 0:
-        weights_dict = {t: weight/total for t, weight in weights_dict.items()}
+        new_weights = new_weights / total
+    else:
+        new_weights = np.array([1 / len(valid_tickers)] * len(valid_tickers))
 
-    # ---------------------------------------------------------
-    # CONVERT TO NUMPY ARRAY (for portfolio math)
-    # ---------------------------------------------------------
-    w = np.array([weights_dict[t] for t in valid_tickers])
+    # SAVE BACK TO SESSION STATE
+    st.session_state.weights = new_weights
 
     # ---------------------------------------------------------
     # DISPLAY WEIGHTS TABLE
@@ -705,9 +714,10 @@ with tab6:
     st.subheader("Final Normalized Weights")
     weights_df = pd.DataFrame({
         "Ticker": valid_tickers,
-        "Weight": [weights_dict[t] for t in valid_tickers]
+        "Weight": st.session_state.weights
     })
     st.dataframe(weights_df, use_container_width=True)
+
 # ---------------------------------------------------------
 # AI Commentary + Signals
 # ---------------------------------------------------------

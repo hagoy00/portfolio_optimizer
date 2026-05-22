@@ -364,7 +364,7 @@ with tab1:
         ax.axis("equal")
         st.pyplot(fig)
 # ---------------------------------------------------------
-# Performance Tab
+# Performance Tab TAB 2
 # ---------------------------------------------------------
 with tab2:
     st.subheader("Performance Metrics")
@@ -501,6 +501,9 @@ with tab3:
         )
         ax2.axis("equal")
         st.pyplot(fig2)
+# ---------------------------------------------------------
+# Sector Exposure Tab TAB 4
+# ---------------------------------------------------------
 with tab4:
     st.subheader("Sector Exposure")
 

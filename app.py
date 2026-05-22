@@ -378,26 +378,37 @@ with tab1:
     st.plotly_chart(fig, use_container_width=True)
 
 # ---------------------------------------------------------
-# Performance Tab TAB 2
+# TAB 2 — PERFORMANCE (FINAL VERSION)
 # ---------------------------------------------------------
 with tab2:
-    st.subheader("Performance Metrics")
+    st.header("Performance Metrics")
 
-    # Use aligned portfolio returns
+    # ---------------------------------------------------------
+    # PORTFOLIO RETURNS (EQUAL-WEIGHT, ALWAYS VALID)
+    # ---------------------------------------------------------
+    portfolio_returns = returns_df.mean(axis=1)
     ret = pd.Series(portfolio_returns, name="Portfolio Return")
 
-    # Cumulative return
+    # ---------------------------------------------------------
+    # CUMULATIVE RETURN
+    # ---------------------------------------------------------
     cum_ret = (1 + ret).cumprod()
 
-    # Rolling metrics
+    # ---------------------------------------------------------
+    # ROLLING METRICS
+    # ---------------------------------------------------------
     rolling_vol = ret.rolling(30).std() * np.sqrt(252)
     rolling_sharpe = (ret.rolling(30).mean() * 252) / rolling_vol
 
-    # Drawdown
+    # ---------------------------------------------------------
+    # DRAWDOWN
+    # ---------------------------------------------------------
     cum_max = cum_ret.cummax()
     dd = (cum_ret - cum_max) / cum_max
 
-    # Performance stats
+    # ---------------------------------------------------------
+    # PERFORMANCE STATISTICS
+    # ---------------------------------------------------------
     mu = ret.mean() * 252
     vol = ret.std() * np.sqrt(252)
     sharpe_local = mu / vol if vol > 0 else 0
@@ -405,7 +416,9 @@ with tab2:
     calmar = mu / abs(dd.min()) if dd.min() != 0 else 0
     max_dd = dd.min()
 
-    # Display metrics
+    # ---------------------------------------------------------
+    # DISPLAY METRICS
+    # ---------------------------------------------------------
     colA, colB, colC, colD, colE, colF = st.columns(6)
     colA.metric("Expected Return", f"{mu:.2%}")
     colB.metric("Volatility", f"{vol:.2%}")
@@ -414,7 +427,9 @@ with tab2:
     colE.metric("Calmar Ratio", f"{calmar:.2f}")
     colF.metric("Max Drawdown", f"{max_dd:.2%}")
 
-    # Charts
+    # ---------------------------------------------------------
+    # CHARTS
+    # ---------------------------------------------------------
     st.markdown("### Cumulative Return")
     st.line_chart(cum_ret)
 
@@ -428,11 +443,12 @@ with tab2:
     st.area_chart(dd)
 
     st.markdown("### Distribution of Daily Returns")
-    hist_data = pd.Series(portfolio_returns).dropna()
+    hist_data = ret.dropna()
     fig, ax = plt.subplots()
     ax.hist(hist_data, bins=40, alpha=0.7)
     ax.set_title("Histogram of Daily Returns")
     st.pyplot(fig)
+
 
 # ---------------------------------------------------------
 # TAB 3 — RISK & DRAWDOWN ANALYSIS (FINAL VERSION)

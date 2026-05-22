@@ -111,37 +111,79 @@ import yfinance as yf
 # ---------------------------------------------------------
 def load_price_data(tickers, start, end):
     try:
-        raw = yf.download(tickers, start=start, end=end)
+        raw = yf.download(
+            tickers,
+            start=start,
+            end=end,
+            auto_adjust=False,
+            progress=False
+        )
 
         if raw is None or raw.empty:
             return pd.DataFrame()
 
-        # MultiIndex case
+        # ---------------------------------------------------------
+        # MULTI-INDEX FORMAT
+        # ---------------------------------------------------------
         if isinstance(raw.columns, pd.MultiIndex):
-            # Case: ('Adj Close', 'AAPL')
+
+            # Case 1: ('Adj Close', 'AAPL')
             if "Adj Close" in raw.columns.get_level_values(0):
                 adj = raw["Adj Close"]
 
-            # Case: ('AAPL', 'Adj Close')
+            # Case 2: ('AAPL', 'Adj Close')
             elif "Adj Close" in raw.columns.get_level_values(1):
                 adj = raw.xs("Adj Close", level=1, axis=1)
 
-            # Fallback to Close
-            else:
+            # Case 3: fallback to Close (both orientations)
+            elif "Close" in raw.columns.get_level_values(0):
+                adj = raw["Close"]
+
+            elif "Close" in raw.columns.get_level_values(1):
                 adj = raw.xs("Close", level=1, axis=1)
 
+            else:
+                return pd.DataFrame()
+
+        # ---------------------------------------------------------
+        # SINGLE-INDEX FORMAT
+        # ---------------------------------------------------------
         else:
-            # Single-level columns
             if "Adj Close" in raw.columns:
-                adj = raw["Adj Close"]
+                adj = raw[["Adj Close"]]
+                adj.columns = [tickers[0]]
             elif "Close" in raw.columns:
-                adj = raw["Close"]
+                adj = raw[["Close"]]
+                adj.columns = [tickers[0]]
             else:
                 return pd.DataFrame()
 
         # Ensure DataFrame
         if isinstance(adj, pd.Series):
             adj = adj.to_frame()
+
+        # Drop empty columns
+        adj = adj.dropna(axis=1, how="all")
+
+        # ---------------------------------------------------------
+        # AUTO-INCLUDE SPY FOR BETA CALCULATION
+        # ---------------------------------------------------------
+        if "SPY" not in adj.columns:
+            spy = yf.download("SPY", start=start, end=end, progress=False)
+
+            if isinstance(spy.columns, pd.MultiIndex):
+                if "Adj Close" in spy.columns.get_level_values(0):
+                    spy = spy["Adj Close"]
+                elif "Adj Close" in spy.columns.get_level_values(1):
+                    spy = spy.xs("Adj Close", level=1, axis=1)
+                elif "Close" in spy.columns.get_level_values(0):
+                    spy = spy["Close"]
+                else:
+                    spy = spy.xs("Close", level=1, axis=1)
+            else:
+                spy = spy["Adj Close"] if "Adj Close" in spy.columns else spy["Close"]
+
+            adj["SPY"] = spy
 
         return adj
 

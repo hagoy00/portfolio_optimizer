@@ -331,54 +331,49 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
     "Optimizer"
 ])
 
-
 # ---------------------------------------------------------
-# TAB 1 — OVERVIEW
+# TAB 1 — OVERVIEW (FINAL VERSION)
 # ---------------------------------------------------------
 with tab1:
-    st.subheader("Portfolio Overview")
+    st.header("Portfolio Overview")
 
-    # --- FIRST ROW OF METRICS (col1, col2, col3) ---
+    # --- FIRST ROW OF METRICS ---
     col1, col2, col3 = st.columns(3)
     with col1:
         st.metric("Annual Return", f"{annual_return:.2%}")
     with col2:
         st.metric("Volatility", f"{annual_volatility:.2%}")
-        #st.metric("Volatility", f"{portfolio_volatility:.2%}")
     with col3:
         st.metric("Sharpe Ratio", f"{sharpe_ratio:.2f}")
 
-    # --- SECOND ROW OF METRICS (col4, col5, col6) ---
+    # --- SECOND ROW OF METRICS ---
     col4, col5, col6 = st.columns(3)
     with col4:
         st.metric("Max Drawdown", f"{max_drawdown:.2%}")
     with col5:
         st.metric("Beta vs SPY", f"{portfolio_beta:.2f}")
     with col6:
-        st.metric("Diversification Score", f"{diversification_score:.1f}/10")
+        st.metric("Number of Holdings", len(valid_tickers))
 
     # ---------------------------------------------------------
-    # RISK CONTRIBUTION PIE CHART — CRASH‑PROOF VERSION
+    # RISK CONTRIBUTION PIE CHART — SAFE VERSION
     # ---------------------------------------------------------
     st.subheader("Risk Contribution Breakdown")
 
     if len(valid_tickers) == 0:
         st.info("No valid tickers available.")
     else:
-        # Equal contribution for each ticker (always valid)
+        # Equal contribution for each ticker (safe fallback)
         n = len(valid_tickers)
         risk_contribution = np.array([1.0 / n] * n, dtype=float)
 
-        # Safety: ensure non-negative and normalized
+        # Normalize
         risk_contribution = np.clip(risk_contribution, 0, None)
         total = risk_contribution.sum()
         if total == 0 or np.isnan(total):
             risk_contribution = np.array([1.0 / n] * n, dtype=float)
         else:
             risk_contribution = risk_contribution / total
-
-        # Force labels to match wedge count
-        valid_tickers = valid_tickers[:len(risk_contribution)]
 
         # Render pie chart
         fig, ax = plt.subplots(figsize=(6, 6))
@@ -390,6 +385,7 @@ with tab1:
         )
         ax.axis("equal")
         st.pyplot(fig)
+
 # ---------------------------------------------------------
 # Performance Tab TAB 2
 # ---------------------------------------------------------
@@ -448,23 +444,20 @@ with tab2:
     st.pyplot(fig)
 
 # ---------------------------------------------------------
-# TAB 3 — RISK & DRAWDOWN ANALYSIS (FULLY FIXED VERSION)
+# TAB 3 — RISK & DRAWDOWN ANALYSIS (FINAL VERSION)
 # ---------------------------------------------------------
 with tab3:
-    st.subheader("Risk & Drawdown Analysis")
+    st.header("Risk & Drawdown Analysis")
 
     # ---------------------------------------------------------
     # SAFETY CHECKS
     # ---------------------------------------------------------
-    if "weights" not in st.session_state:
-        st.error("Weights not initialized. Go to the Weights tab first.")
-        st.stop()
-
     if returns_df.empty:
         st.error("Return data unavailable. Check price loader.")
         st.stop()
 
-    # Use aligned portfolio returns
+    # Use equal-weight portfolio returns (or you can later swap to weighted)
+    portfolio_returns = returns_df.mean(axis=1)
     ret = pd.Series(portfolio_returns, name="Portfolio Return")
 
     # ---------------------------------------------------------
@@ -523,40 +516,50 @@ with tab3:
     st.markdown("### Risk Contribution Breakdown")
 
     try:
-        weights = np.array(st.session_state.weights, dtype=float)
+        if "weights" not in st.session_state:
+            st.info("Weights not set yet. Go to the Optimizer or Weights tab to set weights.")
+        else:
+            weights = np.array(st.session_state.weights, dtype=float)
 
-        # Covariance matrix
-        cov_matrix = returns_df.cov().values
+            # Align weights with valid_tickers
+            if len(weights) != len(valid_tickers):
+                st.warning("Weights length does not match number of valid tickers. Using equal weights instead.")
+                weights = np.array([1/len(valid_tickers)] * len(valid_tickers))
 
-        # Portfolio volatility
-        portfolio_volatility = np.sqrt(weights.T @ cov_matrix @ weights)
+            cov_matrix = returns_df[valid_tickers].cov().values
 
-        # Marginal Contribution to Risk
-        mctr = (cov_matrix @ weights) / portfolio_volatility
+            # Portfolio volatility
+            portfolio_volatility = np.sqrt(weights.T @ cov_matrix @ weights)
 
-        # Risk Contribution
-        risk_contribution = weights * mctr
+            if portfolio_volatility <= 0 or np.isnan(portfolio_volatility):
+                st.warning("Portfolio volatility is zero or NaN. Cannot compute risk contribution.")
+            else:
+                # Marginal Contribution to Risk
+                mctr = (cov_matrix @ weights) / portfolio_volatility
 
-        # Normalize to 100%
-        risk_contribution = risk_contribution / risk_contribution.sum()
+                # Risk Contribution
+                risk_contribution = weights * mctr
 
-        # Display Pie Chart
-        fig2, ax2 = plt.subplots()
-        ax2.pie(
-            risk_contribution,
-            labels=tickers,
-            autopct="%1.1f%%",
-            startangle=90
-        )
-        ax2.axis("equal")
-        st.pyplot(fig2)
+                # Normalize to 100%
+                risk_contribution = risk_contribution / risk_contribution.sum()
 
-        # Display Table
-        rc_df = pd.DataFrame({
-            "Ticker": tickers,
-            "Risk Contribution %": (risk_contribution * 100).round(2)
-        })
-        st.dataframe(rc_df)
+                # Display Pie Chart
+                fig2, ax2 = plt.subplots()
+                ax2.pie(
+                    risk_contribution,
+                    labels=valid_tickers,
+                    autopct="%1.1f%%",
+                    startangle=90
+                )
+                ax2.axis("equal")
+                st.pyplot(fig2)
+
+                # Display Table
+                rc_df = pd.DataFrame({
+                    "Ticker": valid_tickers,
+                    "Risk Contribution %": (risk_contribution * 100).round(2)
+                })
+                st.dataframe(rc_df, use_container_width=True)
 
     except Exception as e:
         st.error(f"Risk Contribution failed: {e}")

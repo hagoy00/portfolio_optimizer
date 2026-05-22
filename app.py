@@ -61,10 +61,11 @@ def load_prices_and_returns(tickers):
 # ---------------------------------------------------------
 st.sidebar.header("Portfolio Settings")
 
-tickers_input = st.sidebar.text_input(
-    "Tickers (space or comma separated)",
-    value="AAPL MSFT GOOGL"
-)
+# Normalize tickers from text input
+if tickers_input.strip() == "":
+    tickers = []
+else:
+    tickers = [t.strip().upper() for t in tickers_input.replace(",", " ").split() if t.strip()]
 
 if "," in tickers_input:
     tickers = [t.strip().upper() for t in tickers_input.split(",") if t.strip()]

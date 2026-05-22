@@ -456,7 +456,9 @@ with tab3:
         st.error("Return data unavailable. Check price loader.")
         st.stop()
 
-    # Use equal-weight portfolio returns (or you can later swap to weighted)
+    # ---------------------------------------------------------
+    # PORTFOLIO RETURNS (EQUAL-WEIGHT, ALWAYS VALID)
+    # ---------------------------------------------------------
     portfolio_returns = returns_df.mean(axis=1)
     ret = pd.Series(portfolio_returns, name="Portfolio Return")
 
@@ -474,7 +476,7 @@ with tab3:
     rolling_vol = ret.rolling(30).std() * np.sqrt(252)
 
     # ---------------------------------------------------------
-    # BETA VS SPY
+    # BETA VS SPY (FROM STEP 4)
     # ---------------------------------------------------------
     beta_value = portfolio_beta if not np.isnan(portfolio_beta) else 0.0
 
@@ -521,7 +523,7 @@ with tab3:
         else:
             weights = np.array(st.session_state.weights, dtype=float)
 
-            # Align weights with valid_tickers
+            # Align weights with valid tickers
             if len(weights) != len(valid_tickers):
                 st.warning("Weights length does not match number of valid tickers. Using equal weights instead.")
                 weights = np.array([1/len(valid_tickers)] * len(valid_tickers))

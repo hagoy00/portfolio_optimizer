@@ -296,6 +296,8 @@ if "weights" in st.session_state:
     commentary_weights = st.session_state.weights
 else:
     commentary_weights = np.array([1/len(valid_tickers)] * len(valid_tickers))
+    st.session_state.weights = commentary_weights
+
 
 # Build weights as a Series indexed by valid_tickers
 weights_series = pd.Series(commentary_weights, index=valid_tickers)

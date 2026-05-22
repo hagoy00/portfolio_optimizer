@@ -421,49 +421,67 @@ with tab2:
     st.pyplot(fig)
 
 # ---------------------------------------------------------
-# TAB 3 — RISK & DRAWDOWN ANALYSIS (CRASH-PROOF VERSION)
+# TAB 3 — RISK & DRAWDOWN ANALYSIS (FULLY FIXED VERSION)
 # ---------------------------------------------------------
 with tab3:
     st.subheader("Risk & Drawdown Analysis")
 
+    # ---------------------------------------------------------
+    # SAFETY CHECKS
+    # ---------------------------------------------------------
+    if "weights" not in st.session_state:
+        st.error("Weights not initialized. Go to the Weights tab first.")
+        st.stop()
+
+    if returns_df.empty:
+        st.error("Return data unavailable. Check price loader.")
+        st.stop()
+
     # Use aligned portfolio returns
     ret = pd.Series(portfolio_returns, name="Portfolio Return")
 
-    # === Drawdown ===
+    # ---------------------------------------------------------
+    # DRAWDOWN
+    # ---------------------------------------------------------
     cum_ret = (1 + ret).cumprod()
     running_max = cum_ret.cummax()
     drawdown = (cum_ret - running_max) / running_max
     max_dd = drawdown.min()
 
-    # === Rolling Volatility ===
+    # ---------------------------------------------------------
+    # ROLLING VOLATILITY
+    # ---------------------------------------------------------
     rolling_vol = ret.rolling(30).std() * np.sqrt(252)
 
-    # === Portfolio Beta (use global value) ===
-    # portfolio_beta already computed globally
+    # ---------------------------------------------------------
+    # BETA VS SPY
+    # ---------------------------------------------------------
     beta_value = portfolio_beta if not np.isnan(portfolio_beta) else 0.0
 
-    # === Value at Risk (95%) ===
+    # ---------------------------------------------------------
+    # VAR & CVAR
+    # ---------------------------------------------------------
     var_95 = np.percentile(ret.dropna(), 5)
-
-    # === Conditional VaR (CVaR) ===
     cvar_95 = ret[ret <= var_95].mean() if len(ret[ret <= var_95]) > 0 else 0
 
-    # === Display Metrics ===
+    # ---------------------------------------------------------
+    # DISPLAY METRICS
+    # ---------------------------------------------------------
     colA, colB, colC, colD = st.columns(4)
     colA.metric("Max Drawdown", f"{max_dd:.2%}")
     colB.metric("Rolling Vol (30d)", f"{rolling_vol.iloc[-1]:.2%}")
     colC.metric("Beta vs SPY", f"{beta_value:.2f}")
     colD.metric("CVaR (95%)", f"{cvar_95:.2%}")
 
-    # === Drawdown Chart ===
+    # ---------------------------------------------------------
+    # CHARTS
+    # ---------------------------------------------------------
     st.markdown("### Drawdown")
     st.area_chart(drawdown)
 
-    # === Rolling Volatility Chart ===
     st.markdown("### Rolling Volatility (30-day)")
     st.line_chart(rolling_vol)
 
-    # === VaR Distribution Chart ===
     st.markdown("### Distribution of Daily Returns (for VaR)")
     fig, ax = plt.subplots()
     ax.hist(ret.dropna(), bins=40, alpha=0.7)
@@ -473,34 +491,49 @@ with tab3:
     st.pyplot(fig)
 
     # ---------------------------------------------------------
-    # RISK CONTRIBUTION — CRASH‑PROOF VERSION
+    # TRUE RISK CONTRIBUTION (MCTR-BASED)
     # ---------------------------------------------------------
     st.markdown("### Risk Contribution Breakdown")
 
-    if len(valid_tickers) == 0:
-        st.info("No valid tickers available.")
-    else:
-        n = len(valid_tickers)
-        risk_contribution = np.array([1.0 / n] * n, dtype=float)
+    try:
+        weights = np.array(st.session_state.weights, dtype=float)
 
-        risk_contribution = np.clip(risk_contribution, 0, None)
-        total = risk_contribution.sum()
-        if total == 0 or np.isnan(total):
-            risk_contribution = np.array([1.0 / n] * n, dtype=float)
-        else:
-            risk_contribution = risk_contribution / total
+        # Covariance matrix
+        cov_matrix = returns_df.cov().values
 
-        valid_tickers = valid_tickers[:len(risk_contribution)]
+        # Portfolio volatility
+        portfolio_volatility = np.sqrt(weights.T @ cov_matrix @ weights)
 
+        # Marginal Contribution to Risk
+        mctr = (cov_matrix @ weights) / portfolio_volatility
+
+        # Risk Contribution
+        risk_contribution = weights * mctr
+
+        # Normalize to 100%
+        risk_contribution = risk_contribution / risk_contribution.sum()
+
+        # Display Pie Chart
         fig2, ax2 = plt.subplots()
         ax2.pie(
             risk_contribution,
-            labels=valid_tickers,
+            labels=tickers,
             autopct="%1.1f%%",
             startangle=90
         )
         ax2.axis("equal")
         st.pyplot(fig2)
+
+        # Display Table
+        rc_df = pd.DataFrame({
+            "Ticker": tickers,
+            "Risk Contribution %": (risk_contribution * 100).round(2)
+        })
+        st.dataframe(rc_df)
+
+    except Exception as e:
+        st.error(f"Risk Contribution failed: {e}")
+
 # ---------------------------------------------------------
 # Sector Exposure Tab TAB 4
 # ---------------------------------------------------------

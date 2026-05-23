@@ -587,7 +587,7 @@ with tab3:
         st.error(f"Risk Contribution failed: {e}")
 
 # ---------------------------------------------------------
-# TAB 4 — SECTOR EXPOSURE (FINAL VERSION)
+# TAB 4 — SECTOR EXPOSURE (FINAL FIXED VERSION)
 # ---------------------------------------------------------
 with tab4:
     st.subheader("Sector Exposure")
@@ -597,31 +597,27 @@ with tab4:
         st.warning("Sector data unavailable. Run analysis first.")
         st.stop()
 
+    # Align fundamentals to valid tickers
+    fdf = fundamentals_df.reindex(valid_tickers).copy()
+
     # Ensure Sector column exists
-    if "Sector" not in fundamentals_df.columns:
-        fundamentals_df["Sector"] = "Unknown"
+    if "Sector" not in fdf.columns:
+        fdf["Sector"] = "Unknown"
 
     # Clean sector values
-    fundamentals_df["Sector"] = fundamentals_df["Sector"].fillna("Unknown")
-
-    # Use sidebar tickers (valid_tickers)
-    #fdf = fundamentals_df.reindex(valid_tickers)
-    fdf = fundamentals_df.reindex(valid_tickers).copy()
     fdf["Sector"] = fdf["Sector"].fillna("Unknown")
 
     # Load weights from session_state
     if "weights" in st.session_state:
         w = st.session_state.weights
-        if len(w) != len(valid_tickers):
-            w = np.array([1/len(valid_tickers)] * len(valid_tickers))
     else:
         w = np.array([1/len(valid_tickers)] * len(valid_tickers))
 
+    # Align weights to valid tickers
     w_series = pd.Series(w, index=valid_tickers)
 
     # Group by sector
-    sector_map = fdf["Sector"].to_dict()
-    sector_weights = w_series.groupby(sector_map).sum().sort_values(ascending=False)
+    sector_weights = w_series.groupby(fdf["Sector"]).sum().sort_values(ascending=False)
 
     # Display table
     st.markdown("### Sector Allocation Breakdown")

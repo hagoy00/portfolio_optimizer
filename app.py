@@ -175,8 +175,19 @@ def load_fundamentals_auto(tickers):
         try:
             yf_t = yf.Ticker(t)
 
+            # Modern endpoints
             fast = yf_t.fast_info
             info = yf_t.get_info()  # safer than .info
+
+            # Financial statements (fallbacks)
+            fin = yf_t.financials
+            bs = yf_t.balance_sheet
+
+            # EPS fallback
+            try:
+                eps = fin.loc["Net Income"].iloc[0] / bs.loc["Common Stock"].iloc[0]
+            except:
+                eps = None
 
             fundamentals[t] = {
                 "PE": fast.get("trailing_pe") or info.get("trailingPE"),
@@ -184,6 +195,7 @@ def load_fundamentals_auto(tickers):
                 "DividendYield": fast.get("dividend_yield") or info.get("dividendYield"),
                 "Beta": info.get("beta"),
                 "MarketCap": fast.get("market_cap") or info.get("marketCap"),
+                "EPS": eps,
                 "Sector": info.get("sector") or "Unknown"
             }
 
@@ -194,6 +206,7 @@ def load_fundamentals_auto(tickers):
                 "DividendYield": None,
                 "Beta": None,
                 "MarketCap": None,
+                "EPS": None,
                 "Sector": "Unknown"
             }
 

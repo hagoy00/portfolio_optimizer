@@ -177,7 +177,7 @@ def load_fundamentals_auto(tickers):
 
             # Modern endpoints
             fast = yf_t.fast_info
-            info = yf_t.get_info()  # safer than .info
+            info = yf_t.get_info() or {}
 
             # Financial statements (fallbacks)
             fin = yf_t.financials
@@ -189,6 +189,21 @@ def load_fundamentals_auto(tickers):
             except:
                 eps = None
 
+            # ---------------------------------------------------------
+            # NEW SECTOR EXTRACTION (STEP 1 FIX)
+            # ---------------------------------------------------------
+            try:
+                sustainability = yf_t.get_sustainability()
+                sector = (
+                    info.get("sector")
+                    or fast.get("sector")
+                    or (sustainability.columns[0] if sustainability is not None else None)
+                    or "Unknown"
+                )
+            except:
+                sector = info.get("sector") or fast.get("sector") or "Unknown"
+            # ---------------------------------------------------------
+
             fundamentals[t] = {
                 "PE": fast.get("trailing_pe") or info.get("trailingPE"),
                 "PB": fast.get("price_to_book") or info.get("priceToBook"),
@@ -196,7 +211,7 @@ def load_fundamentals_auto(tickers):
                 "Beta": info.get("beta"),
                 "MarketCap": fast.get("market_cap") or info.get("marketCap"),
                 "EPS": eps,
-                "Sector": info.get("sector") or "Unknown"
+                "Sector": sector
             }
 
         except Exception:
@@ -210,7 +225,7 @@ def load_fundamentals_auto(tickers):
                 "Sector": "Unknown"
             }
 
-    return fundamentals
+    return pd.DataFrame(fundamentals).T
 
 # Load fundamentals for valid tickers
 fundamentals_raw = load_fundamentals_auto(valid_tickers)

@@ -7,6 +7,8 @@ from datetime import datetime, timedelta
 import plotly.graph_objects as go
 from scipy.optimize import minimize
 
+st.cache_data.clear()
+
 # ---------------------------------------------------------
 # Page config + sticky header
 # ---------------------------------------------------------

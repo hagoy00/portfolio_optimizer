@@ -216,7 +216,7 @@ def load_fundamentals_auto(tickers):
                 eps = None
 
             # ---------------------------------------------------------
-            # NEW SECTOR EXTRACTION (FINAL, GUARANTEED WORKING)
+            # NEW SECTOR EXTRACTION (FINAL)
             # ---------------------------------------------------------
             sector = (
                 info.get("sector")
@@ -225,7 +225,7 @@ def load_fundamentals_auto(tickers):
                 or "Unknown"
             )
             # ---------------------------------------------------------
-            
+
             fundamentals[t] = {
                 "PE": fast.get("trailing_pe") or info.get("trailingPE"),
                 "PB": fast.get("price_to_book") or info.get("priceToBook"),
@@ -268,8 +268,6 @@ if fundamentals_df.empty:
 # Extract sectors cleanly
 sector_map = fundamentals_df["Sector"].fillna("Unknown").to_dict()
 st.write("Sectors Loaded:", fundamentals_df["Sector"])
-
-st.write("SECTOR DEBUG:", fundamentals_df["Sector"])
 
 # ---------------------------------------------------------
 # STEP 3 — Fundamentals Scoring (GLOBAL)

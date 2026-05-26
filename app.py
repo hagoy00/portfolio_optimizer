@@ -362,9 +362,6 @@ def fetch_eps(ticker):
 
     return None
 
-# ---------------------------------------------------------
-# Load a Single Ticker — FINAL
-# ---------------------------------------------------------
 def load_single_fundamental(t):
     try:
         yf_t = yf.Ticker(t)
@@ -372,7 +369,10 @@ def load_single_fundamental(t):
         fast = yf_t.fast_info
         info = yf_t.get_info() or {}
 
+        # FIXED — correct EPS loader
         eps = fetch_eps(t)
+
+        # FIXED — correct sector loader
         sector = fetch_sector(t)
 
         return t, {

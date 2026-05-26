@@ -199,20 +199,16 @@ def load_fundamentals_auto(tickers):
             except:
                 eps = None
 
-            # ---------------------------------------------------------
-            # NEW SECTOR EXTRACTION (STEP 1 FIX)
-            # ---------------------------------------------------------
-            try:
-                sustainability = yf_t.get_sustainability()
-                sector = (
-                    info.get("sector")
-                    or fast.get("sector")
-                    or (sustainability.columns[0] if sustainability is not None else None)
-                    or "Unknown"
-                )
-            except:
-                sector = info.get("sector") or fast.get("sector") or "Unknown"
-            # ---------------------------------------------------------
+# ---------------------------------------------------------
+# NEW SECTOR EXTRACTION (FINAL)
+# ---------------------------------------------------------
+sector = (
+    info.get("sector")
+    or fast.get("sector")
+    or fetch_sector_from_yahoo(t)
+    or "Unknown"
+)
+# ---------------------------------------------------------
 
             fundamentals[t] = {
                 "PE": fast.get("trailing_pe") or info.get("trailingPE"),

@@ -8,10 +8,10 @@ import requests
 from datetime import datetime, timedelta
 from scipy.optimize import minimize
 from concurrent.futures import ThreadPoolExecutor
-# … your other imports …
 
-# 🔥 FORCE CLEAR CACHE (TEMPORARY — REMOVE AFTER ONE RUN)
+st.write("THIS IS THE FILE BEING EXECUTED")
 st.cache_data.clear()
+st.cache_resource.clear()
 
 # ---------------------------------------------------------
 # Page config + sticky header

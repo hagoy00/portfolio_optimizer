@@ -251,20 +251,86 @@ def fetch_sector(ticker):
 # ---------------------------------------------------------
 
 import requests
+import yfinance as yf
+import pandas as pd
 from concurrent.futures import ThreadPoolExecutor
 
 # ---------------------------------------------------------
-# Cached Sector Lookup (Fast + Reliable)
+# Sector Override Map (Fixes Unknown Sectors)
 # ---------------------------------------------------------
-@st.cache_data(show_spinner=False)
-def cached_sector_lookup(ticker):
-    url = f"https://query2.finance.yahoo.com/v10/finance/quoteSummary/{ticker}?modules=assetProfile"
+SECTOR_OVERRIDE = {
+    "AAPL": "Technology",
+    "MSFT": "Technology",
+    "NVDA": "Technology",
+    "MU": "Technology",
+    "PLTR": "Technology",
+    "NOK": "Technology",
+    "ARM": "Technology",
+
+    "GOOG": "Communication Services",
+    "GOOGL": "Communication Services",
+    "NFLX": "Communication Services",
+    "APP": "Communication Services",
+
+    "AMZN": "Consumer Cyclical",
+    "TSLA": "Consumer Cyclical",
+
+    "JPM": "Financial Services",
+    "BAC": "Financial Services",
+    "C": "Financial Services",
+    "WFC": "Financial Services",
+    "GS": "Financial Services",
+    "MS": "Financial Services",
+}
+
+# ---------------------------------------------------------
+# Sector Fetcher — FINAL (Fixes Unknown Sectors)
+# ---------------------------------------------------------
+def fetch_sector(ticker):
+    """
+    Institutional-grade sector loader with:
+    1. Hard-coded override (fixes GOOG, JPM, banks, megacap tech)
+    2. Yahoo assetProfile API
+    3. Yahoo summaryProfile API
+    4. yfinance.info fallback
+    """
+
+    # 1 — Override FIRST (fixes all your Unknown cases)
+    if ticker in SECTOR_OVERRIDE:
+        return SECTOR_OVERRIDE[ticker]
+
+    # 2 — Yahoo assetProfile API
     try:
+        url = f"https://query2.finance.yahoo.com/v10/finance/quoteSummary/{ticker}?modules=assetProfile"
         r = requests.get(url, timeout=5)
         data = r.json()
-        return data["quoteSummary"]["result"][0]["assetProfile"]["sector"]
+        sector = data["quoteSummary"]["result"][0]["assetProfile"]["sector"]
+        if sector:
+            return sector
     except:
-        return "Unknown"
+        pass
+
+    # 3 — Yahoo summaryProfile API
+    try:
+        url = f"https://query2.finance.yahoo.com/v10/finance/quoteSummary/{ticker}?modules=summaryProfile"
+        r = requests.get(url, timeout=5)
+        data = r.json()
+        sector = data["quoteSummary"]["result"][0]["summaryProfile"]["sector"]
+        if sector:
+            return sector
+    except:
+        pass
+
+    # 4 — yfinance.info fallback
+    try:
+        info = yf.Ticker(ticker).info
+        sector = info.get("sector")
+        if sector:
+            return sector
+    except:
+        pass
+
+    return "Unknown"
 
 
 # ---------------------------------------------------------
@@ -285,13 +351,8 @@ def load_single_fundamental(t):
         except:
             eps = None
 
-        # Sector extraction (final)
-        sector = (
-            info.get("sector")
-            or fast.get("sector")
-            or cached_sector_lookup(t)
-            or "Unknown"
-        )
+        # FIXED — use the correct sector function
+        sector = fetch_sector(t)
 
         return t, {
             "PE": fast.get("trailing_pe") or info.get("trailingPE"),
@@ -322,7 +383,6 @@ def load_single_fundamental(t):
 def load_fundamentals_auto(tickers):
     fundamentals = {}
 
-    # Load 10 tickers at a time (fast + safe)
     with ThreadPoolExecutor(max_workers=10) as executor:
         for t, data in executor.map(load_single_fundamental, tickers):
             fundamentals[t] = data
@@ -345,7 +405,6 @@ if fundamentals_df.empty:
 
 # Extract sectors cleanly
 sector_map = fundamentals_df["Sector"].fillna("Unknown").to_dict()
-#st.write("Sectors Loaded:", fundamentals_df["Sector"])
 
 # ---------------------------------------------------------
 # STEP 3 — Fundamentals Scoring (GLOBAL)

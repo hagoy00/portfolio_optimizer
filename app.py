@@ -182,8 +182,13 @@ def fetch_sector_from_yahoo(ticker):
 # ---------------------------------------------------------
 
 import requests
+from concurrent.futures import ThreadPoolExecutor
 
-def fetch_sector_from_yahoo(ticker):
+# ---------------------------------------------------------
+# Cached Sector Lookup (Fast + Reliable)
+# ---------------------------------------------------------
+@st.cache_data(show_spinner=False)
+def cached_sector_lookup(ticker):
     url = f"https://query2.finance.yahoo.com/v10/finance/quoteSummary/{ticker}?modules=assetProfile"
     try:
         r = requests.get(url, timeout=5)
@@ -193,64 +198,72 @@ def fetch_sector_from_yahoo(ticker):
         return "Unknown"
 
 
+# ---------------------------------------------------------
+# Load a Single Ticker (Safe, Fast, Clean)
+# ---------------------------------------------------------
+def load_single_fundamental(t):
+    try:
+        yf_t = yf.Ticker(t)
+
+        fast = yf_t.fast_info
+        info = yf_t.get_info() or {}
+        fin = yf_t.financials
+        bs = yf_t.balance_sheet
+
+        # EPS fallback
+        try:
+            eps = fin.loc["Net Income"].iloc[0] / bs.loc["Common Stock"].iloc[0]
+        except:
+            eps = None
+
+        # Sector extraction (final)
+        sector = (
+            info.get("sector")
+            or fast.get("sector")
+            or cached_sector_lookup(t)
+            or "Unknown"
+        )
+
+        return t, {
+            "PE": fast.get("trailing_pe") or info.get("trailingPE"),
+            "PB": fast.get("price_to_book") or info.get("priceToBook"),
+            "DividendYield": fast.get("dividend_yield") or info.get("dividendYield"),
+            "Beta": info.get("beta"),
+            "MarketCap": fast.get("market_cap") or info.get("marketCap"),
+            "EPS": eps,
+            "Sector": sector
+        }
+
+    except:
+        return t, {
+            "PE": None,
+            "PB": None,
+            "DividendYield": None,
+            "Beta": None,
+            "MarketCap": None,
+            "EPS": None,
+            "Sector": "Unknown"
+        }
+
+
+# ---------------------------------------------------------
+# Parallel Batch Loader (50–200 tickers)
+# ---------------------------------------------------------
 @st.cache_data
 def load_fundamentals_auto(tickers):
     fundamentals = {}
 
-    for t in tickers:
-        try:
-            yf_t = yf.Ticker(t)
-
-            # Modern endpoints
-            fast = yf_t.fast_info
-            info = yf_t.get_info() or {}
-
-            # Financial statements (fallbacks)
-            fin = yf_t.financials
-            bs = yf_t.balance_sheet
-
-            # EPS fallback
-            try:
-                eps = fin.loc["Net Income"].iloc[0] / bs.loc["Common Stock"].iloc[0]
-            except:
-                eps = None
-
-            # ---------------------------------------------------------
-            # NEW SECTOR EXTRACTION (FINAL)
-            # ---------------------------------------------------------
-            sector = (
-                info.get("sector")
-                or fast.get("sector")
-                or fetch_sector_from_yahoo(t)
-                or "Unknown"
-            )
-            # ---------------------------------------------------------
-
-            fundamentals[t] = {
-                "PE": fast.get("trailing_pe") or info.get("trailingPE"),
-                "PB": fast.get("price_to_book") or info.get("priceToBook"),
-                "DividendYield": fast.get("dividend_yield") or info.get("dividendYield"),
-                "Beta": info.get("beta"),
-                "MarketCap": fast.get("market_cap") or info.get("marketCap"),
-                "EPS": eps,
-                "Sector": sector
-            }
-
-        except Exception:
-            fundamentals[t] = {
-                "PE": None,
-                "PB": None,
-                "DividendYield": None,
-                "Beta": None,
-                "MarketCap": None,
-                "EPS": None,
-                "Sector": "Unknown"
-            }
+    # Load 10 tickers at a time (fast + safe)
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        for t, data in executor.map(load_single_fundamental, tickers):
+            fundamentals[t] = data
 
     return pd.DataFrame(fundamentals).T
 
 
-# Load fundamentals for valid tickers
+# ---------------------------------------------------------
+# Load Fundamentals
+# ---------------------------------------------------------
 fundamentals_df = load_fundamentals_auto(valid_tickers)
 
 # Debug

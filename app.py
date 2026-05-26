@@ -249,7 +249,7 @@ def fetch_sector(ticker):
     return "Unknown"
 
 # ---------------------------------------------------------
-# STEP 2 — Load Fundamentals + Clean + Sector Extraction
+# STEP 2 — Load Fundamentals (FAST MODE)
 # ---------------------------------------------------------
 
 import requests
@@ -286,7 +286,7 @@ SECTOR_OVERRIDE = {
 }
 
 # ---------------------------------------------------------
-# Sector Fetcher — FINAL
+# Sector Loader (FAST + RELIABLE)
 # ---------------------------------------------------------
 def fetch_sector(ticker):
     if ticker in SECTOR_OVERRIDE:
@@ -296,9 +296,7 @@ def fetch_sector(ticker):
         url = f"https://query2.finance.yahoo.com/v10/finance/quoteSummary/{ticker}?modules=assetProfile"
         r = requests.get(url, timeout=5)
         data = r.json()
-        sector = data["quoteSummary"]["result"][0]["assetProfile"]["sector"]
-        if sector:
-            return sector
+        return data["quoteSummary"]["result"][0]["assetProfile"]["sector"]
     except:
         pass
 
@@ -306,28 +304,19 @@ def fetch_sector(ticker):
         url = f"https://query2.finance.yahoo.com/v10/finance/quoteSummary/{ticker}?modules=summaryProfile"
         r = requests.get(url, timeout=5)
         data = r.json()
-        sector = data["quoteSummary"]["result"][0]["summaryProfile"]["sector"]
-        if sector:
-            return sector
-    except:
-        pass
-
-    try:
-        info = yf.Ticker(ticker).info
-        sector = info.get("sector")
-        if sector:
-            return sector
+        return data["quoteSummary"]["result"][0]["summaryProfile"]["sector"]
     except:
         pass
 
     return "Unknown"
 
 # ---------------------------------------------------------
-# EPS Loader — FINAL
+# EPS Loader (FAST MODE)
 # ---------------------------------------------------------
 def fetch_eps(ticker):
     tk = yf.Ticker(ticker)
 
+    # 1 — fast_info
     try:
         eps = tk.fast_info.get("eps")
         if eps not in [None, 0]:
@@ -335,54 +324,40 @@ def fetch_eps(ticker):
     except:
         pass
 
-    try:
-        info = tk.get_info()
-        eps = info.get("trailingEps")
-        if eps not in [None, 0]:
-            return eps
-    except:
-        pass
-
+    # 2 — Yahoo API fallback
     try:
         url = f"https://query2.finance.yahoo.com/v10/finance/quoteSummary/{ticker}?modules=defaultKeyStatistics"
         r = requests.get(url, timeout=5)
         data = r.json()
-        eps = data["quoteSummary"]["result"][0]["defaultKeyStatistics"]["trailingEps"]["raw"]
-        if eps not in [None, 0]:
-            return eps
-    except:
-        pass
-
-    try:
-        earnings = tk.earnings_dates
-        if earnings is not None and "EPS Actual" in earnings.columns:
-            eps_ttm = earnings["EPS Actual"].tail(4).sum()
-            if eps_ttm not in [None, 0]:
-                return eps_ttm
+        return data["quoteSummary"]["result"][0]["defaultKeyStatistics"]["trailingEps"]["raw"]
     except:
         pass
 
     return None
 
+# ---------------------------------------------------------
+# Load a Single Ticker (FAST MODE)
+# ---------------------------------------------------------
 def load_single_fundamental(t):
     try:
         yf_t = yf.Ticker(t)
-
         fast = yf_t.fast_info
-        info = yf_t.get_info() or {}
 
-        # FIXED — correct EPS loader
+        pe = fast.get("trailing_pe")
+        pb = fast.get("price_to_book")
+        dy = fast.get("dividend_yield")
+        beta = fast.get("beta")
+        mcap = fast.get("market_cap")
+
         eps = fetch_eps(t)
-
-        # FIXED — correct sector loader
         sector = fetch_sector(t)
 
         return t, {
-            "PE": fast.get("trailing_pe") or info.get("trailingPE"),
-            "PB": fast.get("price_to_book") or info.get("priceToBook"),
-            "DividendYield": fast.get("dividend_yield") or info.get("dividendYield"),
-            "Beta": info.get("beta"),
-            "MarketCap": fast.get("market_cap") or info.get("marketCap"),
+            "PE": pe,
+            "PB": pb,
+            "DividendYield": dy,
+            "Beta": beta,
+            "MarketCap": mcap,
             "EPS": eps,
             "Sector": sector
         }

@@ -288,7 +288,7 @@ if fundamentals_df.empty:
 
 # Extract sectors cleanly
 sector_map = fundamentals_df["Sector"].fillna("Unknown").to_dict()
-st.write("Sectors Loaded:", fundamentals_df["Sector"])
+#st.write("Sectors Loaded:", fundamentals_df["Sector"])
 
 # ---------------------------------------------------------
 # STEP 3 — Fundamentals Scoring (GLOBAL)

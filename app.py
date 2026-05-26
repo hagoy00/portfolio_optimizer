@@ -3,10 +3,14 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import yfinance as yf
-from datetime import datetime, timedelta
 import plotly.graph_objects as go
+import requests
+from datetime import datetime, timedelta
 from scipy.optimize import minimize
+from concurrent.futures import ThreadPoolExecutor
+# … your other imports …
 
+# 🔥 FORCE CLEAR CACHE (TEMPORARY — REMOVE AFTER ONE RUN)
 st.cache_data.clear()
 
 # ---------------------------------------------------------

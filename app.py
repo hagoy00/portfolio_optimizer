@@ -307,6 +307,10 @@ rolling_max = cum_returns.cummax()
 drawdown = (cum_returns - rolling_max) / rolling_max
 max_drawdown = drawdown.min()
 
+# TEMPORARY FIX — CLEAR BAD WEIGHTS
+if "weights" in st.session_state and not isinstance(st.session_state["weights"], list):
+    st.session_state["weights"] = None
+
 # ---------------------------------------------------------
 # STEP 4 — GLOBAL COMMENTARY INPUTS (LIST-BASED, FINAL)
 # ---------------------------------------------------------

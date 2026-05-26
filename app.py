@@ -162,6 +162,16 @@ if returns_df.empty:
 
 valid_tickers = list(returns_df.columns)
 
+import requests
+
+def fetch_sector_from_yahoo(ticker):
+    url = f"https://query2.finance.yahoo.com/v10/finance/quoteSummary/{ticker}?modules=assetProfile"
+    try:
+        r = requests.get(url, timeout=5)
+        data = r.json()
+        return data["quoteSummary"]["result"][0]["assetProfile"]["sector"]
+    except:
+        return "Unknown"
 
 # ---------------------------------------------------------
 # STEP 2 — Load Fundamentals + Clean + Sector Extraction

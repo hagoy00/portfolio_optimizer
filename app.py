@@ -332,6 +332,60 @@ def fetch_sector(ticker):
 
     return "Unknown"
 
+# ---------------------------------------------------------
+# EPS Loader — FINAL (Fixes Missing EPS)
+# ---------------------------------------------------------
+def fetch_eps(ticker):
+    """
+    Institutional-grade EPS loader with 4 fallback layers:
+    1. fast_info
+    2. yfinance.info
+    3. Yahoo Finance API
+    4. TTM EPS from quarterly earnings
+    """
+    tk = yf.Ticker(ticker)
+
+    # 1 — fast_info
+    try:
+        eps = tk.fast_info.get("eps")
+        if eps not in [None, 0]:
+            return eps
+    except:
+        pass
+
+    # 2 — info
+    try:
+        info = tk.get_info()
+        eps = info.get("trailingEps")
+        if eps not in [None, 0]:
+            return eps
+    except:
+        pass
+
+    # 3 — Yahoo API
+    try:
+        url = f"https://query2.finance.yahoo.com/v10/finance/quoteSummary/{ticker}?modules=defaultKeyStatistics"
+        r = requests.get(url, timeout=5)
+        data = r.json()
+        eps = data["quoteSummary"]["result"][0]["defaultKeyStatistics"]["trailingEps"]["raw"]
+        if eps not in [None, 0]:
+            return eps
+    except:
+        pass
+
+    # 4 — TTM EPS from quarterly earnings
+    try:
+        earnings = tk.earnings_dates
+        if earnings is not None and "EPS Actual" in earnings.columns:
+            eps_ttm = earnings["EPS Actual"].tail(4).sum()
+            if eps_ttm not in [None, 0]:
+                return eps_ttm
+    except:
+        pass
+
+    return None
+
+
 
 # ---------------------------------------------------------
 # Load a Single Ticker (Safe, Fast, Clean)

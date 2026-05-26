@@ -315,21 +315,38 @@ if "weights" in st.session_state and not isinstance(st.session_state["weights"],
 # STEP 4 — GLOBAL COMMENTARY INPUTS (LIST-BASED, FINAL)
 # ---------------------------------------------------------
 
-# If weights missing or corrupted → reset
-if "weights" not in st.session_state or not isinstance(st.session_state["weights"], list):
-    st.session_state["weights"] = [1/len(valid_tickers)] * len(valid_tickers)
+# Pull raw weights (may be None, dict, list, etc.)
+raw_weights = st.session_state.get("weights", None)
 
-stored_weights = st.session_state["weights"]
+# CASE 1 — Missing or None → reset
+if raw_weights is None:
+    stored_weights = [1/len(valid_tickers)] * len(valid_tickers)
 
-# If wrong length → reset
+# CASE 2 — Dict → convert to list in ticker order
+elif isinstance(raw_weights, dict):
+    stored_weights = [raw_weights.get(t, 1/len(valid_tickers)) for t in valid_tickers]
+
+# CASE 3 — List → use it
+elif isinstance(raw_weights, list):
+    stored_weights = raw_weights.copy()
+
+# CASE 4 — Anything else → reset
+else:
+    stored_weights = [1/len(valid_tickers)] * len(valid_tickers)
+
+# Fix wrong length
 if len(stored_weights) != len(valid_tickers):
     stored_weights = [1/len(valid_tickers)] * len(valid_tickers)
 
 # Convert all values to float (fixes strings)
-try:
-    stored_weights = [float(w) for w in stored_weights]
-except:
-    stored_weights = [1/len(valid_tickers)] * len(valid_tickers)
+clean_weights = []
+for w in stored_weights:
+    try:
+        clean_weights.append(float(w))
+    except:
+        clean_weights.append(1/len(valid_tickers))
+
+stored_weights = clean_weights
 
 # Normalize
 total = sum(stored_weights)

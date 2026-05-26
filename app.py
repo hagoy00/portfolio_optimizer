@@ -156,12 +156,21 @@ if prices is None or prices.empty:
 # Compute returns
 returns_df = prices.pct_change().dropna()
 
-if returns_df.empty:
+if returns_df is None or returns_df.empty:
     st.error("Return data unavailable after pct_change().")
     st.stop()
 
+# Valid tickers after cleaning
 valid_tickers = list(returns_df.columns)
 
+if len(valid_tickers) == 0:
+    st.error("No valid tickers after cleaning returns.")
+    st.stop()
+
+
+# ---------------------------------------------------------
+# Sector Fetcher (Yahoo API — Reliable)
+# ---------------------------------------------------------
 import requests
 
 def fetch_sector_from_yahoo(ticker):
@@ -169,7 +178,10 @@ def fetch_sector_from_yahoo(ticker):
     Reliable sector extraction using Yahoo Finance's quoteSummary API.
     Works even when yfinance.get_info() returns empty.
     """
-    url = f"https://query2.finance.yahoo.com/v10/finance/quoteSummary/{ticker}?modules=assetProfile"
+    url = (
+        f"https://query2.finance.yahoo.com/v10/finance/quoteSummary/"
+        f"{ticker}?modules=assetProfile"
+    )
     try:
         r = requests.get(url, timeout=5)
         data = r.json()

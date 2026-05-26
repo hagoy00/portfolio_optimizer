@@ -308,41 +308,38 @@ drawdown = (cum_returns - rolling_max) / rolling_max
 max_drawdown = drawdown.min()
 
 # ---------------------------------------------------------
-# STEP 4 — GLOBAL COMMENTARY INPUTS (FINAL + BULLETPROOF)
+# STEP 4 — GLOBAL COMMENTARY INPUTS (LIST-BASED, FINAL)
 # ---------------------------------------------------------
 
 # Ensure weights exist
 if "weights" not in st.session_state:
-    # initialize equal weights
-    st.session_state["weights"] = {t: 1/len(valid_tickers) for t in valid_tickers}
+    st.session_state["weights"] = [1/len(valid_tickers)] * len(valid_tickers)
 
-# Convert stored weights to dict
+# Pull stored weights
 stored_weights = st.session_state["weights"]
 
-# Rebuild weights so they ALWAYS match valid_tickers
-commentary_weights = []
-for t in valid_tickers:
-    commentary_weights.append(stored_weights.get(t, 1/len(valid_tickers)))
+# Rebuild weights so they match valid_tickers length
+if len(stored_weights) != len(valid_tickers):
+    stored_weights = [1/len(valid_tickers)] * len(valid_tickers)
 
-# Normalize again (safety)
-total = sum(commentary_weights)
+# Normalize
+total = sum(stored_weights)
 if total == 0:
-    commentary_weights = [1/len(valid_tickers)] * len(valid_tickers)
+    stored_weights = [1/len(valid_tickers)] * len(valid_tickers)
 else:
-    commentary_weights = [w/total for w in commentary_weights]
+    stored_weights = [w/total for w in stored_weights]
 
-# Save back to session_state as dict
-st.session_state["weights"] = {t: commentary_weights[i] for i, t in enumerate(valid_tickers)}
+# Save back
+st.session_state["weights"] = stored_weights
 
 # Build weights series
-weights_series = pd.Series(commentary_weights, index=valid_tickers)
+weights_series = pd.Series(stored_weights, index=valid_tickers)
 
 # Align fundamentals
 commentary_df = fundamentals_df.reindex(valid_tickers).copy()
 commentary_df["Weight"] = weights_series
 commentary_df = commentary_df.dropna(subset=["Score"])
 commentary_df = commentary_df.sort_values("Score", ascending=False)
-
 # ---------------------------------------------------------
 # TABS START HERE
 # ---------------------------------------------------------

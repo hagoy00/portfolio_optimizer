@@ -284,22 +284,12 @@ SECTOR_OVERRIDE = {
 }
 
 # ---------------------------------------------------------
-# Sector Fetcher — FINAL (Fixes Unknown Sectors)
+# Sector Fetcher — FINAL
 # ---------------------------------------------------------
 def fetch_sector(ticker):
-    """
-    Institutional-grade sector loader with:
-    1. Hard-coded override (fixes GOOG, JPM, banks, megacap tech)
-    2. Yahoo assetProfile API
-    3. Yahoo summaryProfile API
-    4. yfinance.info fallback
-    """
-
-    # 1 — Override FIRST (fixes all your Unknown cases)
     if ticker in SECTOR_OVERRIDE:
         return SECTOR_OVERRIDE[ticker]
 
-    # 2 — Yahoo assetProfile API
     try:
         url = f"https://query2.finance.yahoo.com/v10/finance/quoteSummary/{ticker}?modules=assetProfile"
         r = requests.get(url, timeout=5)
@@ -310,7 +300,6 @@ def fetch_sector(ticker):
     except:
         pass
 
-    # 3 — Yahoo summaryProfile API
     try:
         url = f"https://query2.finance.yahoo.com/v10/finance/quoteSummary/{ticker}?modules=summaryProfile"
         r = requests.get(url, timeout=5)
@@ -321,7 +310,6 @@ def fetch_sector(ticker):
     except:
         pass
 
-    # 4 — yfinance.info fallback
     try:
         info = yf.Ticker(ticker).info
         sector = info.get("sector")
@@ -333,19 +321,11 @@ def fetch_sector(ticker):
     return "Unknown"
 
 # ---------------------------------------------------------
-# EPS Loader — FINAL (Fixes Missing EPS)
+# EPS Loader — FINAL
 # ---------------------------------------------------------
 def fetch_eps(ticker):
-    """
-    Institutional-grade EPS loader with 4 fallback layers:
-    1. fast_info
-    2. yfinance.info
-    3. Yahoo Finance API
-    4. TTM EPS from quarterly earnings
-    """
     tk = yf.Ticker(ticker)
 
-    # 1 — fast_info
     try:
         eps = tk.fast_info.get("eps")
         if eps not in [None, 0]:
@@ -353,7 +333,6 @@ def fetch_eps(ticker):
     except:
         pass
 
-    # 2 — info
     try:
         info = tk.get_info()
         eps = info.get("trailingEps")
@@ -362,7 +341,6 @@ def fetch_eps(ticker):
     except:
         pass
 
-    # 3 — Yahoo API
     try:
         url = f"https://query2.finance.yahoo.com/v10/finance/quoteSummary/{ticker}?modules=defaultKeyStatistics"
         r = requests.get(url, timeout=5)
@@ -373,7 +351,6 @@ def fetch_eps(ticker):
     except:
         pass
 
-    # 4 — TTM EPS from quarterly earnings
     try:
         earnings = tk.earnings_dates
         if earnings is not None and "EPS Actual" in earnings.columns:
@@ -385,10 +362,8 @@ def fetch_eps(ticker):
 
     return None
 
-
-
 # ---------------------------------------------------------
-# Load a Single Ticker (Safe, Fast, Clean)
+# Load a Single Ticker — FINAL
 # ---------------------------------------------------------
 def load_single_fundamental(t):
     try:
@@ -396,16 +371,8 @@ def load_single_fundamental(t):
 
         fast = yf_t.fast_info
         info = yf_t.get_info() or {}
-        fin = yf_t.financials
-        bs = yf_t.balance_sheet
 
-        # EPS fallback
-        try:
-            eps = fin.loc["Net Income"].iloc[0] / bs.loc["Common Stock"].iloc[0]
-        except:
-            eps = None
-
-        # FIXED — use the correct sector function
+        eps = fetch_eps(t)
         sector = fetch_sector(t)
 
         return t, {
@@ -429,35 +396,27 @@ def load_single_fundamental(t):
             "Sector": "Unknown"
         }
 
-
 # ---------------------------------------------------------
-# Parallel Batch Loader (50–200 tickers)
+# Parallel Loader
 # ---------------------------------------------------------
 @st.cache_data
 def load_fundamentals_auto(tickers):
     fundamentals = {}
-
     with ThreadPoolExecutor(max_workers=10) as executor:
         for t, data in executor.map(load_single_fundamental, tickers):
             fundamentals[t] = data
-
     return pd.DataFrame(fundamentals).T
-
 
 # ---------------------------------------------------------
 # Load Fundamentals
 # ---------------------------------------------------------
 fundamentals_df = load_fundamentals_auto(valid_tickers)
-
-# Remove SPY — SPY should never appear in fundamentals
 fundamentals_df = fundamentals_df[fundamentals_df.index != "SPY"]
 
-# Validate fundamentals
 if fundamentals_df.empty:
     st.error("Fundamentals could not be loaded. Cannot continue.")
     st.stop()
 
-# Extract sectors cleanly
 sector_map = fundamentals_df["Sector"].fillna("Unknown").to_dict()
 
 # ---------------------------------------------------------

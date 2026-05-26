@@ -308,40 +308,41 @@ drawdown = (cum_returns - rolling_max) / rolling_max
 max_drawdown = drawdown.min()
 
 # ---------------------------------------------------------
-# STEP 4 — GLOBAL COMMENTARY INPUTS (FIXED)
+# STEP 4 — GLOBAL COMMENTARY INPUTS (FINAL + BULLETPROOF)
 # ---------------------------------------------------------
 
-# Ensure weights exist (aligned to valid_tickers)
-if "weights" in st.session_state:
-    commentary_weights = st.session_state.weights
+# Ensure weights exist
+if "weights" not in st.session_state:
+    # initialize equal weights
+    st.session_state["weights"] = {t: 1/len(valid_tickers) for t in valid_tickers}
+
+# Convert stored weights to dict
+stored_weights = st.session_state["weights"]
+
+# Rebuild weights so they ALWAYS match valid_tickers
+commentary_weights = []
+for t in valid_tickers:
+    commentary_weights.append(stored_weights.get(t, 1/len(valid_tickers)))
+
+# Normalize again (safety)
+total = sum(commentary_weights)
+if total == 0:
+    commentary_weights = [1/len(valid_tickers)] * len(valid_tickers)
 else:
-    commentary_weights = np.array([1/len(valid_tickers)] * len(valid_tickers))
-    st.session_state.weights = commentary_weights
+    commentary_weights = [w/total for w in commentary_weights]
 
+# Save back to session_state as dict
+st.session_state["weights"] = {t: commentary_weights[i] for i, t in enumerate(valid_tickers)}
 
-# Build weights as a Series indexed by valid_tickers
+# Build weights series
 weights_series = pd.Series(commentary_weights, index=valid_tickers)
 
-# Align fundamentals to valid_tickers
+# Align fundamentals
 commentary_df = fundamentals_df.reindex(valid_tickers).copy()
-
-# Attach weights aligned by index
-commentary_df["Weight"] = weights_series.reindex(commentary_df.index)
-
-# Drop any rows with missing fundamentals if needed
+commentary_df["Weight"] = weights_series
 commentary_df = commentary_df.dropna(subset=["Score"])
-
-# Sort by fundamentals score
 commentary_df = commentary_df.sort_values("Score", ascending=False)
 
-# Portfolio-level metrics (already computed earlier)
-portfolio_summary = {
-    "AnnualReturn": annual_return,
-    "Volatility": annual_volatility,
-    "Sharpe": sharpe_ratio,
-    "Beta": portfolio_beta,
-    "MaxDrawdown": max_drawdown
-}
 # ---------------------------------------------------------
 # TABS START HERE
 # ---------------------------------------------------------

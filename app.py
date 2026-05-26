@@ -245,6 +245,7 @@ def fetch_sector(ticker):
         pass
 
     return "Unknown"
+
 # ---------------------------------------------------------
 # STEP 2 — Load Fundamentals + Clean + Sector Extraction
 # ---------------------------------------------------------

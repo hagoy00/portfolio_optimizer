@@ -278,10 +278,6 @@ def load_fundamentals_auto(tickers):
 # ---------------------------------------------------------
 fundamentals_df = load_fundamentals_auto(valid_tickers)
 
-# Debug
-st.write("FUNDAMENTALS COLUMNS:", fundamentals_df.columns.tolist())
-st.write("RAW FUNDAMENTALS SAMPLE:", fundamentals_df.head())
-
 # Remove SPY — SPY should never appear in fundamentals
 fundamentals_df = fundamentals_df[fundamentals_df.index != "SPY"]
 

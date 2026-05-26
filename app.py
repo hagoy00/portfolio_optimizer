@@ -177,6 +177,18 @@ def fetch_sector_from_yahoo(ticker):
 # STEP 2 — Load Fundamentals + Clean + Sector Extraction
 # ---------------------------------------------------------
 
+import requests
+
+def fetch_sector_from_yahoo(ticker):
+    url = f"https://query2.finance.yahoo.com/v10/finance/quoteSummary/{ticker}?modules=assetProfile"
+    try:
+        r = requests.get(url, timeout=5)
+        data = r.json()
+        return data["quoteSummary"]["result"][0]["assetProfile"]["sector"]
+    except:
+        return "Unknown"
+
+
 @st.cache_data
 def load_fundamentals_auto(tickers):
     fundamentals = {}
@@ -199,16 +211,16 @@ def load_fundamentals_auto(tickers):
             except:
                 eps = None
 
-# ---------------------------------------------------------
-# NEW SECTOR EXTRACTION (FINAL)
-# ---------------------------------------------------------
-sector = (
-    info.get("sector")
-    or fast.get("sector")
-    or fetch_sector_from_yahoo(t)
-    or "Unknown"
-)
-# ---------------------------------------------------------
+            # ---------------------------------------------------------
+            # NEW SECTOR EXTRACTION (FINAL)
+            # ---------------------------------------------------------
+            sector = (
+                info.get("sector")
+                or fast.get("sector")
+                or fetch_sector_from_yahoo(t)
+                or "Unknown"
+            )
+            # ---------------------------------------------------------
 
             fundamentals[t] = {
                 "PE": fast.get("trailing_pe") or info.get("trailingPE"),
@@ -233,13 +245,11 @@ sector = (
 
     return pd.DataFrame(fundamentals).T
 
+
 # Load fundamentals for valid tickers
-fundamentals_raw = load_fundamentals_auto(valid_tickers)
-
-# Convert to DataFrame
-
 fundamentals_df = load_fundamentals_auto(valid_tickers)
 
+# Debug
 st.write("FUNDAMENTALS COLUMNS:", fundamentals_df.columns.tolist())
 st.write("RAW FUNDAMENTALS SAMPLE:", fundamentals_df.head())
 

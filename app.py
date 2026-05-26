@@ -315,15 +315,20 @@ if "weights" in st.session_state and not isinstance(st.session_state["weights"],
 # STEP 4 — GLOBAL COMMENTARY INPUTS (LIST-BASED, FINAL)
 # ---------------------------------------------------------
 
-# Ensure weights exist
-if "weights" not in st.session_state:
+# If weights missing or corrupted → reset
+if "weights" not in st.session_state or not isinstance(st.session_state["weights"], list):
     st.session_state["weights"] = [1/len(valid_tickers)] * len(valid_tickers)
 
-# Pull stored weights
 stored_weights = st.session_state["weights"]
 
-# Rebuild weights so they match valid_tickers length
+# If wrong length → reset
 if len(stored_weights) != len(valid_tickers):
+    stored_weights = [1/len(valid_tickers)] * len(valid_tickers)
+
+# Convert all values to float (fixes strings)
+try:
+    stored_weights = [float(w) for w in stored_weights]
+except:
     stored_weights = [1/len(valid_tickers)] * len(valid_tickers)
 
 # Normalize
@@ -339,11 +344,6 @@ st.session_state["weights"] = stored_weights
 # Build weights series
 weights_series = pd.Series(stored_weights, index=valid_tickers)
 
-# Align fundamentals
-commentary_df = fundamentals_df.reindex(valid_tickers).copy()
-commentary_df["Weight"] = weights_series
-commentary_df = commentary_df.dropna(subset=["Score"])
-commentary_df = commentary_df.sort_values("Score", ascending=False)
 # ---------------------------------------------------------
 # TABS START HERE
 # ---------------------------------------------------------

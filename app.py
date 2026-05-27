@@ -863,6 +863,10 @@ with tab5:
     st.subheader("Raw Fundamentals")
     st.dataframe(fundamentals_display, use_container_width=True)
 
+    st.subheader("DEBUG – Raw fundamentals used for scoring")
+    st.write(fundamentals_df)
+    st.write("dtypes:", fundamentals_df.dtypes)
+
     # ---------------------------------------------------------
     # FUNDAMENTALS RANKING
     # ---------------------------------------------------------

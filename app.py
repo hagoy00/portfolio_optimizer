@@ -856,10 +856,13 @@ with tab5:
     fdf = fdf.reindex(valid_tickers)
 
     # Fill missing values
-    fdf = fdf.fillna(0)
+    fdf = fdf.replace({None: np.nan})
+    import numpy as np
 
     # Do NOT show Sector here (your S2 choice)
-    fundamentals_display = fdf.drop(columns=["Sector"], errors="ignore")
+    
+    fundamentals_display = fdf.drop(columns=["Sector"], errors="ignore").replace(0, np.nan)
+
     st.subheader("Raw Fundamentals")
     st.dataframe(fundamentals_display, use_container_width=True)
 
@@ -872,19 +875,26 @@ with tab5:
     # ---------------------------------------------------------
     st.subheader("Fundamentals Ranking")
 
-    def score_fundamentals(row):
-        score = 0
-        if row.get("ROE"):
-            score += row["ROE"] * 10
-        if row.get("EPS"):
-            score += row["EPS"]
-        if row.get("PE"):
-            score += max(0, 50 - row["PE"])
-        if row.get("PB"):
-            score += max(0, 20 - row["PB"])
-        if row.get("DividendYield"):
-            score += row["DividendYield"] * 100
-        return score
+def score_fundamentals(row):
+    score = 0
+
+    if pd.notna(row.get("ROE")):
+        score += row["ROE"] * 10
+
+    if pd.notna(row.get("EPS")):
+        score += float(row["EPS"])
+
+    if pd.notna(row.get("PE")):
+        score += max(0, 50 - row["PE"])
+
+    if pd.notna(row.get("PB")):
+        score += max(0, 20 - row["PB"])
+
+    if pd.notna(row.get("DividendYield")):
+        score += row["DividendYield"] * 100
+
+    return score
+
 
     fdf["score"] = fdf.apply(score_fundamentals, axis=1)
     ranked_df = fdf.sort_values("score", ascending=False)

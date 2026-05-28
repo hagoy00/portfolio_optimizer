@@ -316,10 +316,15 @@ def load_fundamentals_auto(tickers):
     return df
 
 # ---------------------------------------------------------
-# Load Fundamentals
+# STEP 2 — Load Fundamentals
 # ---------------------------------------------------------
+
+# Load fundamentals for all valid tickers
 fundamentals_df = load_fundamentals_auto(valid_tickers)
-fundamentals_df = fundamentals_df[fundamentals_df.index != "SPY"]
+
+# Remove SPY if present
+if "SPY" in fundamentals_df.index:
+    fundamentals_df = fundamentals_df.drop("SPY")
 
 # ---------------------------------------------------------
 # SAFETY CHECK — Guarantee fundamentals_df exists
@@ -339,6 +344,11 @@ if fundamentals_df.empty:
     st.error("FATAL: fundamentals_df is EMPTY — fundamentals loader returned no data.")
     st.write("Raw fundamentals_df:", fundamentals_df)
     st.stop()
+
+# Show preview
+st.subheader("DEBUG fundamentals_df HEAD")
+st.write(fundamentals_df.head())
+st.write("dtypes:", fundamentals_df.dtypes)
 
 # ---------------------------------------------------------
 # STEP 3 — Fundamentals Scoring (GLOBAL)

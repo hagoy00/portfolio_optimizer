@@ -290,11 +290,31 @@ def load_fundamentals_auto(tickers):
 fundamentals_df = load_fundamentals_auto(valid_tickers)
 fundamentals_df = fundamentals_df[fundamentals_df.index != "SPY"]
 
+# ---------------------------------------------------------
+# FIX 1 — Convert numeric columns from strings → numbers
+# ---------------------------------------------------------
+numeric_cols = ["PE", "PB", "DividendYield", "Beta", "MarketCap", "EPS"]
+
+for col in numeric_cols:
+    if col in fundamentals_df.columns:
+        fundamentals_df[col] = pd.to_numeric(fundamentals_df[col], errors="coerce")
+
+# ---------------------------------------------------------
+# FIX 2 — Clean Sector column
+# ---------------------------------------------------------
+if "Sector" not in fundamentals_df.columns:
+    fundamentals_df["Sector"] = "Unknown"
+
+fundamentals_df["Sector"] = fundamentals_df["Sector"].fillna("Unknown").replace("", "Unknown")
+
+# ---------------------------------------------------------
+# SAFE CHECK
+# ---------------------------------------------------------
 if fundamentals_df.empty:
     st.error("Fundamentals could not be loaded. Cannot continue.")
     st.stop()
 
-sector_map = fundamentals_df["Sector"].fillna("Unknown").to_dict()
+sector_map = fundamentals_df["Sector"].to_dict()
 
 # ---------------------------------------------------------
 # DEBUG — NOW fundamentals_df EXISTS

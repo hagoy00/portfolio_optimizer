@@ -313,6 +313,24 @@ def load_fundamentals_auto(tickers):
         )
 
     return df
+# ---------------------------------------------------------
+# SAFETY CHECK — Guarantee fundamentals_df exists
+# ---------------------------------------------------------
+st.write("DEBUG — fundamentals_df object type:", type(fundamentals_df))
+
+if fundamentals_df is None:
+    st.error("FATAL: fundamentals_df is None — fundamentals loader failed.")
+    st.stop()
+
+if not isinstance(fundamentals_df, pd.DataFrame):
+    st.error("FATAL: fundamentals_df is not a DataFrame.")
+    st.write("Actual object:", fundamentals_df)
+    st.stop()
+
+if fundamentals_df.empty:
+    st.error("FATAL: fundamentals_df is EMPTY — fundamentals loader returned no data.")
+    st.write("Raw fundamentals_df:", fundamentals_df)
+    st.stop()
 
 
 # ---------------------------------------------------------

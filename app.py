@@ -174,16 +174,13 @@ if len(valid_tickers) == 0:
     st.stop()
 
 # ---------------------------------------------------------
-# STEP 2 — Load Fundamentals (FAST + RELIABLE MODE)
+# STEP 2 — Load Fundamentals (Corrected Yahoo Endpoint)
 # ---------------------------------------------------------
 
 import requests
 import pandas as pd
 from concurrent.futures import ThreadPoolExecutor
 
-# ---------------------------------------------------------
-# Sector Override Map (Fixes Unknown Sectors)
-# ---------------------------------------------------------
 SECTOR_OVERRIDE = {
     "AAPL": "Technology",
     "MSFT": "Technology",
@@ -210,67 +207,70 @@ SECTOR_OVERRIDE = {
 }
 
 # ---------------------------------------------------------
-# Load a Single Ticker (NEW RELIABLE YAHOO ENDPOINT)
+# Load a Single Ticker (NEW FUNDAMENTALS ENDPOINT)
 # ---------------------------------------------------------
 
 def load_single_fundamental(t):
     try:
-        url = f"https://query1.finance.yahoo.com/v7/finance/quote?symbols={t}"
+        url = (
+            f"https://query2.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/"
+            f"{t}?modules=financialData,defaultKeyStatistics,summaryDetail"
+        )
 
         headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                          "AppleWebKit/537.36 (KHTML, like Gecko) "
-                          "Chrome/124.0 Safari/537.36"
+            "User-Agent": "Mozilla/5.0"
         }
 
-        r = requests.get(url, headers=headers, timeout=5)
-        data = r.json()["quoteResponse"]["result"]
+        r = requests.get(url, headers=headers, timeout=6)
+        js = r.json()
 
-        # If Yahoo returns empty result
-        if not data:
-            return t, {
-                "PE": None,
-                "PB": None,
-                "DividendYield": None,
-                "Beta": None,
-                "MarketCap": None,
-                "EPS": None,
-                "Sector": "Unknown"
-            }
+        # Extract safely
+        def extract(path):
+            try:
+                node = js
+                for p in path:
+                    node = node[p]
+                if isinstance(node, list) and len(node) > 0:
+                    node = node[-1].get("reportedValue", {}).get("raw")
+                return node
+            except:
+                return None
 
-        data = data[0]
+        pe = extract(["timeseries", "result", 0, "trailingPE"])
+        pb = extract(["timeseries", "result", 0, "priceToBook"])
+        eps = extract(["timeseries", "result", 0, "epsTrailingTwelveMonths"])
+        roe = extract(["timeseries", "result", 0, "returnOnEquity"])
+        dy = extract(["timeseries", "result", 0, "dividendYield"])
+        dte = extract(["timeseries", "result", 0, "debtToEquity"])
+        beta = extract(["timeseries", "result", 0, "beta"])
+        mcap = extract(["timeseries", "result", 0, "marketCap"])
 
-        pe = data.get("trailingPE")
-        pb = data.get("priceToBook")
-        dy = data.get("dividendYield")
-        beta = data.get("beta")
-        mcap = data.get("marketCap")
-        eps = data.get("epsTrailingTwelveMonths")
-        sector = data.get("sector")
-
-        # Sector override
-        if t in SECTOR_OVERRIDE:
-            sector = SECTOR_OVERRIDE[t]
+        # Sector is NOT in this endpoint → fallback to override
+        sector = SECTOR_OVERRIDE.get(t, "Unknown")
 
         return t, {
             "PE": pe,
             "PB": pb,
+            "EPS": eps,
+            "ROE": roe,
             "DividendYield": dy,
+            "DebtToEquity": dte,
             "Beta": beta,
             "MarketCap": mcap,
-            "EPS": eps,
-            "Sector": sector
+            "Sector": sector,
         }
 
     except Exception:
         return t, {
             "PE": None,
             "PB": None,
+            "EPS": None,
+            "ROE": None,
             "DividendYield": None,
+            "DebtToEquity": None,
             "Beta": None,
             "MarketCap": None,
-            "EPS": None,
-            "Sector": "Unknown"
+            "Sector": "Unknown",
         }
 
 # ---------------------------------------------------------
@@ -283,45 +283,6 @@ def load_fundamentals_auto(tickers):
         for t, data in executor.map(load_single_fundamental, tickers):
             fundamentals[t] = data
     return pd.DataFrame(fundamentals).T
-
-# ---------------------------------------------------------
-# Load Fundamentals
-# ---------------------------------------------------------
-fundamentals_df = load_fundamentals_auto(valid_tickers)
-fundamentals_df = fundamentals_df[fundamentals_df.index != "SPY"]
-
-# ---------------------------------------------------------
-# FIX 1 — Convert numeric columns from strings → numbers
-# ---------------------------------------------------------
-numeric_cols = ["PE", "PB", "DividendYield", "Beta", "MarketCap", "EPS"]
-
-for col in numeric_cols:
-    if col in fundamentals_df.columns:
-        fundamentals_df[col] = pd.to_numeric(fundamentals_df[col], errors="coerce")
-
-# ---------------------------------------------------------
-# FIX 2 — Clean Sector column
-# ---------------------------------------------------------
-if "Sector" not in fundamentals_df.columns:
-    fundamentals_df["Sector"] = "Unknown"
-
-fundamentals_df["Sector"] = fundamentals_df["Sector"].fillna("Unknown").replace("", "Unknown")
-
-# ---------------------------------------------------------
-# SAFE CHECK
-# ---------------------------------------------------------
-if fundamentals_df.empty:
-    st.error("Fundamentals could not be loaded. Cannot continue.")
-    st.stop()
-
-sector_map = fundamentals_df["Sector"].to_dict()
-
-# ---------------------------------------------------------
-# DEBUG — NOW fundamentals_df EXISTS
-# ---------------------------------------------------------
-st.subheader("DEBUG fundamentals_df HEAD")
-st.write(fundamentals_df.head())
-st.write("dtypes:", fundamentals_df.dtypes)
 
 # ---------------------------------------------------------
 # STEP 3 — Fundamentals Scoring (GLOBAL)

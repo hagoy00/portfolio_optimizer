@@ -173,14 +173,6 @@ if len(valid_tickers) == 0:
     st.error("No valid tickers after cleaning returns.")
     st.stop()
 
-
-# ---------------------------------------------------------
-# Sector Fetcher — FINAL (Fixes Unknown Sectors)
-# ---------------------------------------------------------
-st.subheader("DEBUG fundamentals_df HEAD")
-st.write(fundamentals_df.head())
-
-
 # ---------------------------------------------------------
 # STEP 2 — Load Fundamentals (FAST + RELIABLE MODE)
 # ---------------------------------------------------------

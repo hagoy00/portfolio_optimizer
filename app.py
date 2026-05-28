@@ -314,6 +314,12 @@ def load_fundamentals_auto(tickers):
         )
 
     return df
+    # ---------------------------------------------------------
+# Load Fundamentals
+# ---------------------------------------------------------
+fundamentals_df = load_fundamentals_auto(valid_tickers)
+fundamentals_df = fundamentals_df[fundamentals_df.index != "SPY"]
+
 # ---------------------------------------------------------
 # SAFETY CHECK — Guarantee fundamentals_df exists
 # ---------------------------------------------------------
@@ -332,7 +338,6 @@ if fundamentals_df.empty:
     st.error("FATAL: fundamentals_df is EMPTY — fundamentals loader returned no data.")
     st.write("Raw fundamentals_df:", fundamentals_df)
     st.stop()
-
 
 # ---------------------------------------------------------
 # STEP 3 — Fundamentals Scoring (GLOBAL)

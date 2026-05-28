@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from scipy.optimize import minimize
 from concurrent.futures import ThreadPoolExecutor
 
+st.set_option("client.showErrorDetails", True)
 st.write("THIS IS THE FILE BEING EXECUTED")
 st.cache_data.clear()
 st.cache_resource.clear()

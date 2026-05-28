@@ -253,8 +253,12 @@ def fetch_sector(ticker):
     return "Unknown"
 
 # ---------------------------------------------------------
-# STEP 2 — Load Fundamentals (FAST MODE)
+# STEP 2 — Load Fundamentals (FAST + RELIABLE MODE)
 # ---------------------------------------------------------
+
+import requests
+import pandas as pd
+from concurrent.futures import ThreadPoolExecutor
 
 # ---------------------------------------------------------
 # Sector Override Map (Fixes Unknown Sectors)
@@ -285,71 +289,25 @@ SECTOR_OVERRIDE = {
 }
 
 # ---------------------------------------------------------
-# Sector Loader (FAST + RELIABLE)
-# ---------------------------------------------------------
-def fetch_sector(ticker):
-    if ticker in SECTOR_OVERRIDE:
-        return SECTOR_OVERRIDE[ticker]
-
-    try:
-        url = f"https://query2.finance.yahoo.com/v10/finance/quoteSummary/{ticker}?modules=assetProfile"
-        r = requests.get(url, timeout=5)
-        data = r.json()
-        return data["quoteSummary"]["result"][0]["assetProfile"]["sector"]
-    except:
-        pass
-
-    try:
-        url = f"https://query2.finance.yahoo.com/v10/finance/quoteSummary/{ticker}?modules=summaryProfile"
-        r = requests.get(url, timeout=5)
-        data = r.json()
-        return data["quoteSummary"]["result"][0]["summaryProfile"]["sector"]
-    except:
-        pass
-
-    return "Unknown"
-
-# ---------------------------------------------------------
-# EPS Loader (FAST MODE)
-# ---------------------------------------------------------
-def fetch_eps(ticker):
-    tk = yf.Ticker(ticker)
-
-    # 1 — fast_info
-    try:
-        eps = tk.fast_info.get("eps")
-        if eps not in [None, 0]:
-            return eps
-    except:
-        pass
-
-    # 2 — Yahoo API fallback
-    try:
-        url = f"https://query2.finance.yahoo.com/v10/finance/quoteSummary/{ticker}?modules=defaultKeyStatistics"
-        r = requests.get(url, timeout=5)
-        data = r.json()
-        return data["quoteSummary"]["result"][0]["defaultKeyStatistics"]["trailingEps"]["raw"]
-    except:
-        pass
-
-    return None
-
-# ---------------------------------------------------------
-# Load a Single Ticker (FAST MODE)
+# Load a Single Ticker (NEW RELIABLE YAHOO ENDPOINT)
 # ---------------------------------------------------------
 def load_single_fundamental(t):
     try:
-        yf_t = yf.Ticker(t)
-        fast = yf_t.fast_info
+        url = f"https://query1.finance.yahoo.com/v7/finance/quote?symbols={t}"
+        r = requests.get(url, timeout=5)
+        data = r.json()["quoteResponse"]["result"][0]
 
-        pe = fast.get("trailing_pe")
-        pb = fast.get("price_to_book")
-        dy = fast.get("dividend_yield")
-        beta = fast.get("beta")
-        mcap = fast.get("market_cap")
+        pe = data.get("trailingPE")
+        pb = data.get("priceToBook")
+        dy = data.get("dividendYield")
+        beta = data.get("beta")
+        mcap = data.get("marketCap")
+        eps = data.get("epsTrailingTwelveMonths")
+        sector = data.get("sector")
 
-        eps = fetch_eps(t)
-        sector = fetch_sector(t)
+        # Sector override
+        if t in SECTOR_OVERRIDE:
+            sector = SECTOR_OVERRIDE[t]
 
         return t, {
             "PE": pe,
@@ -361,7 +319,7 @@ def load_single_fundamental(t):
             "Sector": sector
         }
 
-    except:
+    except Exception as e:
         return t, {
             "PE": None,
             "PB": None,
@@ -394,7 +352,6 @@ if fundamentals_df.empty:
     st.stop()
 
 sector_map = fundamentals_df["Sector"].fillna("Unknown").to_dict()
-
 # ---------------------------------------------------------
 # STEP 3 — Fundamentals Scoring (GLOBAL)
 # ---------------------------------------------------------

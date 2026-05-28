@@ -212,10 +212,18 @@ SECTOR_OVERRIDE = {
 # ---------------------------------------------------------
 # Load a Single Ticker (NEW RELIABLE YAHOO ENDPOINT)
 # ---------------------------------------------------------
+
 def load_single_fundamental(t):
     try:
         url = f"https://query1.finance.yahoo.com/v7/finance/quote?symbols={t}"
-        r = requests.get(url, timeout=5)
+
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                          "AppleWebKit/537.36 (KHTML, like Gecko) "
+                          "Chrome/124.0 Safari/537.36"
+        }
+
+        r = requests.get(url, headers=headers, timeout=5)
         data = r.json()["quoteResponse"]["result"]
 
         # If Yahoo returns empty result

@@ -177,80 +177,8 @@ if len(valid_tickers) == 0:
 # ---------------------------------------------------------
 # Sector Fetcher — FINAL (Fixes Unknown Sectors)
 # ---------------------------------------------------------
-import requests
-import yfinance as yf
-
-# Hard-coded overrides for tickers Yahoo frequently fails on
-SECTOR_OVERRIDE = {
-    "AAPL": "Technology",
-    "MSFT": "Technology",
-    "NVDA": "Technology",
-    "MU": "Technology",
-    "PLTR": "Technology",
-    "NOK": "Technology",
-    "ARM": "Technology",
-
-    "GOOG": "Communication Services",
-    "GOOGL": "Communication Services",
-    "NFLX": "Communication Services",
-    "APP": "Communication Services",
-
-    "AMZN": "Consumer Cyclical",
-    "TSLA": "Consumer Cyclical",
-
-    "JPM": "Financial Services",
-    "BAC": "Financial Services",
-    "C": "Financial Services",
-    "WFC": "Financial Services",
-    "GS": "Financial Services",
-    "MS": "Financial Services",
-}
-
-def fetch_sector(ticker):
-    """
-    Institutional-grade sector loader with:
-    1. Hard-coded override (fixes GOOG, JPM, banks, megacap tech)
-    2. Yahoo assetProfile API
-    3. Yahoo summaryProfile API
-    4. yfinance.info fallback
-    """
-
-    # 1 — Override FIRST (fixes all your Unknown cases)
-    if ticker in SECTOR_OVERRIDE:
-        return SECTOR_OVERRIDE[ticker]
-
-    # 2 — Yahoo assetProfile API
-    try:
-        url = f"https://query2.finance.yahoo.com/v10/finance/quoteSummary/{ticker}?modules=assetProfile"
-        r = requests.get(url, timeout=5)
-        data = r.json()
-        sector = data["quoteSummary"]["result"][0]["assetProfile"]["sector"]
-        if sector:
-            return sector
-    except:
-        pass
-
-    # 3 — Yahoo summaryProfile API
-    try:
-        url = f"https://query2.finance.yahoo.com/v10/finance/quoteSummary/{ticker}?modules=summaryProfile"
-        r = requests.get(url, timeout=5)
-        data = r.json()
-        sector = data["quoteSummary"]["result"][0]["summaryProfile"]["sector"]
-        if sector:
-            return sector
-    except:
-        pass
-
-    # 4 — yfinance.info fallback
-    try:
-        info = yf.Ticker(ticker).info
-        sector = info.get("sector")
-        if sector:
-            return sector
-    except:
-        pass
-
-    return "Unknown"
+st.subheader("DEBUG fundamentals_df HEAD")
+st.write(fundamentals_df.head())
 
 # ---------------------------------------------------------
 # STEP 2 — Load Fundamentals (FAST + RELIABLE MODE)
@@ -352,6 +280,25 @@ if fundamentals_df.empty:
     st.stop()
 
 sector_map = fundamentals_df["Sector"].fillna("Unknown").to_dict()
+# ---------------------------------------------------------
+# Load Fundamentals
+# ---------------------------------------------------------
+fundamentals_df = load_fundamentals_auto(valid_tickers)
+fundamentals_df = fundamentals_df[fundamentals_df.index != "SPY"]
+
+if fundamentals_df.empty:
+    st.error("Fundamentals could not be loaded. Cannot continue.")
+    st.stop()
+
+sector_map = fundamentals_df["Sector"].fillna("Unknown").to_dict()
+
+# ---------------------------------------------------------
+# DEBUG — NOW fundamentals_df EXISTS
+# ---------------------------------------------------------
+st.subheader("DEBUG fundamentals_df HEAD")
+st.write(fundamentals_df.head())
+st.write("dtypes:", fundamentals_df.dtypes)
+
 # ---------------------------------------------------------
 # STEP 3 — Fundamentals Scoring (GLOBAL)
 # ---------------------------------------------------------

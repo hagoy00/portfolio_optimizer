@@ -288,82 +288,47 @@ def load_fundamentals_auto(tickers):
 # STEP 3 — Fundamentals Scoring (GLOBAL)
 # ---------------------------------------------------------
 
-# Clean numeric columns
-numeric_cols = ["PE", "PB", "DividendYield", "Beta", "MarketCap"]
-for col in numeric_cols:
-    if col in fundamentals_df.columns:
-        fundamentals_df[col] = pd.to_numeric(fundamentals_df[col], errors="coerce")
+# Ensure numeric columns exist
+required_cols = ["PE", "PB", "DividendYield", "Beta", "MarketCap"]
+for col in required_cols:
+    if col not in fundamentals_df.columns:
+        fundamentals_df[col] = None
 
-# Replace missing values with median (prevents zeros)
-fundamentals_df[numeric_cols] = fundamentals_df[numeric_cols].fillna(
-    fundamentals_df[numeric_cols].median()
+# Convert to numeric
+for col in required_cols:
+    fundamentals_df[col] = pd.to_numeric(fundamentals_df[col], errors="coerce")
+
+# Replace missing values with median (prevents NaN cascades)
+fundamentals_df[required_cols] = fundamentals_df[required_cols].fillna(
+    fundamentals_df[required_cols].median()
 )
 
 # Build scoring model
 score_components = []
 
 # Lower PE is better
-if "PE" in fundamentals_df.columns:
-    score_components.append(fundamentals_df["PE"].rank(pct=True, ascending=False))
+score_components.append(fundamentals_df["PE"].rank(pct=True, ascending=False))
 
 # Lower PB is better
-if "PB" in fundamentals_df.columns:
-    score_components.append(fundamentals_df["PB"].rank(pct=True, ascending=False))
+score_components.append(fundamentals_df["PB"].rank(pct=True, ascending=False))
 
 # Higher dividend yield is better
-if "DividendYield" in fundamentals_df.columns:
-    score_components.append(fundamentals_df["DividendYield"].rank(pct=True))
+score_components.append(fundamentals_df["DividendYield"].rank(pct=True))
 
 # Lower Beta is better
-if "Beta" in fundamentals_df.columns:
-    score_components.append(fundamentals_df["Beta"].rank(pct=True, ascending=False))
+score_components.append(fundamentals_df["Beta"].rank(pct=True, ascending=False))
 
 # Higher MarketCap is better
-if "MarketCap" in fundamentals_df.columns:
-    score_components.append(fundamentals_df["MarketCap"].rank(pct=True))
+score_components.append(fundamentals_df["MarketCap"].rank(pct=True))
 
 # Combine into a single score
-if score_components:
-    fundamentals_df["Score"] = sum(score_components)
-else:
-    fundamentals_df["Score"] = 0.0
+fundamentals_df["Score"] = sum(score_components)
 
 # Normalize score to 0–100
-fundamentals_df["Score"] = 100 * fundamentals_df["Score"] / fundamentals_df["Score"].max()
-
-
-# ---------------------------------------------------------
-# PORTFOLIO METRICS (GLOBAL)
-# ---------------------------------------------------------
-
-# Annualized return
-annual_return = returns_df.mean().dot(
-    np.array([1/len(valid_tickers)] * len(valid_tickers))
-) * 252
-
-# Annualized volatility
-annual_volatility = returns_df.std().mean() * (252 ** 0.5)
-
-# Sharpe ratio
-sharpe_ratio = annual_return / annual_volatility if annual_volatility > 0 else 0
-
-# Portfolio beta (vs SPY)
-try:
-    spy = yf.download("SPY", start=start_date, end=end_date)["Adj Close"].pct_change().dropna()
-    portfolio_returns = returns_df.mean(axis=1)
-    portfolio_beta = np.cov(portfolio_returns, spy)[0][1] / np.var(spy)
-except:
-    portfolio_beta = 1.0
-
-# Max drawdown
-cum_returns = (1 + returns_df.mean(axis=1)).cumprod()
-rolling_max = cum_returns.cummax()
-drawdown = (cum_returns - rolling_max) / rolling_max
-max_drawdown = drawdown.min()
-
-# TEMPORARY FIX — CLEAR BAD WEIGHTS
-if "weights" in st.session_state and not isinstance(st.session_state["weights"], list):
-    st.session_state["weights"] = None
+max_score = fundamentals_df["Score"].max()
+fundamentals_df["Score"] = (
+    100 * fundamentals_df["Score"] / max_score if max_score > 0 else 0
+)
 
 # ---------------------------------------------------------
 # STEP 4 — GLOBAL COMMENTARY INPUTS (LIST-BASED, FINAL)

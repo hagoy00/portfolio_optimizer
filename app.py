@@ -314,7 +314,8 @@ def load_fundamentals_auto(tickers):
         )
 
     return df
-    # ---------------------------------------------------------
+
+# ---------------------------------------------------------
 # Load Fundamentals
 # ---------------------------------------------------------
 fundamentals_df = load_fundamentals_auto(valid_tickers)

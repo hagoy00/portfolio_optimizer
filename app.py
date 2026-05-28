@@ -180,6 +180,7 @@ if len(valid_tickers) == 0:
 st.subheader("DEBUG fundamentals_df HEAD")
 st.write(fundamentals_df.head())
 
+
 # ---------------------------------------------------------
 # STEP 2 — Load Fundamentals (FAST + RELIABLE MODE)
 # ---------------------------------------------------------
@@ -223,7 +224,21 @@ def load_single_fundamental(t):
     try:
         url = f"https://query1.finance.yahoo.com/v7/finance/quote?symbols={t}"
         r = requests.get(url, timeout=5)
-        data = r.json()["quoteResponse"]["result"][0]
+        data = r.json()["quoteResponse"]["result"]
+
+        # If Yahoo returns empty result
+        if not data:
+            return t, {
+                "PE": None,
+                "PB": None,
+                "DividendYield": None,
+                "Beta": None,
+                "MarketCap": None,
+                "EPS": None,
+                "Sector": "Unknown"
+            }
+
+        data = data[0]
 
         pe = data.get("trailingPE")
         pb = data.get("priceToBook")
@@ -247,7 +262,7 @@ def load_single_fundamental(t):
             "Sector": sector
         }
 
-    except Exception as e:
+    except Exception:
         return t, {
             "PE": None,
             "PB": None,
@@ -269,17 +284,6 @@ def load_fundamentals_auto(tickers):
             fundamentals[t] = data
     return pd.DataFrame(fundamentals).T
 
-# ---------------------------------------------------------
-# Load Fundamentals
-# ---------------------------------------------------------
-fundamentals_df = load_fundamentals_auto(valid_tickers)
-fundamentals_df = fundamentals_df[fundamentals_df.index != "SPY"]
-
-if fundamentals_df.empty:
-    st.error("Fundamentals could not be loaded. Cannot continue.")
-    st.stop()
-
-sector_map = fundamentals_df["Sector"].fillna("Unknown").to_dict()
 # ---------------------------------------------------------
 # Load Fundamentals
 # ---------------------------------------------------------

@@ -274,15 +274,46 @@ def load_single_fundamental(t):
         }
 
 # ---------------------------------------------------------
-# Parallel Loader
+# Parallel Loader (Bulletproof)
 # ---------------------------------------------------------
 @st.cache_data
 def load_fundamentals_auto(tickers):
     fundamentals = {}
+
     with ThreadPoolExecutor(max_workers=10) as executor:
         for t, data in executor.map(load_single_fundamental, tickers):
+
+            # Guarantee data is a dict
+            if not isinstance(data, dict):
+                data = {
+                    "PE": None,
+                    "PB": None,
+                    "EPS": None,
+                    "ROE": None,
+                    "DividendYield": None,
+                    "DebtToEquity": None,
+                    "Beta": None,
+                    "MarketCap": None,
+                    "Sector": "Unknown",
+                }
+
             fundamentals[t] = data
-    return pd.DataFrame(fundamentals).T
+
+    # Build DataFrame safely
+    df = pd.DataFrame.from_dict(fundamentals, orient="index")
+
+    # Guarantee DataFrame exists
+    if df is None or df.empty:
+        df = pd.DataFrame(
+            columns=[
+                "PE", "PB", "EPS", "ROE",
+                "DividendYield", "DebtToEquity",
+                "Beta", "MarketCap", "Sector"
+            ]
+        )
+
+    return df
+
 
 # ---------------------------------------------------------
 # STEP 3 — Fundamentals Scoring (GLOBAL)

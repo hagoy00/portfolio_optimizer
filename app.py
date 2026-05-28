@@ -256,11 +256,6 @@ def fetch_sector(ticker):
 # STEP 2 — Load Fundamentals (FAST MODE)
 # ---------------------------------------------------------
 
-import requests
-import yfinance as yf
-import pandas as pd
-from concurrent.futures import ThreadPoolExecutor
-
 # ---------------------------------------------------------
 # Sector Override Map (Fixes Unknown Sectors)
 # ---------------------------------------------------------

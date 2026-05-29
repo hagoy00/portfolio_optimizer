@@ -315,15 +315,25 @@ def load_fundamentals_auto(tickers):
 
     return df
 # ---------------------------------------------------------
-# STEP 2 — Load Fundamentals
+# STEP 2 — Load Fundamentals (Corrected Yahoo Endpoint)
 # ---------------------------------------------------------
 
-# Load fundamentals for all valid tickers
 fundamentals_df = load_fundamentals_auto(valid_tickers)
 
 # Remove SPY if present
 if "SPY" in fundamentals_df.index:
     fundamentals_df = fundamentals_df.drop("SPY")
+
+# SAFETY CHECK
+if fundamentals_df is None or fundamentals_df.empty:
+    st.error("FATAL: fundamentals_df is EMPTY — fundamentals loader returned no data.")
+    st.write(fundamentals_df)
+    st.stop()
+
+st.subheader("DEBUG fundamentals_df HEAD")
+st.write(fundamentals_df.head())
+st.write("dtypes:", fundamentals_df.dtypes)
+
 
 # ---------------------------------------------------------
 # SAFETY CHECK — Guarantee fundamentals_df exists

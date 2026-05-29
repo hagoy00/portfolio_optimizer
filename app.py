@@ -314,11 +314,16 @@ try:
         if annual_volatility not in [0, None] else 0
     )
    
-# --- Beta guard clause ---
-try:
-    portfolio_beta = float(portfolio_beta)
-except Exception:
+# --- FINAL Beta guard clause (cannot fail) ---
+if portfolio_beta is None:
     portfolio_beta = 0.0
+elif isinstance(portfolio_beta, str) and portfolio_beta.strip() == "":
+    portfolio_beta = 0.0
+else:
+    try:
+        portfolio_beta = float(portfolio_beta)
+    except Exception:
+        portfolio_beta = 0.0
 
 # --- UI Metrics ---
 st.metric("Beta vs SPY", f"{portfolio_beta:.2f}")

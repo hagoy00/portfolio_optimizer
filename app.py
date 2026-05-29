@@ -278,6 +278,10 @@ def load_fundamentals_auto(tickers):
 
 fundamentals_df = load_fundamentals_auto(valid_tickers)
 
+# DEBUG — inspect fundamentals
+print("COLUMNS:", fundamentals_df.columns.tolist())
+print(fundamentals_df.head(10))
+
 if "SPY" in fundamentals_df.index:
     fundamentals_df = fundamentals_df.drop("SPY")
 

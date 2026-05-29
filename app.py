@@ -168,12 +168,16 @@ if returns_df is None or returns_df.empty:
     st.stop()
 
 # Valid tickers after cleaning
-valid_tickers = list(returns_df.columns)
+# ---------------------------------------------------------
+# GLOBAL DEFAULT WEIGHTS (EQUAL WEIGHTS FAILSAFE)
+# ---------------------------------------------------------
+import numpy as np
+
+global_weights = np.array([1 / len(valid_tickers)] * len(valid_tickers))
 
 if len(valid_tickers) == 0:
     st.error("No valid tickers after cleaning returns.")
     st.stop()
-
 
 # ---------------------------------------------------------
 # STEP 2 — Load Fundamentals (Corrected Yahoo Endpoint)

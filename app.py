@@ -149,9 +149,8 @@ def load_price_data(tickers, start, end):
     except Exception as e:
         st.error(f"Price load failed: {e}")
         return pd.DataFrame()
-
 # ---------------------------------------------------------
-# STEP 1 — Load Prices + Validate + Compute Returns
+# STEP 1 — Load Prices + Validate
 # ---------------------------------------------------------
 
 prices = load_price_data(tickers, start_date, end_date)
@@ -160,24 +159,34 @@ if prices is None or prices.empty:
     st.error("Price data failed. Cannot continue.")
     st.stop()
 
-# Compute returns
+# ---------------------------------------------------------
+# STEP 1b — Compute Returns
+# ---------------------------------------------------------
+
 returns_df = prices.pct_change().dropna()
 
 if returns_df is None or returns_df.empty:
     st.error("Return data unavailable after pct_change().")
     st.stop()
 
-# Valid tickers after cleaning
 # ---------------------------------------------------------
-# GLOBAL DEFAULT WEIGHTS (EQUAL WEIGHTS FAILSAFE)
+# STEP 1c — Define valid_tickers
 # ---------------------------------------------------------
-import numpy as np
 
-global_weights = np.array([1 / len(valid_tickers)] * len(valid_tickers))
+valid_tickers = list(returns_df.columns)
 
 if len(valid_tickers) == 0:
     st.error("No valid tickers after cleaning returns.")
     st.stop()
+
+# ---------------------------------------------------------
+# GLOBAL DEFAULT WEIGHTS (EQUAL WEIGHTS FAILSAFE)
+# ---------------------------------------------------------
+
+import numpy as np
+
+global_weights = np.array([1 / len(valid_tickers)] * len(valid_tickers))
+
 
 # ---------------------------------------------------------
 # STEP 2 — Load Fundamentals (Corrected Yahoo Endpoint)
@@ -201,11 +210,6 @@ SECTOR_OVERRIDE = {
     "C": "Financial Services", "WFC": "Financial Services",
     "GS": "Financial Services", "MS": "Financial Services",
 }
-
-
-# ---------------------------------------------------------
-# Load a Single Ticker (WORKING FUNDAMENTALS ENDPOINT)
-# ---------------------------------------------------------
 
 def load_single_fundamental(t):
     try:
@@ -238,15 +242,9 @@ def load_single_fundamental(t):
         sector = SECTOR_OVERRIDE.get(t, "Unknown")
 
         return t, {
-            "PE": pe,
-            "PB": pb,
-            "EPS": eps,
-            "ROE": roe,
-            "DividendYield": dy,
-            "DebtToEquity": dte,
-            "Beta": beta,
-            "MarketCap": mcap,
-            "Sector": sector,
+            "PE": pe, "PB": pb, "EPS": eps, "ROE": roe,
+            "DividendYield": dy, "DebtToEquity": dte,
+            "Beta": beta, "MarketCap": mcap, "Sector": sector,
         }
 
     except Exception:
@@ -255,11 +253,6 @@ def load_single_fundamental(t):
             "DividendYield": None, "DebtToEquity": None,
             "Beta": None, "MarketCap": None, "Sector": "Unknown",
         }
-
-
-# ---------------------------------------------------------
-# Parallel Loader (Bulletproof)
-# ---------------------------------------------------------
 
 @st.cache_data
 def load_fundamentals_auto(tickers):
@@ -271,7 +264,6 @@ def load_fundamentals_auto(tickers):
 
     df = pd.DataFrame.from_dict(fundamentals, orient="index")
 
-    # Guarantee DataFrame exists
     if df is None or df.empty:
         df = pd.DataFrame(
             columns=[
@@ -283,18 +275,11 @@ def load_fundamentals_auto(tickers):
 
     return df
 
-
-# ---------------------------------------------------------
-# STEP 2 — Load Fundamentals
-# ---------------------------------------------------------
-
 fundamentals_df = load_fundamentals_auto(valid_tickers)
 
-# Remove SPY if present
 if "SPY" in fundamentals_df.index:
     fundamentals_df = fundamentals_df.drop("SPY")
 
-# SAFETY CHECK
 if fundamentals_df is None or fundamentals_df.empty:
     st.error("FATAL: fundamentals_df is EMPTY — fundamentals loader returned no data.")
     st.write(fundamentals_df)
@@ -304,51 +289,34 @@ st.subheader("DEBUG fundamentals_df HEAD")
 st.write(fundamentals_df.head())
 st.write("dtypes:", fundamentals_df.dtypes)
 
+
 # ---------------------------------------------------------
-# STEP 3 — Fundamentals Scoring (GLOBAL)
+# STEP 3 — GLOBAL PORTFOLIO METRICS
 # ---------------------------------------------------------
 
-# Ensure numeric columns exist
-required_cols = ["PE", "PB", "DividendYield", "Beta", "MarketCap"]
-for col in required_cols:
-    if col not in fundamentals_df.columns:
-        fundamentals_df[col] = None
+try:
+    portfolio_returns = returns_df.dot(global_weights)
 
-# Convert to numeric
-for col in required_cols:
-    fundamentals_df[col] = pd.to_numeric(fundamentals_df[col], errors="coerce")
+    annual_return = portfolio_returns.mean() * 252
+    annual_volatility = portfolio_returns.std() * (252 ** 0.5)
 
-# Replace missing values with median (prevents NaN cascades)
-fundamentals_df[required_cols] = fundamentals_df[required_cols].fillna(
-    fundamentals_df[required_cols].median()
-)
+    sharpe_ratio = (
+        annual_return / annual_volatility
+        if annual_volatility not in [0, None] else 0
+    )
 
-# Build scoring model
-score_components = []
+    if "SPY" in returns_df.columns:
+        spy_returns = returns_df["SPY"]
+        covariance = portfolio_returns.cov(spy_returns)
+        market_variance = spy_returns.var()
+        portfolio_beta = covariance / market_variance if market_variance else None
+    else:
+        portfolio_beta = None
 
-# Lower PE is better
-score_components.append(fundamentals_df["PE"].rank(pct=True, ascending=False))
+except Exception as e:
+    st.error(f"Portfolio metrics failed: {e}")
+    st.stop()
 
-# Lower PB is better
-score_components.append(fundamentals_df["PB"].rank(pct=True, ascending=False))
-
-# Higher dividend yield is better
-score_components.append(fundamentals_df["DividendYield"].rank(pct=True))
-
-# Lower Beta is better
-score_components.append(fundamentals_df["Beta"].rank(pct=True, ascending=False))
-
-# Higher MarketCap is better
-score_components.append(fundamentals_df["MarketCap"].rank(pct=True))
-
-# Combine into a single score
-fundamentals_df["Score"] = sum(score_components)
-
-# Normalize score to 0–100
-max_score = fundamentals_df["Score"].max()
-fundamentals_df["Score"] = (
-    100 * fundamentals_df["Score"] / max_score if max_score > 0 else 0
-)
 
 # ---------------------------------------------------------
 # STEP 4 — GLOBAL COMMENTARY INPUTS (LIST-BASED, FINAL)

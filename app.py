@@ -416,7 +416,7 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
 
 try:
     # Compute portfolio returns
-    portfolio_returns = returns_df.dot(weights)
+    portfolio_returns = returns_df.dot(global_weights)
 
     # Annualized return
     annual_return = portfolio_returns.mean() * 252

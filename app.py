@@ -349,6 +349,18 @@ st.subheader("DEBUG fundamentals_df HEAD")
 st.write(fundamentals_df.head())
 st.write("dtypes:", fundamentals_df.dtypes)
 
+fundamentals = load_fundamentals(tickers)
+
+print("DEBUG — fundamentals raw output:")
+print(fundamentals)
+print("Type:", type(fundamentals))
+
+fundamentals_df = pd.DataFrame(fundamentals)
+print("DEBUG — fundamentals_df shape:", fundamentals_df.shape)
+print("DEBUG — fundamentals_df columns:", fundamentals_df.columns.tolist())
+print("DEBUG — fundamentals_df head:")
+print(fundamentals_df.head())
+
 # ---------------------------------------------------------
 # STEP 3 — Fundamentals Scoring (GLOBAL)
 # ---------------------------------------------------------

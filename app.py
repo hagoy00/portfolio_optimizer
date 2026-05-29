@@ -174,6 +174,7 @@ if len(valid_tickers) == 0:
     st.error("No valid tickers after cleaning returns.")
     st.stop()
 
+
 # ---------------------------------------------------------
 # STEP 2 — Load Fundamentals (Corrected Yahoo Endpoint)
 # ---------------------------------------------------------
@@ -183,70 +184,53 @@ import pandas as pd
 from concurrent.futures import ThreadPoolExecutor
 
 SECTOR_OVERRIDE = {
-    "AAPL": "Technology",
-    "MSFT": "Technology",
-    "NVDA": "Technology",
-    "MU": "Technology",
-    "PLTR": "Technology",
-    "NOK": "Technology",
+    "AAPL": "Technology", "MSFT": "Technology", "NVDA": "Technology",
+    "MU": "Technology", "PLTR": "Technology", "NOK": "Technology",
     "ARM": "Technology",
 
-    "GOOG": "Communication Services",
-    "GOOGL": "Communication Services",
-    "NFLX": "Communication Services",
-    "APP": "Communication Services",
+    "GOOG": "Communication Services", "GOOGL": "Communication Services",
+    "NFLX": "Communication Services", "APP": "Communication Services",
 
-    "AMZN": "Consumer Cyclical",
-    "TSLA": "Consumer Cyclical",
+    "AMZN": "Consumer Cyclical", "TSLA": "Consumer Cyclical",
 
-    "JPM": "Financial Services",
-    "BAC": "Financial Services",
-    "C": "Financial Services",
-    "WFC": "Financial Services",
-    "GS": "Financial Services",
-    "MS": "Financial Services",
+    "JPM": "Financial Services", "BAC": "Financial Services",
+    "C": "Financial Services", "WFC": "Financial Services",
+    "GS": "Financial Services", "MS": "Financial Services",
 }
 
+
 # ---------------------------------------------------------
-# Load a Single Ticker (NEW FUNDAMENTALS ENDPOINT)
+# Load a Single Ticker (WORKING FUNDAMENTALS ENDPOINT)
 # ---------------------------------------------------------
 
 def load_single_fundamental(t):
     try:
         url = (
-            f"https://query2.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/"
-            f"{t}?modules=financialData,defaultKeyStatistics,summaryDetail"
+            f"https://query1.finance.yahoo.com/v10/finance/quoteSummary/{t}"
+            f"?modules=defaultKeyStatistics,financialData,summaryDetail"
         )
 
-        headers = {
-            "User-Agent": "Mozilla/5.0"
-        }
-
+        headers = {"User-Agent": "Mozilla/5.0"}
         r = requests.get(url, headers=headers, timeout=6)
         js = r.json()
 
-        # Extract safely
-        def extract(path):
-            try:
-                node = js
-                for p in path:
-                    node = node[p]
-                if isinstance(node, list) and len(node) > 0:
-                    node = node[-1].get("reportedValue", {}).get("raw")
-                return node
-            except:
-                return None
+        result = js.get("quoteSummary", {}).get("result", [{}])[0]
 
-        pe = extract(["timeseries", "result", 0, "trailingPE"])
-        pb = extract(["timeseries", "result", 0, "priceToBook"])
-        eps = extract(["timeseries", "result", 0, "epsTrailingTwelveMonths"])
-        roe = extract(["timeseries", "result", 0, "returnOnEquity"])
-        dy = extract(["timeseries", "result", 0, "dividendYield"])
-        dte = extract(["timeseries", "result", 0, "debtToEquity"])
-        beta = extract(["timeseries", "result", 0, "beta"])
-        mcap = extract(["timeseries", "result", 0, "marketCap"])
+        def safe_get(path):
+            node = result
+            for p in path:
+                node = node.get(p, {})
+            return node.get("raw") if isinstance(node, dict) else None
 
-        # Sector is NOT in this endpoint → fallback to override
+        pe = safe_get(["summaryDetail", "trailingPE"])
+        pb = safe_get(["defaultKeyStatistics", "priceToBook"])
+        eps = safe_get(["defaultKeyStatistics", "epsTrailingTwelveMonths"])
+        roe = safe_get(["financialData", "returnOnEquity"])
+        dy = safe_get(["summaryDetail", "dividendYield"])
+        dte = safe_get(["financialData", "debtToEquity"])
+        beta = safe_get(["defaultKeyStatistics", "beta"])
+        mcap = safe_get(["summaryDetail", "marketCap"])
+
         sector = SECTOR_OVERRIDE.get(t, "Unknown")
 
         return t, {
@@ -263,44 +247,24 @@ def load_single_fundamental(t):
 
     except Exception:
         return t, {
-            "PE": None,
-            "PB": None,
-            "EPS": None,
-            "ROE": None,
-            "DividendYield": None,
-            "DebtToEquity": None,
-            "Beta": None,
-            "MarketCap": None,
-            "Sector": "Unknown",
+            "PE": None, "PB": None, "EPS": None, "ROE": None,
+            "DividendYield": None, "DebtToEquity": None,
+            "Beta": None, "MarketCap": None, "Sector": "Unknown",
         }
+
 
 # ---------------------------------------------------------
 # Parallel Loader (Bulletproof)
 # ---------------------------------------------------------
+
 @st.cache_data
 def load_fundamentals_auto(tickers):
     fundamentals = {}
 
     with ThreadPoolExecutor(max_workers=10) as executor:
         for t, data in executor.map(load_single_fundamental, tickers):
+            fundamentals[t] = data if isinstance(data, dict) else {}
 
-            # Guarantee data is a dict
-            if not isinstance(data, dict):
-                data = {
-                    "PE": None,
-                    "PB": None,
-                    "EPS": None,
-                    "ROE": None,
-                    "DividendYield": None,
-                    "DebtToEquity": None,
-                    "Beta": None,
-                    "MarketCap": None,
-                    "Sector": "Unknown",
-                }
-
-            fundamentals[t] = data
-
-    # Build DataFrame safely
     df = pd.DataFrame.from_dict(fundamentals, orient="index")
 
     # Guarantee DataFrame exists
@@ -314,8 +278,10 @@ def load_fundamentals_auto(tickers):
         )
 
     return df
+
+
 # ---------------------------------------------------------
-# STEP 2 — Load Fundamentals (Corrected Yahoo Endpoint)
+# STEP 2 — Load Fundamentals
 # ---------------------------------------------------------
 
 fundamentals_df = load_fundamentals_auto(valid_tickers)
@@ -333,43 +299,6 @@ if fundamentals_df is None or fundamentals_df.empty:
 st.subheader("DEBUG fundamentals_df HEAD")
 st.write(fundamentals_df.head())
 st.write("dtypes:", fundamentals_df.dtypes)
-
-
-# ---------------------------------------------------------
-# SAFETY CHECK — Guarantee fundamentals_df exists
-# ---------------------------------------------------------
-st.write("DEBUG — fundamentals_df object type:", type(fundamentals_df))
-
-if fundamentals_df is None:
-    st.error("FATAL: fundamentals_df is None — fundamentals loader failed.")
-    st.stop()
-
-if not isinstance(fundamentals_df, pd.DataFrame):
-    st.error("FATAL: fundamentals_df is not a DataFrame.")
-    st.write("Actual object:", fundamentals_df)
-    st.stop()
-
-if fundamentals_df.empty:
-    st.error("FATAL: fundamentals_df is EMPTY — fundamentals loader returned no data.")
-    st.write("Raw fundamentals_df:", fundamentals_df)
-    st.stop()
-
-# Show preview
-st.subheader("DEBUG fundamentals_df HEAD")
-st.write(fundamentals_df.head())
-st.write("dtypes:", fundamentals_df.dtypes)
-
-fundamentals = load_fundamentals(tickers)
-
-print("DEBUG — fundamentals raw output:")
-print(fundamentals)
-print("Type:", type(fundamentals))
-
-fundamentals_df = pd.DataFrame(fundamentals)
-print("DEBUG — fundamentals_df shape:", fundamentals_df.shape)
-print("DEBUG — fundamentals_df columns:", fundamentals_df.columns.tolist())
-print("DEBUG — fundamentals_df head:")
-print(fundamentals_df.head())
 
 # ---------------------------------------------------------
 # STEP 3 — Fundamentals Scoring (GLOBAL)

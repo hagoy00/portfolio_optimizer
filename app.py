@@ -295,16 +295,25 @@ st.write("dtypes:", fundamentals_df.dtypes)
 # ---------------------------------------------------------
 
 try:
+    # Portfolio returns
     portfolio_returns = returns_df.dot(global_weights)
 
+    # Max Drawdown
+    max_drawdown = (portfolio_returns.cummax() - portfolio_returns).max()
+
+    # Annualized return
     annual_return = portfolio_returns.mean() * 252
+
+    # Annualized volatility
     annual_volatility = portfolio_returns.std() * (252 ** 0.5)
 
+    # Sharpe ratio
     sharpe_ratio = (
         annual_return / annual_volatility
         if annual_volatility not in [0, None] else 0
     )
 
+    # Portfolio beta vs SPY
     if "SPY" in returns_df.columns:
         spy_returns = returns_df["SPY"]
         covariance = portfolio_returns.cov(spy_returns)
@@ -316,7 +325,6 @@ try:
 except Exception as e:
     st.error(f"Portfolio metrics failed: {e}")
     st.stop()
-
 
 # ---------------------------------------------------------
 # STEP 4 — GLOBAL COMMENTARY INPUTS (LIST-BASED, FINAL)

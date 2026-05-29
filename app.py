@@ -324,10 +324,15 @@ if portfolio_beta is None:
 elif isinstance(portfolio_beta, str) and portfolio_beta.strip() == "":
     portfolio_beta = 0.0
 else:
+    # --- Beta guard clause ---
+if portfolio_beta is None:
+    portfolio_beta = 0.0
+else:
     try:
         portfolio_beta = float(portfolio_beta)
     except Exception:
         portfolio_beta = 0.0
+
 
 # --- UI Metrics ---
 st.metric("Beta vs SPY", f"{portfolio_beta:.2f}")

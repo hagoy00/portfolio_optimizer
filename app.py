@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -312,6 +313,10 @@ try:
         annual_return / annual_volatility
         if annual_volatility not in [0, None] else 0
     )
+    try:
+    portfolio_beta = float(portfolio_beta)
+except:
+    portfolio_beta = 0.0
 
     # Portfolio beta vs SPY
     if "SPY" in returns_df.columns:

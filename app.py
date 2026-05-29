@@ -313,10 +313,16 @@ try:
         annual_return / annual_volatility
         if annual_volatility not in [0, None] else 0
     )
-    try:
-        portfolio_beta = float(portfolio_beta)
-    except Exception:
-        portfolio_beta = 0.0
+   
+# --- Beta guard clause ---
+try:
+    portfolio_beta = float(portfolio_beta)
+except Exception:
+    portfolio_beta = 0.0
+
+# --- UI Metrics ---
+st.metric("Beta vs SPY", f"{portfolio_beta:.2f}")
+
     # Portfolio beta vs SPY
     if "SPY" in returns_df.columns:
         spy_returns = returns_df["SPY"]

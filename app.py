@@ -1071,6 +1071,18 @@ with tab8:
     # Clean missing numeric values
     analysis_df = analysis_df.fillna(analysis_df.median(numeric_only=True))
 
+# ---------------------------------------------------------
+# SANITIZE FUNDAMENTALS FOR BUY ANALYSIS
+# ---------------------------------------------------------
+
+numeric_cols = ["PE", "PB", "DividendYield", "Beta", "Momentum", "Risk"]
+
+for col in numeric_cols:
+    analysis_df[col] = (
+        analysis_df[col]
+        .apply(lambda x: float(x) if x not in [None, "", "None", np.nan] else 0.0)
+    )
+
     # Generate Buy/Hold/Sell signals
     signals = []
     for t, row in analysis_df.iterrows():

@@ -725,9 +725,8 @@ with tab4:
     ))
     fig.update_layout(height=400)
     st.plotly_chart(fig, use_container_width=True)
-
 # ---------------------------------------------------------
-# TAB 5 — FUNDAMENTALS (FINAL VERSION)
+# TAB 5 — FUNDAMENTALS (FINAL FIXED VERSION)
 # ---------------------------------------------------------
 with tab5:
     st.header("Fundamentals")
@@ -742,50 +741,51 @@ with tab5:
     # ---------------------------------------------------------
     # CLEAN FUNDAMENTALS TABLE
     # ---------------------------------------------------------
-    # Drop SPY if present
     fdf = fundamentals_df.copy()
     fdf = fdf.reindex(valid_tickers)
 
-    # Fill missing values
-    fdf = fdf.replace({None: np.nan})
-    import numpy as np
+    # Normalize missing values
+    fdf = fdf.replace({None: np.nan, "None": np.nan, "": np.nan})
 
-    # Do NOT show Sector here (your S2 choice)
-    
-    fundamentals_display = fdf.drop(columns=["Sector"], errors="ignore").replace(0, np.nan)
+    # Convert numeric columns to float
+    numeric_cols = ["PE", "PB", "EPS", "ROE", "DividendYield", "DebtToEquity", "Beta", "MarketCap"]
+    for col in numeric_cols:
+        if col in fdf.columns:
+            fdf[col] = fdf[col].astype(float)
+
+    fundamentals_display = fdf.drop(columns=["Sector"], errors="ignore")
 
     st.subheader("Raw Fundamentals")
     st.dataframe(fundamentals_display, use_container_width=True)
 
     st.subheader("DEBUG – Raw fundamentals used for scoring")
-    st.write(fundamentals_df)
-    st.write("dtypes:", fundamentals_df.dtypes)
+    st.write(fdf)
+    st.write("dtypes:", fdf.dtypes)
 
     # ---------------------------------------------------------
     # FUNDAMENTALS RANKING
     # ---------------------------------------------------------
     st.subheader("Fundamentals Ranking")
 
-def score_fundamentals(row):
-    score = 0
+    def score_fundamentals(row):
+        score = 0
 
-    if pd.notna(row.get("ROE")):
-        score += row["ROE"] * 10
+        if pd.notna(row.get("ROE")):
+            score += row["ROE"] * 10
 
-    if pd.notna(row.get("EPS")):
-        score += float(row["EPS"])
+        if pd.notna(row.get("EPS")):
+            score += row["EPS"]
 
-    if pd.notna(row.get("PE")):
-        score += max(0, 50 - row["PE"])
+        if pd.notna(row.get("PE")):
+            score += max(0, 50 - row["PE"])
 
-    if pd.notna(row.get("PB")):
-        score += max(0, 20 - row["PB"])
+        if pd.notna(row.get("PB")):
+            score += max(0, 20 - row["PB"])
 
-    if pd.notna(row.get("DividendYield")):
-        score += row["DividendYield"] * 100
+        if pd.notna(row.get("DividendYield")):
+            score += row["DividendYield"] * 100
 
-    return score
-
+        return score
 
     fdf["score"] = fdf.apply(score_fundamentals, axis=1)
     ranked_df = fdf.sort_values("score", ascending=False)
@@ -817,13 +817,11 @@ def score_fundamentals(row):
             best_reasons.append("reasonable valuation")
         if best_row.get("DividendYield"):
             best_reasons.append("added income from dividends")
-        best_reason_text = ", ".join(best_reasons) if best_reasons else "overall stronger fundamentals"
-        lines.append(f"**{best}** ranks as the strongest fundamental name in the group, supported by {best_reason_text}.")
+        lines.append(f"**{best}** ranks as the strongest fundamental name in the group, supported by {', '.join(best_reasons)}.")
 
         # Middle
         if len(tickers_sorted) > 2:
-            middle = tickers_sorted[1:-1]
-            for t in middle:
+            for t in tickers_sorted[1:-1]:
                 row = ranked_df.loc[t]
                 mid_reasons = []
                 if row.get("ROE"):
@@ -832,8 +830,7 @@ def score_fundamentals(row):
                     mid_reasons.append("stable earnings")
                 if row.get("PE") and row["PE"] < 40:
                     mid_reasons.append("fair valuation")
-                reason_text = ", ".join(mid_reasons) if mid_reasons else "balanced fundamentals"
-                lines.append(f"**{t}** shows {reason_text}, placing it in the middle of the group.")
+                lines.append(f"**{t}** shows {', '.join(mid_reasons) if mid_reasons else 'balanced fundamentals'}.")
 
         # Worst
         worst_row = ranked_df.loc[worst]
@@ -844,8 +841,7 @@ def score_fundamentals(row):
             worst_reasons.append("elevated valuation")
         if worst_row.get("PB") and worst_row["PB"] > 10:
             worst_reasons.append("rich price-to-book ratio")
-        worst_reason_text = ", ".join(worst_reasons) if worst_reasons else "weaker fundamentals overall"
-        lines.append(f"**{worst}** ranks lowest, driven by {worst_reason_text}.")
+        lines.append(f"**{worst}** ranks lowest, driven by {', '.join(worst_reasons)}.")
 
         return "\n\n".join(lines)
 

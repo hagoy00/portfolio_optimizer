@@ -320,9 +320,8 @@ except Exception as e:
     st.error(f"Portfolio metrics failed: {e}")
     st.stop()
 
-
 # ---------------------------------------------------------
-# PORTFOLIO BETA (safe, ordered, non‑duplicated)
+# PORTFOLIO BETA — FINAL, SAFE, SINGLE SOURCE OF TRUTH
 # ---------------------------------------------------------
 
 try:
@@ -335,11 +334,19 @@ try:
     else:
         portfolio_beta = None
 
-    # Final guard clause
-    try:
-        portfolio_beta = float(portfolio_beta)
-    except Exception:
+    # Final guard clause (must be last)
+    if portfolio_beta is None:
         portfolio_beta = 0.0
+    else:
+        try:
+            portfolio_beta = float(portfolio_beta)
+        except Exception:
+            portfolio_beta = 0.0
+
+except Exception as e:
+    portfolio_beta = 0.0
+    st.error(f"Beta calculation failed: {e}")
+
 
     # ---------------------------------------------------------
     # UI METRIC

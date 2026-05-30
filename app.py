@@ -320,6 +320,7 @@ except Exception as e:
     st.error(f"Portfolio metrics failed: {e}")
     st.stop()
 
+
 # ---------------------------------------------------------
 # PORTFOLIO BETA — FINAL, SAFE, SINGLE SOURCE OF TRUTH
 # ---------------------------------------------------------
@@ -343,9 +344,9 @@ try:
         except Exception:
             portfolio_beta = 0.0
 
-except Exception as e:
+except Exception:
     portfolio_beta = 0.0
-    st.error(f"Beta calculation failed: {e}")
+
 
     # ---------------------------------------------------------
     # UI METRIC

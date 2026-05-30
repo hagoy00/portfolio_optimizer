@@ -320,33 +320,6 @@ except Exception as e:
     st.error(f"Portfolio metrics failed: {e}")
     st.stop()
 
-
-# ---------------------------------------------------------
-# PORTFOLIO BETA — FINAL, SAFE, SINGLE SOURCE OF TRUTH
-# ---------------------------------------------------------
-
-try:
-    # Compute beta if SPY exists
-    if "SPY" in returns_df.columns:
-        spy_returns = returns_df["SPY"]
-        covariance = portfolio_returns.cov(spy_returns)
-        market_variance = spy_returns.var()
-        portfolio_beta = covariance / market_variance if market_variance else None
-    else:
-        portfolio_beta = None
-
-    # Final guard clause (must be last)
-    if portfolio_beta is None:
-        portfolio_beta = 0.0
-    else:
-        try:
-            portfolio_beta = float(portfolio_beta)
-        except Exception:
-            portfolio_beta = 0.0
-
-except Exception:
-    portfolio_beta = 0.0
-
     # ---------------------------------------------------------
     # UI METRIC
     # ---------------------------------------------------------
@@ -418,7 +391,6 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
     "AI Commentary",
     "Buy Analysis",
     "Optimizer"
-])
 # ---------------------------------------------------------
 # GLOBAL PORTFOLIO METRICS (MUST RUN BEFORE ANY TABS)
 # ---------------------------------------------------------
@@ -447,6 +419,17 @@ try:
         portfolio_beta = covariance / market_variance if market_variance else None
     else:
         portfolio_beta = None
+
+    # ---------------------------------------------------------
+    # FINAL BETA GUARD CLAUSE (MUST BE LAST)
+    # ---------------------------------------------------------
+    if portfolio_beta is None:
+        portfolio_beta = 0.0
+    else:
+        try:
+            portfolio_beta = float(portfolio_beta)
+        except Exception:
+            portfolio_beta = 0.0
 
 except Exception as e:
     st.error(f"Portfolio metrics failed: {e}")

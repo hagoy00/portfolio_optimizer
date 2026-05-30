@@ -347,7 +347,6 @@ except Exception as e:
     portfolio_beta = 0.0
     st.error(f"Beta calculation failed: {e}")
 
-
     # ---------------------------------------------------------
     # UI METRIC
     # ---------------------------------------------------------

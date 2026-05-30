@@ -325,28 +325,8 @@ except Exception as e:
 # PORTFOLIO BETA (safe, ordered, non‑duplicated)
 # ---------------------------------------------------------
 
-# Compute beta if SPY exists
-if "SPY" in returns_df.columns:
-    spy_returns = returns_df["SPY"]
-    covariance = portfolio_returns.cov(spy_returns)
-    market_variance = spy_returns.var()
-    portfolio_beta = covariance / market_variance if market_variance else None
-else:
-    portfolio_beta = None
-
-# Final guard clause
 try:
-    portfolio_beta = float(portfolio_beta)
-except Exception:
-    portfolio_beta = 0.0
-
-
-# ---------------------------------------------------------
-# UI METRIC
-# ---------------------------------------------------------
-st.metric("Beta vs SPY", f"{portfolio_beta:.2f}")
-
-    # Portfolio beta vs SPY
+    # Compute beta if SPY exists
     if "SPY" in returns_df.columns:
         spy_returns = returns_df["SPY"]
         covariance = portfolio_returns.cov(spy_returns)
@@ -355,10 +335,20 @@ st.metric("Beta vs SPY", f"{portfolio_beta:.2f}")
     else:
         portfolio_beta = None
 
+    # Final guard clause
+    try:
+        portfolio_beta = float(portfolio_beta)
+    except Exception:
+        portfolio_beta = 0.0
+
+    # ---------------------------------------------------------
+    # UI METRIC
+    # ---------------------------------------------------------
+    st.metric("Beta vs SPY", f"{portfolio_beta:.2f}")
+
 except Exception as e:
     st.error(f"Portfolio metrics failed: {e}")
     st.stop()
-
 # ---------------------------------------------------------
 # STEP 4 — GLOBAL COMMENTARY INPUTS (LIST-BASED, FINAL)
 # ---------------------------------------------------------

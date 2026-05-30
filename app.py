@@ -1177,7 +1177,7 @@ for col in numeric_cols:
             name=row["Ticker"]
         ))
     fig.update_layout(polar=dict(radialaxis=dict(visible=True)), showlegend=True, height=500)
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, use_container_width=True, key="buy_analysis_radar")
 
     st.subheader("Top Strengths & Weaknesses")
 

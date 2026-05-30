@@ -711,7 +711,7 @@ with tab4:
         marker_color="steelblue"
     ))
     fig.update_layout(height=400)
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, use_container_width=True, key="plot_714")
 # ---------------------------------------------------------
 # TAB 5 — FUNDAMENTALS (FINAL FIXED VERSION)
 # ---------------------------------------------------------
@@ -1366,4 +1366,5 @@ with tab9:
             marker_color="steelblue"
         ))
         fig.update_layout(height=400, title="Optimized Portfolio Weights")
-        st.plotly_chart(fig, use_container_width=True)
+         #st.plotly_chart(fig, use_container_width=True, key="plot_1370")
+         st.plotly_chart(fig, use_container_width=True, key="plot_1370")

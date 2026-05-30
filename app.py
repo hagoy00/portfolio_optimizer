@@ -470,7 +470,7 @@ with tab1:
         legend=dict(orientation="h", yanchor="bottom", y=-0.3)
     )
 
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(risk_fig, use_container_width=True, key="risk_chart")
 
 # ---------------------------------------------------------
 # TAB 2 — PERFORMANCE (FINAL VERSION)

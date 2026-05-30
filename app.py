@@ -211,40 +211,29 @@ SECTOR_OVERRIDE = {
     "GS": "Financial Services", "MS": "Financial Services",
 }
 
+FMP_API_KEY = "YOUR_KEY_HERE"
+
 def load_single_fundamental(t):
     try:
-        url = (
-            f"https://query1.finance.yahoo.com/v10/finance/quoteSummary/{t}"
-            f"?modules=defaultKeyStatistics,financialData,summaryDetail"
-        )
-
-        headers = {"User-Agent": "Mozilla/5.0"}
-        r = requests.get(url, headers=headers, timeout=6)
+        url = f"https://financialmodelingprep.com/api/v3/profile/{t}?apikey={FMP_API_KEY}"
+        r = requests.get(url, timeout=6)
         js = r.json()
 
-        result = js.get("quoteSummary", {}).get("result", [{}])[0]
+        if not js or not isinstance(js, list):
+            raise ValueError("Invalid FMP response")
 
-        def safe_get(path):
-            node = result
-            for p in path:
-                node = node.get(p, {})
-            return node.get("raw") if isinstance(node, dict) else None
-
-        pe = safe_get(["summaryDetail", "trailingPE"])
-        pb = safe_get(["defaultKeyStatistics", "priceToBook"])
-        eps = safe_get(["defaultKeyStatistics", "epsTrailingTwelveMonths"])
-        roe = safe_get(["financialData", "returnOnEquity"])
-        dy = safe_get(["summaryDetail", "dividendYield"])
-        dte = safe_get(["financialData", "debtToEquity"])
-        beta = safe_get(["defaultKeyStatistics", "beta"])
-        mcap = safe_get(["summaryDetail", "marketCap"])
-
-        sector = SECTOR_OVERRIDE.get(t, "Unknown")
+        d = js[0]
 
         return t, {
-            "PE": pe, "PB": pb, "EPS": eps, "ROE": roe,
-            "DividendYield": dy, "DebtToEquity": dte,
-            "Beta": beta, "MarketCap": mcap, "Sector": sector,
+            "PE": d.get("peRatio"),
+            "PB": d.get("priceToBookRatio"),
+            "EPS": d.get("eps"),
+            "ROE": d.get("returnOnEquity"),
+            "DividendYield": d.get("dividendYield"),
+            "DebtToEquity": d.get("debtToEquity"),
+            "Beta": d.get("beta"),
+            "MarketCap": d.get("mktCap"),
+            "Sector": d.get("sector") or "Unknown",
         }
 
     except Exception:

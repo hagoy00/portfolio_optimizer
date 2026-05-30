@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -294,7 +293,6 @@ st.subheader("DEBUG fundamentals_df HEAD")
 st.write(fundamentals_df.head())
 st.write("dtypes:", fundamentals_df.dtypes)
 
-
 # ---------------------------------------------------------
 # STEP 3 — GLOBAL PORTFOLIO METRICS
 # ---------------------------------------------------------
@@ -317,24 +315,35 @@ try:
         annual_return / annual_volatility
         if annual_volatility not in [0, None] else 0
     )
-   
-# --- FINAL Beta guard clause (cannot fail) ---
-if portfolio_beta is None:
-    portfolio_beta = 0.0
-elif isinstance(portfolio_beta, str) and portfolio_beta.strip() == "":
-    portfolio_beta = 0.0
-else:
-    # --- Beta guard clause ---
-if portfolio_beta is None:
-    portfolio_beta = 0.0
-else:
-    try:
-        portfolio_beta = float(portfolio_beta)
-    except Exception:
-        portfolio_beta = 0.0
+
+except Exception as e:
+    st.error(f"Portfolio metrics failed: {e}")
+    st.stop()
 
 
-# --- UI Metrics ---
+# ---------------------------------------------------------
+# PORTFOLIO BETA (safe, ordered, non‑duplicated)
+# ---------------------------------------------------------
+
+# Compute beta if SPY exists
+if "SPY" in returns_df.columns:
+    spy_returns = returns_df["SPY"]
+    covariance = portfolio_returns.cov(spy_returns)
+    market_variance = spy_returns.var()
+    portfolio_beta = covariance / market_variance if market_variance else None
+else:
+    portfolio_beta = None
+
+# Final guard clause
+try:
+    portfolio_beta = float(portfolio_beta)
+except Exception:
+    portfolio_beta = 0.0
+
+
+# ---------------------------------------------------------
+# UI METRIC
+# ---------------------------------------------------------
 st.metric("Beta vs SPY", f"{portfolio_beta:.2f}")
 
     # Portfolio beta vs SPY

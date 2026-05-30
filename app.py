@@ -470,8 +470,6 @@ with tab1:
         legend=dict(orientation="h", yanchor="bottom", y=-0.3)
     )
 
-    st.plotly_chart(risk_fig, use_container_width=True, key="risk_chart")
-
 # ---------------------------------------------------------
 # TAB 2 — PERFORMANCE (FINAL VERSION)
 # ---------------------------------------------------------
@@ -1177,9 +1175,7 @@ for col in numeric_cols:
             name=row["Ticker"]
         ))
     fig.update_layout(polar=dict(radialaxis=dict(visible=True)), showlegend=True, height=500)
-    st.plotly_chart(fig, use_container_width=True, key="buy_analysis_radar")
-
-    st.subheader("Top Strengths & Weaknesses")
+        st.subheader("Top Strengths & Weaknesses")
 
     def strengths_weaknesses(row):
         strengths, weaknesses = [], []

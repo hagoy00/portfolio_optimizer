@@ -451,26 +451,26 @@ with tab1:
         st.metric("Number of Holdings", len(valid_tickers))
 
     # ---------------------------------------------------------
-    # PRICE CHART (OPTIONAL BUT USEFUL)
+    # PRICE CHART
     # ---------------------------------------------------------
     st.subheader("Price History")
 
-    ffig = go.Figure()
-for t in valid_tickers:
-    fig.add_trace(go.Scatter(
-        x=prices.index,
-        y=prices[t],
-        mode="lines",
-        name=t
-    ))
+    fig = go.Figure()
+    for t in valid_tickers:
+        fig.add_trace(go.Scatter(
+            x=prices.index,
+            y=prices[t],
+            mode="lines",
+            name=t
+        ))
 
-fig.update_layout(
-    height=400,
-    title="Price History",
-    legend=dict(orientation="h", yanchor="bottom", y=-0.3)
-)
+    fig.update_layout(
+        height=400,
+        title="Price History",
+        legend=dict(orientation="h", yanchor="bottom", y=-0.3)
+    )
 
-st.plotly_chart(fig, use_container_width=True, key="plot_1_price_history")
+    st.plotly_chart(fig, use_container_width=True, key="plot_1_price_history")
 
 # ---------------------------------------------------------
 # TAB 2 — PERFORMANCE (FINAL VERSION)

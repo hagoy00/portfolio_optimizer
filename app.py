@@ -980,32 +980,32 @@ with tab7:
     # AI COMMENTARY TEXT
     # ---------------------------------------------------------
     commentary_text = f"""
-### Portfolio Overview
-Your portfolio currently delivers an **annualized return of {ar:.2%}**, with volatility at **{vol:.2%}**  
-and a Sharpe ratio of **{shrp:.2f}**. The portfolio beta of **{beta:.2f}** indicates its sensitivity  
-to market movements, while the maximum drawdown of **{mdd:.2%}** reflects downside risk.
-
-### Top Fundamental Pick
-**{top_pick}** leads the portfolio with a fundamentals score of **{top_score:.1f}**  
-and a portfolio weight of **{top_weight:.2%}**. This suggests strong underlying quality  
-and a meaningful contribution to long‑term performance.
-
-### Weakest Fundamental Pick
-**{bottom_pick}** ranks lowest with a score of **{bottom_score:.1f}**  
-and a weight of **{bottom_weight:.2%}**. This may warrant monitoring or rebalancing  
-depending on your risk tolerance and investment horizon.
-
-### Sector Positioning
-Your sector exposure reflects the combined influence of fundamentals strength  
-and your selected weight allocations. This helps maintain diversification  
-while emphasizing higher‑quality names.
-
-### Final Thoughts
-Overall, the portfolio demonstrates balanced exposure with clear leaders and laggards.  
-Increasing exposure to high‑scoring names and trimming weaker positions  
-may improve risk‑adjusted performance going forward.
-"""
-
+    ### Portfolio Overview
+    Your portfolio currently delivers an **annualized return of {ar:.2%}**, with volatility at **{vol:.2%}**  
+    and a Sharpe ratio of **{shrp:.2f}**. The portfolio beta of **{beta:.2f}** indicates its sensitivity  
+    to market movements, while the maximum drawdown of **{mdd:.2%}** reflects downside risk.
+    
+    ### Top Fundamental Pick
+    **{top_pick}** leads the portfolio with a fundamentals score of **{top_score:.1f}**  
+    and a portfolio weight of **{top_weight:.2%}**. This suggests strong underlying quality  
+    and a meaningful contribution to long‑term performance.
+    
+    ### Weakest Fundamental Pick
+    **{bottom_pick}** ranks lowest with a score of **{bottom_score:.1f}**  
+    and a weight of **{bottom_weight:.2%}**. This may warrant monitoring or rebalancing  
+    depending on your risk tolerance and investment horizon.
+    
+    ### Sector Positioning
+    Your sector exposure reflects the combined influence of fundamentals strength  
+    and your selected weight allocations. This helps maintain diversification  
+    while emphasizing higher‑quality names.
+    
+    ### Final Thoughts
+    Overall, the portfolio demonstrates balanced exposure with clear leaders and laggards.  
+    Increasing exposure to high‑scoring names and trimming weaker positions  
+    may improve risk‑adjusted performance going forward.
+    """
+    
     st.subheader("AI‑Generated Commentary")
     st.markdown(commentary_text)
 # ---------------------------------------------------------
@@ -1166,18 +1166,26 @@ for col in numeric_cols:
     else:
         st.warning("**AI Portfolio Signal: HOLD** — Mixed signals across the portfolio.")
 
-    st.subheader("Fundamentals Radar Chart")
-    radar_cols = ["PE", "PB", "DividendYield", "Momentum", "Risk"]
-    fig = go.Figure()
-    for _, row in signals_df.iterrows():
-        fig.add_trace(go.Scatterpolar(
-            r=[row[c] if pd.notna(row[c]) else 0 for c in radar_cols],
-            theta=radar_cols,
-            fill='toself',
-            name=row["Ticker"]
-        ))
-    fig.update_layout(polar=dict(radialaxis=dict(visible=True)), showlegend=True, height=500)
-        st.subheader("Top Strengths & Weaknesses")
+        st.subheader("Fundamentals Radar Chart")
+        radar_cols = ["PE", "PB", "DividendYield", "Momentum", "Risk"]
+        
+        fig = go.Figure()
+        
+        for _, row in signals_df.iterrows():
+            fig.add_trace(go.Scatterpolar(
+                r=[row[c] if pd.notna(row[c]) else 0 for c in radar_cols],
+                theta=radar_cols,
+                fill='toself',
+                name=row["Ticker"]
+            ))
+        
+        fig.update_layout(
+            polar=dict(radialaxis=dict(visible=True)),
+            showlegend=True,
+            height=500
+        )
+        
+        st.subheader("Top Strengths & Weaknesses")   # ← FIXED (dedented)
 
     def strengths_weaknesses(row):
         strengths, weaknesses = [], []

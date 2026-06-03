@@ -211,7 +211,7 @@ SECTOR_OVERRIDE = {
     "GS": "Financial Services", "MS": "Financial Services",
 }
 
-FMP_API_KEY = "YOUR_KEY_HERE"
+FMP_API_KEY = "your_real_api_key_here"
 
 def load_single_fundamental(t):
     try:

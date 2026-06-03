@@ -215,32 +215,39 @@ FMP_API_KEY = "your_real_api_key_here"
 
 def load_single_fundamental(t):
     try:
-        url = f"https://financialmodelingprep.com/api/v3/profile/{t}?apikey={FMP_API_KEY}"
-        r = requests.get(url, timeout=6)
-        js = r.json()
+        # 1 — Profile (sector, market cap, beta)
+        url_profile = f"https://financialmodelingprep.com/api/v3/profile/{t}?apikey={FMP_API_KEY}"
+        p = requests.get(url_profile, timeout=6).json()
+        p = p[0] if isinstance(p, list) and p else {}
 
-        if not js or not isinstance(js, list):
-            raise ValueError("Invalid FMP response")
+        # 2 — Key metrics (PE, PB, EPS)
+        url_metrics = f"https://financialmodelingprep.com/api/v3/key-metrics/{t}?limit=1&apikey={FMP_API_KEY}"
+        km = requests.get(url_metrics, timeout=6).json()
+        km = km[0] if isinstance(km, list) and km else {}
 
-        d = js[0]
+        # 3 — Ratios (ROE, Debt/Equity, Dividend Yield)
+        url_ratios = f"https://financialmodelingprep.com/api/v3/ratios/{t}?limit=1&apikey={FMP_API_KEY}"
+        rt = requests.get(url_ratios, timeout=6).json()
+        rt = rt[0] if isinstance(rt, list) and rt else {}
 
         return t, {
-            "PE": d.get("peRatio"),
-            "PB": d.get("priceToBookRatio"),
-            "EPS": d.get("eps"),
-            "ROE": d.get("returnOnEquity"),
-            "DividendYield": d.get("dividendYield"),
-            "DebtToEquity": d.get("debtToEquity"),
-            "Beta": d.get("beta"),
-            "MarketCap": d.get("mktCap"),
-            "Sector": d.get("sector") or "Unknown",
+            "PE": float(km.get("peRatio", 0) or 0),
+            "PB": float(km.get("pbRatio", 0) or 0),
+            "EPS": float(km.get("eps", 0) or 0),
+            "ROE": float(rt.get("returnOnEquity", 0) or 0),
+            "DividendYield": float(rt.get("dividendYield", 0) or 0),
+            "DebtToEquity": float(rt.get("debtEquityRatio", 0) or 0),
+            "Beta": float(p.get("beta", 0) or 0),
+            "MarketCap": float(p.get("mktCap", 0) or 0),
+            "Sector": p.get("sector") or SECTOR_OVERRIDE.get(t, "Unknown"),
         }
 
     except Exception:
         return t, {
-            "PE": None, "PB": None, "EPS": None, "ROE": None,
-            "DividendYield": None, "DebtToEquity": None,
-            "Beta": None, "MarketCap": None, "Sector": "Unknown",
+            "PE": 0, "PB": 0, "EPS": 0, "ROE": 0,
+            "DividendYield": 0, "DebtToEquity": 0,
+            "Beta": 0, "MarketCap": 0,
+            "Sector": SECTOR_OVERRIDE.get(t, "Unknown"),
         }
 
 @st.cache_data

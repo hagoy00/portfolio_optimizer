@@ -275,6 +275,26 @@ def load_fundamentals_auto(tickers):
     return df
 
 fundamentals_df = load_fundamentals_auto(valid_tickers)
+# -----------------------------------------
+# OPTION B — Replace NaN with sector averages
+# -----------------------------------------
+
+numeric_cols = [
+    "PE", "PB", "EPS", "ROE",
+    "DividendYield", "DebtToEquity",
+    "Beta", "MarketCap"
+]
+
+# Convert zeros back to NaN (because zeros came from missing data)
+for col in numeric_cols:
+    fundamentals_df[col] = fundamentals_df[col].replace(0, np.nan)
+
+# Fill NaN with sector averages
+for col in numeric_cols:
+    fundamentals_df[col] = fundamentals_df.groupby("Sector")[col].transform(
+        lambda x: x.fillna(x.mean())
+    )
+
 
 # DEBUG — inspect fundamentals
 print("COLUMNS:", fundamentals_df.columns.tolist())

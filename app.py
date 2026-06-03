@@ -230,23 +230,26 @@ def load_single_fundamental(t):
         rt = requests.get(url_ratios, timeout=6).json()
         rt = rt[0] if isinstance(rt, list) and rt else {}
 
+        def safe_float(x):
+            return float(x) if x not in (None, "", "None") else np.nan
+
         return t, {
-            "PE": float(km.get("peRatio", 0) or 0),
-            "PB": float(km.get("pbRatio", 0) or 0),
-            "EPS": float(km.get("eps", 0) or 0),
-            "ROE": float(rt.get("returnOnEquity", 0) or 0),
-            "DividendYield": float(rt.get("dividendYield", 0) or 0),
-            "DebtToEquity": float(rt.get("debtEquityRatio", 0) or 0),
-            "Beta": float(p.get("beta", 0) or 0),
-            "MarketCap": float(p.get("mktCap", 0) or 0),
+            "PE": safe_float(km.get("peRatio")),
+            "PB": safe_float(km.get("pbRatio")),
+            "EPS": safe_float(km.get("eps")),
+            "ROE": safe_float(rt.get("returnOnEquity")),
+            "DividendYield": safe_float(rt.get("dividendYield")),
+            "DebtToEquity": safe_float(rt.get("debtEquityRatio")),
+            "Beta": safe_float(p.get("beta")),
+            "MarketCap": safe_float(p.get("mktCap")),
             "Sector": p.get("sector") or SECTOR_OVERRIDE.get(t, "Unknown"),
         }
 
     except Exception:
         return t, {
-            "PE": 0, "PB": 0, "EPS": 0, "ROE": 0,
-            "DividendYield": 0, "DebtToEquity": 0,
-            "Beta": 0, "MarketCap": 0,
+            "PE": np.nan, "PB": np.nan, "EPS": np.nan, "ROE": np.nan,
+            "DividendYield": np.nan, "DebtToEquity": np.nan,
+            "Beta": np.nan, "MarketCap": np.nan,
             "Sector": SECTOR_OVERRIDE.get(t, "Unknown"),
         }
 

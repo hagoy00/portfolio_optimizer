@@ -1326,17 +1326,17 @@ with tab9:
             return init_guess
 
         return result.x
-
+    
     # -----------------------------
     # Run optimizer
     # -----------------------------
     st.subheader("Select Optimization Method")
-
+    
     method = st.selectbox(
         "Optimization Method",
         ["Equal Weight", "Minimum Variance", "Maximum Sharpe", "Risk Parity"]
     )
-
+    
     if st.button("Run Optimizer"):
         if method == "Equal Weight":
             opt_weights = init_guess
@@ -1346,46 +1346,53 @@ with tab9:
             opt_weights = max_sharpe()
         elif method == "Risk Parity":
             opt_weights = risk_parity()
-
+    
         # Normalize weights
         opt_weights = opt_weights / opt_weights.sum()
-
+    
         # Save globally
         st.session_state.weights = opt_weights
-
+    
         st.success("Optimizer completed successfully.")
-
+    
         results_df = pd.DataFrame({
             "Ticker": tickers_opt,
             "Weight": opt_weights
         }).sort_values("Weight", ascending=False)
-
+    
         st.subheader("Optimized Weights")
         st.dataframe(results_df, use_container_width=True)
-
+    
         ret, vol, sharpe = portfolio_performance(opt_weights, mean_returns, cov_matrix)
-
+    
         st.subheader("Optimized Portfolio Performance")
         st.write(f"**Expected Return:** {ret:.2%}")
         st.write(f"**Volatility:** {vol:.2%}")
         st.write(f"**Sharpe Ratio:** {sharpe:.2f}")
-
+    
+        # -----------------------------
+        # FIRST BAR CHART
+        # -----------------------------
         fig = go.Figure(go.Bar(
             x=results_df["Ticker"],
             y=results_df["Weight"],
             marker_color="steelblue"
         ))
         fig.update_layout(height=400, title="Optimized Portfolio Weights")
-
+    
         # st.plotly_chart(fig, use_container_width=True, key="plot_1370")
         st.plotly_chart(fig, use_container_width=True, key="plot_1370")
-
-        
+    
+        # -----------------------------
+        # SECOND BAR CHART (duplicate)
+        # -----------------------------
         fig = go.Figure(go.Bar(
             x=results_df["Ticker"],
             y=results_df["Weight"],
             marker_color="steelblue"
         ))
         fig.update_layout(height=400, title="Optimized Portfolio Weights")
-         #st.plotly_chart(fig, use_container_width=True, key="plot_1370")
-         st.plotly_chart(fig, use_container_width=True, key="plot_1370")
+    
+        # st.plotly_chart(fig, use_container_width=True, key="plot_1370")
+        st.plotly_chart(fig, use_container_width=True, key="plot_1370")
+    

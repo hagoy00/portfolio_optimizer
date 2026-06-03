@@ -1400,17 +1400,3 @@ with tab9:
     
         # st.plotly_chart(fig, use_container_width=True, key="plot_1370")
         st.plotly_chart(fig, use_container_width=True, key="plot_1370")
-    
-        # -----------------------------
-        # SECOND BAR CHART (duplicate)
-        # -----------------------------
-        fig = go.Figure(go.Bar(
-            x=results_df["Ticker"],
-            y=results_df["Weight"],
-            marker_color="steelblue"
-        ))
-        fig.update_layout(height=400, title="Optimized Portfolio Weights")
-    
-        # st.plotly_chart(fig, use_container_width=True, key="plot_1370")
-        st.plotly_chart(fig, use_container_width=True, key="plot_1370")
-    

@@ -187,60 +187,68 @@ import numpy as np
 
 global_weights = np.array([1 / len(valid_tickers)] * len(valid_tickers))
 
-
 # ---------------------------------------------------------
-# STEP 2 — Load Fundamentals (Corrected Yahoo Endpoint)
+# STEP 2 — Load Fundamentals (Corrected FMP Endpoint)
 # ---------------------------------------------------------
-
 import requests
 import pandas as pd
+import numpy as np
+import streamlit as st
 from concurrent.futures import ThreadPoolExecutor
 
 SECTOR_OVERRIDE = {
     "AAPL": "Technology", "MSFT": "Technology", "NVDA": "Technology",
     "MU": "Technology", "PLTR": "Technology", "NOK": "Technology",
     "ARM": "Technology",
-
     "GOOG": "Communication Services", "GOOGL": "Communication Services",
     "NFLX": "Communication Services", "APP": "Communication Services",
-
     "AMZN": "Consumer Cyclical", "TSLA": "Consumer Cyclical",
-
     "JPM": "Financial Services", "BAC": "Financial Services",
     "C": "Financial Services", "WFC": "Financial Services",
     "GS": "Financial Services", "MS": "Financial Services",
 }
 
-FMP_API_KEY = "your_real_api_key_here"
+FMP_API_KEY = "REPLACE_WITH_REAL_KEY"  # <- must be real, or everything will be NaN
 
-def load_single_fundamental(t):
+
+def safe_float(x):
+    try:
+        if x in (None, "", "None", "NaN", "nan"):
+            return np.nan
+        x = float(x)
+        if np.isinf(x) or np.isnan(x):
+            return np.nan
+        return x
+    except Exception:
+        return np.nan
+
+
+def load_single_fundamental(t: str):
+    t = t.strip().upper()
     try:
         # 1 — Profile (sector, market cap, beta)
         url_profile = f"https://financialmodelingprep.com/api/v3/profile/{t}?apikey={FMP_API_KEY}"
-        p = requests.get(url_profile, timeout=6).json()
+        r_p = requests.get(url_profile, timeout=6)
+        r_p.raise_for_status()
+        p = r_p.json()
         p = p[0] if isinstance(p, list) and p else {}
 
         # 2 — Key metrics (PE, PB, EPS)
         url_metrics = f"https://financialmodelingprep.com/api/v3/key-metrics/{t}?limit=1&apikey={FMP_API_KEY}"
-        km = requests.get(url_metrics, timeout=6).json()
+        r_km = requests.get(url_metrics, timeout=6)
+        r_km.raise_for_status()
+        km = r_km.json()
         km = km[0] if isinstance(km, list) and km else {}
 
         # 3 — Ratios (ROE, Debt/Equity, Dividend Yield)
         url_ratios = f"https://financialmodelingprep.com/api/v3/ratios/{t}?limit=1&apikey={FMP_API_KEY}"
-        rt = requests.get(url_ratios, timeout=6).json()
+        r_rt = requests.get(url_ratios, timeout=6)
+        r_rt.raise_for_status()
+        rt = r_rt.json()
         rt = rt[0] if isinstance(rt, list) and rt else {}
 
-        def safe_float(x):
-            try:
-                if x in (None, "", "None", "NaN", "nan"):
-                    return np.nan
-                x = float(x)
-                if np.isinf(x) or np.isnan(x):
-                    return np.nan
-                return x
-            except:
-                return np.nan
-        
+        sector = p.get("sector") or SECTOR_OVERRIDE.get(t, "Unknown")
+
         return t, {
             "PE": safe_float(km.get("peRatio")),
             "PB": safe_float(km.get("pbRatio")),
@@ -250,10 +258,11 @@ def load_single_fundamental(t):
             "DebtToEquity": safe_float(rt.get("debtEquityRatio")),
             "Beta": safe_float(p.get("beta")),
             "MarketCap": safe_float(p.get("mktCap")),
-            "Sector": p.get("sector") or SECTOR_OVERRIDE.get(t, "Unknown"),
+            "Sector": sector,
         }
 
     except Exception:
+        # Fallback: all NaN, but sector from override if possible
         return t, {
             "PE": np.nan, "PB": np.nan, "EPS": np.nan, "ROE": np.nan,
             "DividendYield": np.nan, "DebtToEquity": np.nan,
@@ -261,9 +270,20 @@ def load_single_fundamental(t):
             "Sector": SECTOR_OVERRIDE.get(t, "Unknown"),
         }
 
+
 @st.cache_data
 def load_fundamentals_auto(tickers):
+    tickers = [t.strip().upper() for t in tickers if t]  # clean
     fundamentals = {}
+
+    if not tickers:
+        return pd.DataFrame(
+            columns=[
+                "PE", "PB", "EPS", "ROE",
+                "DividendYield", "DebtToEquity",
+                "Beta", "MarketCap", "Sector"
+            ]
+        )
 
     with ThreadPoolExecutor(max_workers=10) as executor:
         for t, data in executor.map(load_single_fundamental, tickers):
@@ -282,7 +302,9 @@ def load_fundamentals_auto(tickers):
 
     return df
 
+
 fundamentals_df = load_fundamentals_auto(valid_tickers)
+
 # -----------------------------------------
 # OPTION B — Replace NaN with sector averages
 # -----------------------------------------

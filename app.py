@@ -230,9 +230,17 @@ def load_single_fundamental(t):
         rt = requests.get(url_ratios, timeout=6).json()
         rt = rt[0] if isinstance(rt, list) and rt else {}
 
-        def safe_float(x):
-            return float(x) if x not in (None, "", "None") else np.nan
-
+                def safe_float(x):
+            try:
+                if x in (None, "", "None", "NaN", "nan"):
+                    return np.nan
+                x = float(x)
+                if np.isinf(x) or np.isnan(x):
+                    return np.nan
+                return x
+            except:
+                return np.nan
+        
         return t, {
             "PE": safe_float(km.get("peRatio")),
             "PB": safe_float(km.get("pbRatio")),

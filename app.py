@@ -296,9 +296,6 @@ for col in numeric_cols:
     )
 
 
-# DEBUG — inspect fundamentals
-print("COLUMNS:", fundamentals_df.columns.tolist())
-print(fundamentals_df.head(10))
 
 if "SPY" in fundamentals_df.index:
     fundamentals_df = fundamentals_df.drop("SPY")
@@ -308,9 +305,6 @@ if fundamentals_df is None or fundamentals_df.empty:
     st.write(fundamentals_df)
     st.stop()
 
-st.subheader("DEBUG fundamentals_df HEAD")
-st.write(fundamentals_df.head())
-st.write("dtypes:", fundamentals_df.dtypes)
 
 # ---------------------------------------------------------
 # STEP 3 — GLOBAL PORTFOLIO METRICS
@@ -645,6 +639,28 @@ with tab3:
     st.pyplot(fig)
 
     # ---------------------------------------------------------
+    # FULL DISTRIBUTION OF DAILY RETURNS (ALL TICKERS)
+    # ---------------------------------------------------------
+    st.markdown("### Distribution of Daily Returns (All Tickers)")
+    
+    fig3, ax3 = plt.subplots(figsize=(10, 5))
+    
+    for col in returns_df.columns:
+        ax3.hist(
+            returns_df[col].dropna(),
+            bins=40,
+            alpha=0.4,
+            label=col
+        )
+    
+    ax3.set_title("Distribution of Daily Returns (All Tickers)")
+    ax3.set_xlabel("Daily Return")
+    ax3.set_ylabel("Frequency")
+    ax3.legend()
+    
+    st.pyplot(fig3)
+
+    # ---------------------------------------------------------
     # TRUE RISK CONTRIBUTION (MCTR-BASED)
     # ---------------------------------------------------------
     st.markdown("### Risk Contribution Breakdown")
@@ -777,7 +793,6 @@ with tab5:
     st.subheader("Raw Fundamentals")
     st.dataframe(fundamentals_display, use_container_width=True)
 
-    st.subheader("DEBUG – Raw fundamentals used for scoring")
     st.write(fdf)
     st.write("dtypes:", fdf.dtypes)
 

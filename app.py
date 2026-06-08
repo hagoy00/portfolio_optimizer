@@ -610,16 +610,22 @@ with tab2:
     st.markdown("### Drawdown")
     st.area_chart(dd)
 
+    # ---------------------------------------------------------
+    # Distribution of Daily Returns (FIXED)
+    # ---------------------------------------------------------
     st.markdown("### Distribution of Daily Returns")
+    
     hist_data = ret.dropna()
+    
+    # FIX: Prevent empty histogram (the root cause of your issue)
     if hist_data.empty:
-        st.info("No valid daily returns to plot.")
+        st.info("No valid daily returns available to plot in this date range.")
     else:
         fig, ax = plt.subplots()
         ax.hist(hist_data, bins=40, alpha=0.7)
         ax.set_title("Histogram of Daily Returns")
         st.pyplot(fig)
-
+    
 # ---------------------------------------------------------
 # TAB 3 — RISK & DRAWDOWN ANALYSIS (FINAL VERSION)
 # ---------------------------------------------------------

@@ -527,16 +527,34 @@ with tab1:
     st.plotly_chart(fig, use_container_width=True, key="plot_1_price_history")
 
 # ---------------------------------------------------------
-# TAB 2 — PERFORMANCE (FINAL VERSION)
+# TAB 2 — PERFORMANCE (ROBUST VERSION)
 # ---------------------------------------------------------
 with tab2:
     st.header("Performance Metrics")
 
     # ---------------------------------------------------------
+    # GUARD CLAUSES
+    # ---------------------------------------------------------
+    if returns_df is None or returns_df.empty:
+        st.warning("No return data available for the selected tickers/date range.")
+        st.stop()
+
+    # Drop columns that are entirely NaN
+    returns_df = returns_df.dropna(how="all", axis=1)
+
+    if returns_df.empty:
+        st.warning("All selected tickers have missing returns in this period.")
+        st.stop()
+
+    # ---------------------------------------------------------
     # PORTFOLIO RETURNS (EQUAL-WEIGHT, ALWAYS VALID)
     # ---------------------------------------------------------
     portfolio_returns = returns_df.mean(axis=1)
-    ret = pd.Series(portfolio_returns, name="Portfolio Return")
+    ret = pd.Series(portfolio_returns, name="Portfolio Return").dropna()
+
+    if ret.empty:
+        st.warning("No valid daily returns to analyze in this period.")
+        st.stop()
 
     # ---------------------------------------------------------
     # CUMULATIVE RETURN
@@ -561,7 +579,8 @@ with tab2:
     mu = ret.mean() * 252
     vol = ret.std() * np.sqrt(252)
     sharpe_local = mu / vol if vol > 0 else 0
-    sortino = (ret.mean() * 252) / (ret[ret < 0].std() * np.sqrt(252)) if ret[ret < 0].std() > 0 else 0
+    neg_vol = ret[ret < 0].std() * np.sqrt(252)
+    sortino = (mu / neg_vol) if neg_vol and neg_vol > 0 else 0
     calmar = mu / abs(dd.min()) if dd.min() != 0 else 0
     max_dd = dd.min()
 
@@ -593,11 +612,13 @@ with tab2:
 
     st.markdown("### Distribution of Daily Returns")
     hist_data = ret.dropna()
-    fig, ax = plt.subplots()
-    ax.hist(hist_data, bins=40, alpha=0.7)
-    ax.set_title("Histogram of Daily Returns")
-    st.pyplot(fig)
-
+    if hist_data.empty:
+        st.info("No valid daily returns to plot.")
+    else:
+        fig, ax = plt.subplots()
+        ax.hist(hist_data, bins=40, alpha=0.7)
+        ax.set_title("Histogram of Daily Returns")
+        st.pyplot(fig)
 
 # ---------------------------------------------------------
 # TAB 3 — RISK & DRAWDOWN ANALYSIS (FINAL VERSION)

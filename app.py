@@ -1039,7 +1039,7 @@ with tab7:
     st.subheader("AI‑Generated Commentary")
     st.markdown(commentary_text)
 # ---------------------------------------------------------
-# TAB 8 — BUY ANALYSIS (FINAL ROBUST VERSION)
+# TAB 8 — BUY ANALYSIS (FULLY FIXED VERSION)
 # ---------------------------------------------------------
 with tab8:
     st.header("AI Buy / Hold / Sell Analysis")
@@ -1067,15 +1067,16 @@ with tab8:
         if col not in analysis_df.columns:
             analysis_df[col] = np.nan
 
-    # Compute momentum (3‑month return approx)
+    # Compute momentum (63‑day return)
     if not returns_df.empty:
-        momentum_series = returns_df.tail(63).sum()
+        momentum_series = returns_df.pct_change().tail(63).sum()
         analysis_df["Momentum"] = momentum_series.reindex(analysis_df.index)
+
         # Risk (annualized volatility)
         common = [c for c in analysis_df.index if c in returns_df.columns]
         if common:
             analysis_df.loc[common, "Risk"] = (
-                returns_df[common].std() * np.sqrt(252)
+                returns_df[common].pct_change().std() * np.sqrt(252)
             ).reindex(common)
         else:
             analysis_df["Risk"] = np.nan
@@ -1084,33 +1085,25 @@ with tab8:
         analysis_df["Risk"] = np.nan
 
     # Clean missing numeric values
-    analysis_df = analysis_df.fillna(analysis_df.median(numeric_only=True))
+    numeric_cols = ["PE", "PB", "DividendYield", "Beta", "Momentum", "Risk"]
+    for col in numeric_cols:
+        analysis_df[col] = pd.to_numeric(analysis_df[col], errors="coerce").fillna(0)
 
-# ---------------------------------------------------------
-# SANITIZE FUNDAMENTALS FOR BUY ANALYSIS
-# ---------------------------------------------------------
-
-numeric_cols = ["PE", "PB", "DividendYield", "Beta", "Momentum", "Risk"]
-
-for col in numeric_cols:
-    analysis_df[col] = (
-        analysis_df[col]
-        .apply(lambda x: float(x) if x not in [None, "", "None", np.nan] else 0.0)
-    )
-
-    # Generate Buy/Hold/Sell signals
+    # ---------------------------------------------------------
+    # GENERATE SIGNALS
+    # ---------------------------------------------------------
     signals = []
     for t, row in analysis_df.iterrows():
         score = 0
         conviction = 0
 
         # PE filter
-        if row["PE"] > 0 and row["PE"] < 40:
+        if 0 < row["PE"] < 40:
             score += 1
             conviction += 20
 
         # PB filter
-        if row["PB"] > 0 and row["PB"] < 8:
+        if 0 < row["PB"] < 8:
             score += 1
             conviction += 15
 
@@ -1146,12 +1139,15 @@ for col in numeric_cols:
         })
 
     signals_df = pd.DataFrame(signals).sort_values("Conviction", ascending=False)
+    signals_df["RatingColored"] = signals_df["Rating"].map({
+        "Buy": "🟢 Buy",
+        "Hold": "🟡 Hold",
+        "Sell": "🔴 Sell"
+    })
 
-    def rating_color(val):
-        return {"Buy": "🟢 Buy", "Hold": "🟡 Hold", "Sell": "🔴 Sell"}[val]
-
-    signals_df["RatingColored"] = signals_df["Rating"].apply(rating_color)
-
+    # ---------------------------------------------------------
+    # DISPLAY SIGNAL TABLE
+    # ---------------------------------------------------------
     st.subheader("AI Buy / Hold / Sell Signals")
     st.dataframe(
         signals_df[
@@ -1161,6 +1157,9 @@ for col in numeric_cols:
         use_container_width=True
     )
 
+    # ---------------------------------------------------------
+    # SIGNAL SUMMARY
+    # ---------------------------------------------------------
     st.subheader("Signal Summary")
     buys = signals_df[signals_df["Rating"] == "Buy"]["Ticker"].tolist()
     holds = signals_df[signals_df["Rating"] == "Hold"]["Ticker"].tolist()
@@ -1173,6 +1172,9 @@ for col in numeric_cols:
     if sells:
         st.error(f"**Sell signals:** {', '.join(sells)}")
 
+    # ---------------------------------------------------------
+    # PORTFOLIO‑LEVEL SIGNAL
+    # ---------------------------------------------------------
     st.subheader("AI Portfolio‑Level Signal")
     buy_count = len(buys)
     sell_count = len(sells)
@@ -1184,54 +1186,41 @@ for col in numeric_cols:
     else:
         st.warning("**AI Portfolio Signal: HOLD** — Mixed signals across the portfolio.")
 
-        st.subheader("Fundamentals Radar Chart")
-        radar_cols = ["PE", "PB", "DividendYield", "Momentum", "Risk"]
-        
-        fig = go.Figure()
-        
-        for _, row in signals_df.iterrows():
-            fig.add_trace(go.Scatterpolar(
-                r=[row[c] if pd.notna(row[c]) else 0 for c in radar_cols],
-                theta=radar_cols,
-                fill='toself',
-                name=row["Ticker"]
-            ))
-        
-        fig.update_layout(
-            polar=dict(radialaxis=dict(visible=True)),
-            showlegend=True,
-            height=500
-        )
-        
-        st.subheader("Top Strengths & Weaknesses")   # ← FIXED (dedented)
+    # ---------------------------------------------------------
+    # RADAR CHART
+    # ---------------------------------------------------------
+    st.subheader("Fundamentals Radar Chart")
+    radar_cols = ["PE", "PB", "DividendYield", "Momentum", "Risk"]
+
+    fig = go.Figure()
+    for _, row in signals_df.iterrows():
+        fig.add_trace(go.Scatterpolar(
+            r=[row[c] for c in radar_cols],
+            theta=radar_cols,
+            fill='toself',
+            name=row["Ticker"]
+        ))
+
+    fig.update_layout(
+        polar=dict(radialaxis=dict(visible=True)),
+        showlegend=True,
+        height=500
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+    # ---------------------------------------------------------
+    # STRENGTHS & WEAKNESSES
+    # ---------------------------------------------------------
+    st.subheader("Top Strengths & Weaknesses")
 
     def strengths_weaknesses(row):
         strengths, weaknesses = [], []
 
-        if row["Momentum"] > 0:
-            strengths.append("Positive momentum")
-        else:
-            weaknesses.append("Weak momentum")
-
-        if row["Risk"] < 0.30:
-            strengths.append("Low volatility")
-        else:
-            weaknesses.append("High volatility")
-
-        if row["PE"] > 40:
-            weaknesses.append("Stretched PE ratio")
-        else:
-            strengths.append("Reasonable PE ratio")
-
-        if row["PB"] > 8:
-            weaknesses.append("Rich PB ratio")
-        else:
-            strengths.append("Healthy PB ratio")
-
-        if row["DividendYield"] > 0.01:
-            strengths.append("Dividend support")
-        else:
-            weaknesses.append("Low or no dividend")
+        strengths.append("Positive momentum") if row["Momentum"] > 0 else weaknesses.append("Weak momentum")
+        strengths.append("Low volatility") if row["Risk"] < 0.30 else weaknesses.append("High volatility")
+        strengths.append("Reasonable PE ratio") if row["PE"] < 40 else weaknesses.append("Stretched PE ratio")
+        strengths.append("Healthy PB ratio") if row["PB"] < 8 else weaknesses.append("Rich PB ratio")
+        strengths.append("Dividend support") if row["DividendYield"] > 0.01 else weaknesses.append("Low or no dividend")
 
         return strengths, weaknesses
 
@@ -1246,8 +1235,8 @@ for col in numeric_cols:
         st.markdown("**Weaknesses:**")
         for w in weaknesses:
             st.markdown(f"- {w}")
-        st.markdown("---")
 
+        st.markdown("---")
 
 # ---------------------------------------------------------
 # TAB 9 — OPTIMIZER (FINAL INSTITUTIONAL VERSION)

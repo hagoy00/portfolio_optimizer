@@ -801,8 +801,6 @@ with tab5:
     st.subheader("Raw Fundamentals")
     st.dataframe(fundamentals_display, use_container_width=True)
 
-    st.write(fdf)
-    st.write("dtypes:", fdf.dtypes)
 
     # ---------------------------------------------------------
     # FUNDAMENTALS RANKING

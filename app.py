@@ -250,9 +250,9 @@ def load_single_fundamental(t):
             "Beta": np.nan, "MarketCap": np.nan,
             "Sector": SECTOR_OVERRIDE.get(t, "Unknown"),
         }
-st.write("PROFILE RAW:", p)
-st.write("KEY METRICS RAW:", km)
-st.write("RATIOS RAW:", rt)
+            st.write("PROFILE RAW:", p)
+            st.write("KEY METRICS RAW:", km)
+            st.write("RATIOS RAW:", rt)
 
 @st.cache_data
 def load_fundamentals_auto(tickers):

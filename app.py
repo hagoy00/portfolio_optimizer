@@ -744,11 +744,12 @@ with tab3:
 # ---------------------------------------------------------
 # TAB 4 — SECTOR EXPOSURE (FINAL FIXED VERSION)
 # ---------------------------------------------------------
-# ---------------------------------------------------------
-# TAB 4 — SECTOR EXPOSURE (FINAL FIXED VERSION)
-# ---------------------------------------------------------
 with tab4:
     st.subheader("Sector Exposure")
+
+    if fundamentals_df.isna().all().all():
+        st.warning("Sector data unavailable — fundamentals missing.")
+        st.stop()
 
     # ---------------------------------------------------------
     # SAFETY CHECKS
@@ -1176,6 +1177,10 @@ with tab7:
 # ---------------------------------------------------------
 with tab8:
     st.header("AI Buy / Hold / Sell Analysis")
+
+    if fundamentals_df.isna().all().all():
+        st.warning("Cannot compute Buy/Hold/Sell — fundamentals missing.")
+        st.stop()
 
     # ---------------------------------------------------------
     # SAFETY CHECKS

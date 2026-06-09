@@ -195,7 +195,7 @@ import pandas as pd
 import numpy as np
 from concurrent.futures import ThreadPoolExecutor
 
-FMP_API_KEY = "YOUR_REAL_FMP_KEY"   # <-- MUST BE REAL
+FMP_API_KEY = "xxxxxxxxxxxxxxxxxxxx"
 
 SECTOR_OVERRIDE = {
     "AAPL": "Technology", "MSFT": "Technology", "NVDA": "Technology",
@@ -296,8 +296,6 @@ for col in numeric_cols:
         lambda x: x.fillna(x.mean())
     )
 
-
-
 if "SPY" in fundamentals_df.index:
     fundamentals_df = fundamentals_df.drop("SPY")
 
@@ -306,6 +304,7 @@ if fundamentals_df is None or fundamentals_df.empty:
     st.write(fundamentals_df)
     st.stop()
 
+st.write("DEBUG FUNDAMENTALS:", fundamentals_df)
 
 # ---------------------------------------------------------
 # STEP 3 — GLOBAL PORTFOLIO METRICS

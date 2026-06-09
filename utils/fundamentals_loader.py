@@ -1,11 +1,10 @@
 import yfinance as yf
 import pandas as pd
 import numpy as np
-from concurrent.futures import ThreadPoolExecutor
 
 
 # ---------------------------------------------------------
-# SAFE FLOAT CONVERSION
+# SAFE FLOAT
 # ---------------------------------------------------------
 def safe_float(x):
     try:
@@ -20,16 +19,16 @@ def safe_float(x):
 # ---------------------------------------------------------
 # LOAD FUNDAMENTALS FOR A SINGLE TICKER (YAHOO FINANCE)
 # ---------------------------------------------------------
-def load_single_fundamental_yahoo(ticker):
+def load_fundamentals(ticker):
     ticker = ticker.upper().strip()
 
-    for _ in range(3):  # retry up to 3 times
+    for _ in range(3):  # retry
         try:
             stock = yf.Ticker(ticker)
             info = stock.get_info()
 
             if info and "sector" in info:
-                return ticker, {
+                return pd.DataFrame([{
                     "PE": safe_float(info.get("trailingPE")),
                     "PB": safe_float(info.get("priceToBook")),
                     "EPS": safe_float(info.get("trailingEps")),
@@ -39,12 +38,13 @@ def load_single_fundamental_yahoo(ticker):
                     "Beta": safe_float(info.get("beta")),
                     "MarketCap": safe_float(info.get("marketCap")),
                     "Sector": info.get("sector", "Unknown")
-                }
+                }], index=[ticker])
+
         except:
             pass
 
-    # fallback if Yahoo fails
-    return ticker, {
+    # fallback
+    return pd.DataFrame([{
         "PE": np.nan,
         "PB": np.nan,
         "EPS": np.nan,
@@ -54,23 +54,36 @@ def load_single_fundamental_yahoo(ticker):
         "Beta": np.nan,
         "MarketCap": np.nan,
         "Sector": "Unknown"
-    }
+    }], index=[ticker])
 
 
 # ---------------------------------------------------------
 # MULTI‑TICKER FUNDAMENTALS LOADER
 # ---------------------------------------------------------
 def load_fundamentals_multi(tickers):
-    fundamentals = {}
-    tickers = [t.upper().strip() for t in tickers]
+    frames = []
 
-    with ThreadPoolExecutor(max_workers=3):  # Yahoo safe limit
-        for t, data in map(load_single_fundamental_yahoo, tickers):
-            fundamentals[t] = data
+    for t in tickers:
+        try:
+            df = load_fundamentals(t)
+            frames.append(df)
+        except:
+            frames.append(pd.DataFrame([{
+                "PE": np.nan,
+                "PB": np.nan,
+                "EPS": np.nan,
+                "ROE": np.nan,
+                "DividendYield": np.nan,
+                "DebtToEquity": np.nan,
+                "Beta": np.nan,
+                "MarketCap": np.nan,
+                "Sector": "Unknown"
+            }], index=[t]))
 
-    df = pd.DataFrame.from_dict(fundamentals, orient="index")
+    if len(frames) == 0:
+        return pd.DataFrame()
 
-    # Clean sector
-    df["Sector"] = df["Sector"].fillna("Unknown").replace("", "Unknown")
+    df_all = pd.concat(frames)
+    df_all["Sector"] = df_all["Sector"].fillna("Unknown").replace("", "Unknown")
 
-    return df
+    return df_all

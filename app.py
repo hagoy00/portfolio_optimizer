@@ -193,7 +193,6 @@ global_weights = np.array([1 / len(valid_tickers)] * len(valid_tickers))
 import requests
 import pandas as pd
 import numpy as np
-import streamlit as st
 from concurrent.futures import ThreadPoolExecutor
 
 FMP_API_KEY = "YOUR_REAL_FMP_KEY"   # <-- MUST BE REAL
@@ -212,9 +211,7 @@ def safe_float(x):
         if x in (None, "", "None", "NaN", "nan"):
             return np.nan
         x = float(x)
-        if np.isinf(x) or np.isnan(x):
-            return np.nan
-        return x
+        return np.nan if np.isnan(x) or np.isinf(x) else x
     except:
         return np.nan
 
@@ -268,10 +265,12 @@ def load_fundamentals_auto(tickers):
             fundamentals[t] = data
 
     df = pd.DataFrame.from_dict(fundamentals, orient="index")
-
     return df
 
 fundamentals_df = load_fundamentals_auto(valid_tickers)
+
+if fundamentals_df.isna().all().all():
+    st.error("No fundamentals returned. Check your FMP API key.")
 
 # HARD GUARD — prevents fake commentary & zero scores
 if fundamentals_df.isna().all().all():
@@ -746,15 +745,20 @@ with tab3:
 # ---------------------------------------------------------
 # TAB 4 — SECTOR EXPOSURE (FINAL FIXED VERSION)
 # ---------------------------------------------------------
+# ---------------------------------------------------------
+# TAB 4 — SECTOR EXPOSURE (FINAL FIXED VERSION)
+# ---------------------------------------------------------
 with tab4:
     st.subheader("Sector Exposure")
 
-    # Safety: ensure fundamentals_df exists
+    # ---------------------------------------------------------
+    # SAFETY CHECKS
+    # ---------------------------------------------------------
     if fundamentals_df.empty:
         st.warning("Sector data unavailable. Run analysis first.")
         st.stop()
 
-    # Align fundamentals to valid tickers
+    # Reindex fundamentals to match valid tickers
     fdf = fundamentals_df.reindex(valid_tickers).copy()
 
     # Ensure Sector column exists
@@ -762,33 +766,65 @@ with tab4:
         fdf["Sector"] = "Unknown"
 
     # Clean sector values
-    fdf["Sector"] = fdf["Sector"].fillna("Unknown")
+    fdf["Sector"] = (
+        fdf["Sector"]
+        .fillna("Unknown")
+        .replace("", "Unknown")
+        .replace("None", "Unknown")
+    )
 
-    # Load weights from session_state
+    # ---------------------------------------------------------
+    # FIX: Apply sector overrides (ensures no Unknown for known tickers)
+    # ---------------------------------------------------------
+    for t in fdf.index:
+        if fdf.loc[t, "Sector"] == "Unknown" and t in SECTOR_OVERRIDE:
+            fdf.loc[t, "Sector"] = SECTOR_OVERRIDE[t]
+
+    # ---------------------------------------------------------
+    # LOAD WEIGHTS
+    # ---------------------------------------------------------
     if "weights" in st.session_state:
         w = st.session_state.weights
     else:
-        w = np.array([1/len(valid_tickers)] * len(valid_tickers))
+        w = np.array([1 / len(valid_tickers)] * len(valid_tickers))
 
-    # Align weights to valid tickers
+    # FIX: Ensure weight length matches ticker count
+    if len(w) != len(valid_tickers):
+        w = np.array([1 / len(valid_tickers)] * len(valid_tickers))
+
     w_series = pd.Series(w, index=valid_tickers)
 
-    # Group by sector
-    sector_weights = w_series.groupby(fdf["Sector"]).sum().sort_values(ascending=False)
+    # ---------------------------------------------------------
+    # GROUP BY SECTOR
+    # ---------------------------------------------------------
+    sector_weights = (
+        w_series.groupby(fdf["Sector"])
+        .sum()
+        .sort_values(ascending=False)
+    )
 
-    # Display table
+    # ---------------------------------------------------------
+    # DISPLAY TABLE
+    # ---------------------------------------------------------
     st.markdown("### Sector Allocation Breakdown")
-    st.dataframe(sector_weights.to_frame("Weight").style.format({"Weight": "{:.2%}"}))
+    st.dataframe(
+        sector_weights.to_frame("Weight").style.format({"Weight": "{:.2%}"})
+    )
 
-    # Display chart
+    # ---------------------------------------------------------
+    # DISPLAY CHART
+    # ---------------------------------------------------------
     st.markdown("### Sector Chart")
-    fig = go.Figure(go.Bar(
-        x=sector_weights.index,
-        y=sector_weights.values,
-        marker_color="steelblue"
-    ))
+    fig = go.Figure(
+        go.Bar(
+            x=sector_weights.index,
+            y=sector_weights.values,
+            marker_color="steelblue"
+        )
+    )
     fig.update_layout(height=400)
     st.plotly_chart(fig, use_container_width=True, key="plot_714")
+
 # ---------------------------------------------------------
 # TAB 5 — FUNDAMENTALS (FINAL FIXED VERSION)
 # ---------------------------------------------------------
@@ -798,8 +834,8 @@ with tab5:
     # ---------------------------------------------------------
     # SAFETY CHECK
     # ---------------------------------------------------------
-    if fundamentals_df.empty:
-        st.warning("No fundamentals available. Run analysis first.")
+    if fundamentals_df.empty or fundamentals_df.isna().all().all():
+        st.warning("No fundamentals available. Check API key or data coverage.")
         st.stop()
 
     # ---------------------------------------------------------
@@ -815,13 +851,24 @@ with tab5:
     numeric_cols = ["PE", "PB", "EPS", "ROE", "DividendYield", "DebtToEquity", "Beta", "MarketCap"]
     for col in numeric_cols:
         if col in fdf.columns:
-            fdf[col] = fdf[col].astype(float)
+            fdf[col] = pd.to_numeric(fdf[col], errors="coerce")
 
     fundamentals_display = fdf.drop(columns=["Sector"], errors="ignore")
 
     st.subheader("Raw Fundamentals")
-    st.dataframe(fundamentals_display, use_container_width=True)
-
+    st.dataframe(
+        fundamentals_display.style.format({
+            "PE": "{:.2f}",
+            "PB": "{:.2f}",
+            "EPS": "{:.2f}",
+            "ROE": "{:.2%}",
+            "DividendYield": "{:.2%}",
+            "DebtToEquity": "{:.2f}",
+            "Beta": "{:.2f}",
+            "MarketCap": "{:,.0f}"
+        }),
+        use_container_width=True
+    )
 
     # ---------------------------------------------------------
     # FUNDAMENTALS RANKING
@@ -831,18 +878,23 @@ with tab5:
     def score_fundamentals(row):
         score = 0
 
+        # ROE (scaled)
         if pd.notna(row.get("ROE")):
             score += row["ROE"] * 10
 
+        # EPS
         if pd.notna(row.get("EPS")):
             score += row["EPS"]
 
+        # PE (lower is better)
         if pd.notna(row.get("PE")):
             score += max(0, 50 - row["PE"])
 
+        # PB (lower is better)
         if pd.notna(row.get("PB")):
             score += max(0, 20 - row["PB"])
 
+        # Dividend Yield
         if pd.notna(row.get("DividendYield")):
             score += row["DividendYield"] * 100
 
@@ -870,39 +922,45 @@ with tab5:
         # Best
         best_row = ranked_df.loc[best]
         best_reasons = []
-        if best_row.get("ROE"):
+        if pd.notna(best_row.get("ROE")) and best_row["ROE"] > 0:
             best_reasons.append("strong return on equity")
-        if best_row.get("EPS"):
+        if pd.notna(best_row.get("EPS")) and best_row["EPS"] > 0:
             best_reasons.append("solid earnings power")
-        if best_row.get("PE") and best_row["PE"] < 25:
+        if pd.notna(best_row.get("PE")) and best_row["PE"] < 25:
             best_reasons.append("reasonable valuation")
-        if best_row.get("DividendYield"):
+        if pd.notna(best_row.get("DividendYield")) and best_row["DividendYield"] > 0:
             best_reasons.append("added income from dividends")
-        lines.append(f"**{best}** ranks as the strongest fundamental name in the group, supported by {', '.join(best_reasons)}.")
+
+        best_reason_text = ", ".join(best_reasons) if best_reasons else "overall stronger fundamentals"
+        lines.append(f"**{best}** ranks as the strongest fundamental name in the group, supported by {best_reason_text}.")
 
         # Middle
         if len(tickers_sorted) > 2:
             for t in tickers_sorted[1:-1]:
                 row = ranked_df.loc[t]
                 mid_reasons = []
-                if row.get("ROE"):
+                if pd.notna(row.get("ROE")) and row["ROE"] > 0:
                     mid_reasons.append("healthy ROE")
-                if row.get("EPS"):
+                if pd.notna(row.get("EPS")) and row["EPS"] > 0:
                     mid_reasons.append("stable earnings")
-                if row.get("PE") and row["PE"] < 40:
+                if pd.notna(row.get("PE")) and row["PE"] < 40:
                     mid_reasons.append("fair valuation")
-                lines.append(f"**{t}** shows {', '.join(mid_reasons) if mid_reasons else 'balanced fundamentals'}.")
+
+                reason_text = ", ".join(mid_reasons) if mid_reasons else "balanced fundamentals"
+                lines.append(f"**{t}** shows {reason_text}.")
 
         # Worst
         worst_row = ranked_df.loc[worst]
         worst_reasons = []
-        if worst_row.get("ROE") and worst_row["ROE"] < 0.05:
+        if pd.notna(worst_row.get("ROE")) and worst_row["ROE"] < 0.05:
             worst_reasons.append("weak ROE")
-        if worst_row.get("PE") and worst_row["PE"] > 50:
+        if pd.notna(worst_row.get("PE")) and worst_row["PE"] > 50:
             worst_reasons.append("elevated valuation")
-        if worst_row.get("PB") and worst_row["PB"] > 10:
+        if pd.notna(worst_row.get("PB")) and worst_row["PB"] > 10:
             worst_reasons.append("rich price-to-book ratio")
-        lines.append(f"**{worst}** ranks lowest, driven by {', '.join(worst_reasons)}.")
+
+        worst_reason_text = ", ".join(worst_reasons) if worst_reasons else "weaker fundamentals overall"
+        lines.append(f"**{worst}** ranks lowest, driven by {worst_reason_text}.")
 
         return "\n\n".join(lines)
 
@@ -912,7 +970,10 @@ with tab5:
     # SIMPLE COMMENTARY LIST
     # ---------------------------------------------------------
     st.subheader("Commentary")
-    commentary = [f"- **{ticker}**: score {row['score']:.1f}" for ticker, row in ranked_df.iterrows()]
+    commentary = [
+        f"- **{ticker}**: score {row['score']:.1f}"
+        for ticker, row in ranked_df.iterrows()
+    ]
     st.markdown("\n".join(commentary))
 
 # ---------------------------------------------------------
@@ -975,13 +1036,15 @@ with tab6:
     st.dataframe(weights_df, use_container_width=True)
 
 # ---------------------------------------------------------
-# TAB 7 — AI COMMENTARY (FINAL FIXED VERSION)
+# TAB 7 — AI PORTFOLIO COMMENTARY (FINAL VERSION)
 # ---------------------------------------------------------
 with tab7:
     st.header("AI Portfolio Commentary")
 
-    # Safety checks
-    if fundamentals_df.empty:
+    # ---------------------------------------------------------
+    # SAFETY CHECKS
+    # ---------------------------------------------------------
+    if fundamentals_df.empty or fundamentals_df.isna().all().all():
         st.warning("Fundamentals not available. Run analysis first.")
         st.stop()
 
@@ -993,31 +1056,50 @@ with tab7:
     # PREPARE COMMENTARY DATAFRAME
     # ---------------------------------------------------------
     commentary_df = fundamentals_df.copy()
+    commentary_df = commentary_df.reindex(valid_tickers)
 
     # Add weights
-    commentary_df["Weight"] = st.session_state.weights
+    weights = st.session_state.weights
+    if len(weights) != len(valid_tickers):
+        weights = np.array([1 / len(valid_tickers)] * len(valid_tickers))
 
-    # Compute fundamentals score (same logic as Tab 5)
+    commentary_df["Weight"] = weights
+
+    # ---------------------------------------------------------
+    # FUNDAMENTALS SCORE (same logic as Tab 5)
+    # ---------------------------------------------------------
     def score_fundamentals(row):
         score = 0
-        if row.get("ROE"):
+
+        # ROE (scaled)
+        if pd.notna(row.get("ROE")):
             score += row["ROE"] * 10
-        if row.get("EPS"):
+
+        # EPS
+        if pd.notna(row.get("EPS")):
             score += row["EPS"]
-        if row.get("PE"):
+
+        # PE (lower is better)
+        if pd.notna(row.get("PE")):
             score += max(0, 50 - row["PE"])
-        if row.get("PB"):
+
+        # PB (lower is better)
+        if pd.notna(row.get("PB")):
             score += max(0, 20 - row["PB"])
-        if row.get("DividendYield"):
+
+        # Dividend Yield
+        if pd.notna(row.get("DividendYield")):
             score += row["DividendYield"] * 100
+
         return score
 
     commentary_df["score"] = commentary_df.apply(score_fundamentals, axis=1)
 
     # Remove SPY if present
-    commentary_df = commentary_df[commentary_df.index != "SPY"]
+    if "SPY" in commentary_df.index:
+        commentary_df = commentary_df.drop("SPY")
 
-    # Sort by score (lowercase)
+    # Sort by score
     commentary_df = commentary_df.sort_values("score", ascending=False)
 
     # ---------------------------------------------------------
@@ -1041,7 +1123,9 @@ with tab7:
     top_weight = commentary_df.iloc[0]["Weight"]
     bottom_weight = commentary_df.iloc[-1]["Weight"]
 
-    # Portfolio metrics (already computed globally)
+    # ---------------------------------------------------------
+    # PORTFOLIO METRICS (from global model)
+    # ---------------------------------------------------------
     ar = annual_return
     vol = annual_volatility
     shrp = sharpe_ratio
@@ -1077,17 +1161,19 @@ with tab7:
     Increasing exposure to high‑scoring names and trimming weaker positions  
     may improve risk‑adjusted performance going forward.
     """
-    
+
     st.subheader("AI‑Generated Commentary")
     st.markdown(commentary_text)
 # ---------------------------------------------------------
-# TAB 8 — BUY ANALYSIS (FULLY FIXED VERSION)
+# TAB 8 — BUY ANALYSIS (FINAL FIXED VERSION)
 # ---------------------------------------------------------
 with tab8:
     st.header("AI Buy / Hold / Sell Analysis")
 
-    # Safety checks
-    if fundamentals_df.empty:
+    # ---------------------------------------------------------
+    # SAFETY CHECKS
+    # ---------------------------------------------------------
+    if fundamentals_df.empty or fundamentals_df.isna().all().all():
         st.warning("Fundamentals not available. Run analysis first.")
         st.stop()
 
@@ -1095,38 +1181,53 @@ with tab8:
         st.warning("Weights not set. Adjust weights in Tab 6.")
         st.stop()
 
-    # Align fundamentals with valid tickers
+    # ---------------------------------------------------------
+    # ALIGN FUNDAMENTALS WITH VALID TICKERS
+    # ---------------------------------------------------------
     analysis_df = fundamentals_df.reindex(valid_tickers).copy()
 
-    # Add weights
-    analysis_df["Weight"] = st.session_state.weights
+    # Add weights with length check
+    w = st.session_state.weights
+    if len(w) != len(valid_tickers):
+        w = np.array([1 / len(valid_tickers)] * len(valid_tickers))
+
+    analysis_df["Weight"] = w
 
     # Remove SPY if present
-    analysis_df = analysis_df[analysis_df.index != "SPY"]
+    if "SPY" in analysis_df.index:
+        analysis_df = analysis_df.drop("SPY")
 
-    # Ensure required columns exist
+    # ---------------------------------------------------------
+    # ENSURE REQUIRED COLUMNS EXIST
+    # ---------------------------------------------------------
     for col in ["PE", "PB", "DividendYield", "Beta"]:
         if col not in analysis_df.columns:
             analysis_df[col] = np.nan
 
-    # Compute momentum (63‑day return)
-    if not returns_df.empty:
+    # ---------------------------------------------------------
+    # MOMENTUM (63‑DAY RETURN) & RISK (ANNUALIZED VOL)
+    # ---------------------------------------------------------
+    if "returns_df" in globals() and not returns_df.empty:
+
+        # Momentum: sum of last 63 daily returns
         momentum_series = returns_df.pct_change().tail(63).sum()
         analysis_df["Momentum"] = momentum_series.reindex(analysis_df.index)
 
-        # Risk (annualized volatility)
+        # Risk: annualized volatility
         common = [c for c in analysis_df.index if c in returns_df.columns]
         if common:
-            analysis_df.loc[common, "Risk"] = (
-                returns_df[common].pct_change().std() * np.sqrt(252)
-            ).reindex(common)
+            risk_series = returns_df[common].pct_change().std() * np.sqrt(252)
+            analysis_df.loc[common, "Risk"] = risk_series.reindex(common)
         else:
             analysis_df["Risk"] = np.nan
+
     else:
         analysis_df["Momentum"] = np.nan
         analysis_df["Risk"] = np.nan
 
-    # Clean missing numeric values
+    # ---------------------------------------------------------
+    # CLEAN NUMERIC COLUMNS
+    # ---------------------------------------------------------
     numeric_cols = ["PE", "PB", "DividendYield", "Beta", "Momentum", "Risk"]
     for col in numeric_cols:
         analysis_df[col] = pd.to_numeric(analysis_df[col], errors="coerce").fillna(0)
@@ -1279,81 +1380,89 @@ with tab8:
             st.markdown(f"- {w}")
 
         st.markdown("---")
-
 # ---------------------------------------------------------
 # TAB 9 — OPTIMIZER (FINAL INSTITUTIONAL VERSION)
 # ---------------------------------------------------------
 with tab9:
     st.header("Portfolio Optimizer")
 
+    # ---------------------------------------------------------
+    # SAFETY CHECKS
+    # ---------------------------------------------------------
     if returns_df.empty:
         st.warning("Return data unavailable. Cannot run optimizer.")
         st.stop()
 
-    # Annualized stats
+    # ---------------------------------------------------------
+    # PREPARE DATA
+    # ---------------------------------------------------------
+    tickers_opt = valid_tickers.copy()
+
+    # Annualized mean returns & covariance
     mean_returns = returns_df.mean() * 252
     cov_matrix = returns_df.cov() * 252
 
-    # Safety: remove NaNs
+    # Replace NaN with 0 to avoid optimizer crashes
     mean_returns = mean_returns.fillna(0)
     cov_matrix = cov_matrix.fillna(0)
 
-    # Align tickers
-    tickers_opt = valid_tickers.copy()
+    # Initial equal weights
+    init_guess = np.array([1 / len(tickers_opt)] * len(tickers_opt))
+    bounds = tuple((0, 1) for _ in tickers_opt)
 
-    # Helper: portfolio performance
+    # Constraint: weights sum to 1
+    def weight_constraint(weights):
+        return np.sum(weights) - 1
+
+    # ---------------------------------------------------------
+    # PORTFOLIO PERFORMANCE FUNCTION
+    # ---------------------------------------------------------
     def portfolio_performance(weights, mean_returns, cov_matrix):
         ret = np.dot(weights, mean_returns)
         vol = np.sqrt(np.dot(weights.T, np.dot(cov_matrix, weights)))
         sharpe = ret / vol if vol > 0 else 0
         return ret, vol, sharpe
 
-    def weight_constraint(weights):
-        return np.sum(weights) - 1
-
-    bounds = tuple((0, 1) for _ in tickers_opt)
-    init_guess = np.array([1/len(tickers_opt)] * len(tickers_opt))
-
-    # -----------------------------
-    # Minimum Variance
-    # -----------------------------
+    # ---------------------------------------------------------
+    # MINIMUM VARIANCE OPTIMIZER
+    # ---------------------------------------------------------
     def min_variance():
         def objective(weights):
             return portfolio_performance(weights, mean_returns, cov_matrix)[1]
 
         result = minimize(
-            objective, init_guess, method="SLSQP",
-            bounds=bounds, constraints={"type": "eq", "fun": weight_constraint}
+            objective,
+            init_guess,
+            method="SLSQP",
+            bounds=bounds,
+            constraints={"type": "eq", "fun": weight_constraint},
+            options={"maxiter": 500}
         )
 
-        if not result.success:
-            st.warning("Min-variance optimizer failed. Using equal weights.")
-            return init_guess
+        return result.x if result.success else init_guess
 
-        return result.x
-
-    # -----------------------------
-    # Maximum Sharpe
-    # -----------------------------
+    # ---------------------------------------------------------
+    # MAXIMUM SHARPE OPTIMIZER
+    # ---------------------------------------------------------
     def max_sharpe():
         def objective(weights):
             ret, vol, sharpe = portfolio_performance(weights, mean_returns, cov_matrix)
             return -sharpe
 
         result = minimize(
-            objective, init_guess, method="SLSQP",
-            bounds=bounds, constraints={"type": "eq", "fun": weight_constraint}
+            objective,
+            init_guess,
+            method="SLSQP",
+            bounds=bounds,
+            constraints={"type": "eq", "fun": weight_constraint},
+            options={"maxiter": 500}
         )
 
-        if not result.success:
-            st.warning("Max-sharpe optimizer failed. Using equal weights.")
-            return init_guess
+        return result.x if result.success else init_guess
 
-        return result.x
-
-    # -----------------------------
-    # Risk Parity
-    # -----------------------------
+    # ---------------------------------------------------------
+    # RISK PARITY OPTIMIZER
+    # ---------------------------------------------------------
     def risk_parity():
         def risk_contribution(weights):
             port_vol = np.sqrt(np.dot(weights.T, np.dot(cov_matrix, weights)))
@@ -1366,26 +1475,29 @@ with tab9:
             return np.sum((rc - rc.mean()) ** 2)
 
         result = minimize(
-            objective, init_guess, method="SLSQP",
-            bounds=bounds, constraints={"type": "eq", "fun": weight_constraint}
+            objective,
+            init_guess,
+            method="SLSQP",
+            bounds=bounds,
+            constraints={"type": "eq", "fun": weight_constraint},
+            options={"maxiter": 500}
         )
 
-        if not result.success:
-            st.warning("Risk parity optimizer failed. Using equal weights.")
-            return init_guess
+        return result.x if result.success else init_guess
 
-        return result.x
-    
-    # -----------------------------
-    # Run optimizer
-    # -----------------------------
+    # ---------------------------------------------------------
+    # USER SELECTION
+    # ---------------------------------------------------------
     st.subheader("Select Optimization Method")
-    
+
     method = st.selectbox(
         "Optimization Method",
         ["Equal Weight", "Minimum Variance", "Maximum Sharpe", "Risk Parity"]
     )
-    
+
+    # ---------------------------------------------------------
+    # RUN OPTIMIZER
+    # ---------------------------------------------------------
     if st.button("Run Optimizer"):
         if method == "Equal Weight":
             opt_weights = init_guess
@@ -1395,39 +1507,43 @@ with tab9:
             opt_weights = max_sharpe()
         elif method == "Risk Parity":
             opt_weights = risk_parity()
-    
+
         # Normalize weights
         opt_weights = opt_weights / opt_weights.sum()
-    
+
         # Save globally
         st.session_state.weights = opt_weights
-    
+
         st.success("Optimizer completed successfully.")
-    
+
+        # ---------------------------------------------------------
+        # DISPLAY RESULTS
+        # ---------------------------------------------------------
         results_df = pd.DataFrame({
             "Ticker": tickers_opt,
             "Weight": opt_weights
         }).sort_values("Weight", ascending=False)
-    
+
         st.subheader("Optimized Weights")
         st.dataframe(results_df, use_container_width=True)
-    
+
+        # Portfolio performance
         ret, vol, sharpe = portfolio_performance(opt_weights, mean_returns, cov_matrix)
-    
+
         st.subheader("Optimized Portfolio Performance")
         st.write(f"**Expected Return:** {ret:.2%}")
         st.write(f"**Volatility:** {vol:.2%}")
         st.write(f"**Sharpe Ratio:** {sharpe:.2f}")
-    
-        # -----------------------------
-        # FIRST BAR CHART
-        # -----------------------------
+
+        # ---------------------------------------------------------
+        # WEIGHTS BAR CHART
+        # ---------------------------------------------------------
         fig = go.Figure(go.Bar(
             x=results_df["Ticker"],
             y=results_df["Weight"],
             marker_color="steelblue"
         ))
         fig.update_layout(height=400, title="Optimized Portfolio Weights")
-    
-        # st.plotly_chart(fig, use_container_width=True, key="plot_1370")
+
         st.plotly_chart(fig, use_container_width=True, key="plot_1370")
+

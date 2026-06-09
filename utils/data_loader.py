@@ -86,6 +86,29 @@ def load_price_data(tickers, start_date, end_date):
 
 
 # =========================================================
+# RETURNS LOADER (DAILY RETURNS)
+# =========================================================
+def load_returns_data(tickers, start_date, end_date):
+    """
+    Loads adjusted close prices and converts them into daily returns.
+    Ensures clean alignment, removes empty tickers, and returns a DataFrame.
+    """
+    prices = load_price_data(tickers, start_date, end_date)
+
+    if prices is None or prices.empty:
+        return pd.DataFrame()
+
+    # Compute returns
+    returns = prices.pct_change().replace([np.inf, -np.inf], np.nan)
+
+    # Clean
+    returns = returns.dropna(how="all", axis=1)   # drop tickers with no data
+    returns = returns.dropna(how="all")           # drop empty rows
+
+    return returns
+
+
+# =========================================================
 # FULL OHLCV PANEL
 # =========================================================
 def load_full_price_panel(tickers, start_date, end_date):

@@ -211,48 +211,33 @@ def safe_float(x):
     except:
         return np.nan
 
-def load_single_fundamental(t):
+import yfinance as yf
+
+def load_single_fundamental_yahoo(t):
     t = t.upper().strip()
     try:
-        # PROFILE
-        url_p = f"https://financialmodelingprep.com/api/v3/profile/{t}?apikey={FMP_API_KEY}"
-        p = requests.get(url_p, timeout=6).json()
-        p = p[0] if isinstance(p, list) and p else {}
-
-        # KEY METRICS
-        url_km = f"https://financialmodelingprep.com/api/v3/key-metrics/{t}?limit=1&apikey={FMP_API_KEY}"
-        km = requests.get(url_km, timeout=6).json()
-        km = km[0] if isinstance(km, list) and km else {}
-
-        # RATIOS
-        url_rt = f"https://financialmodelingprep.com/api/v3/ratios/{t}?limit=1&apikey={FMP_API_KEY}"
-        rt = requests.get(url_rt, timeout=6).json()
-        rt = rt[0] if isinstance(rt, list) and rt else {}
-
-        sector = p.get("sector") or SECTOR_OVERRIDE.get(t, "Unknown")
+        stock = yf.Ticker(t)
+        info = stock.info
 
         return t, {
-            "PE": safe_float(km.get("peRatio")),
-            "PB": safe_float(km.get("pbRatio")),
-            "EPS": safe_float(km.get("eps")),
-            "ROE": safe_float(rt.get("returnOnEquity")),
-            "DividendYield": safe_float(rt.get("dividendYield")),
-            "DebtToEquity": safe_float(rt.get("debtEquityRatio")),
-            "Beta": safe_float(p.get("beta")),
-            "MarketCap": safe_float(p.get("mktCap")),
-            "Sector": sector,
+            "PE": info.get("trailingPE"),
+            "PB": info.get("priceToBook"),
+            "EPS": info.get("trailingEps"),
+            "ROE": info.get("returnOnEquity"),
+            "DividendYield": info.get("dividendYield"),
+            "DebtToEquity": info.get("debtToEquity"),
+            "Beta": info.get("beta"),
+            "MarketCap": info.get("marketCap"),
+            "Sector": info.get("sector", "Unknown")
         }
 
-    except:
+    except Exception:
         return t, {
-            "PE": np.nan, "PB": np.nan, "EPS": np.nan, "ROE": np.nan,
-            "DividendYield": np.nan, "DebtToEquity": np.nan,
-            "Beta": np.nan, "MarketCap": np.nan,
-            "Sector": SECTOR_OVERRIDE.get(t, "Unknown"),
+            "PE": None, "PB": None, "EPS": None, "ROE": None,
+            "DividendYield": None, "DebtToEquity": None,
+            "Beta": None, "MarketCap": None,
+            "Sector": "Unknown"
         }
-            st.write("PROFILE RAW:", p)
-            st.write("KEY METRICS RAW:", km)
-            st.write("RATIOS RAW:", rt)
 
 @st.cache_data
 def load_fundamentals_auto(tickers):
@@ -260,13 +245,15 @@ def load_fundamentals_auto(tickers):
     tickers = [t.upper().strip() for t in tickers]
 
     with ThreadPoolExecutor(max_workers=10) as ex:
-        for t, data in ex.map(load_single_fundamental, tickers):
+        for t, data in ex.map(load_single_fundamental_yahoo, tickers):
             fundamentals[t] = data
 
     df = pd.DataFrame.from_dict(fundamentals, orient="index")
     return df
 
 fundamentals_df = load_fundamentals_auto(valid_tickers)
+
+st.write("DEBUG FUNDAMENTALS:", fundamentals_df)
 
 if fundamentals_df.isna().all().all():
     st.error("No fundamentals returned. Check your FMP API key.")

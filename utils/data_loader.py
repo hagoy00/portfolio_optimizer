@@ -1,16 +1,13 @@
 import yfinance as yf
 import pandas as pd
 import numpy as np
+from concurrent.futures import ThreadPoolExecutor
 
 
 # =========================================================
 # CLEAN TICKER INPUT
 # =========================================================
 def clean_tickers(tickers):
-    """
-    Ensures tickers is a clean list of strings.
-    Removes duplicates and empty entries.
-    """
     if tickers is None:
         return []
 
@@ -18,26 +15,26 @@ def clean_tickers(tickers):
         tickers = [tickers]
 
     tickers = [t.strip().upper() for t in tickers if isinstance(t, str) and t.strip()]
-
     return list(dict.fromkeys(tickers))  # remove duplicates
 
 
 # =========================================================
-# SAFE YAHOO PRICE LOADER
+# SAFE FLOAT
+# =========================================================
+def safe_float(x):
+    try:
+        if x in (None, "", "None", "NaN", "nan"):
+            return np.nan
+        x = float(x)
+        return np.nan if np.isnan(x) or np.isinf(x) else x
+    except:
+        return np.nan
+
+
+# =========================================================
+# PRICE LOADER (ADJ CLOSE)
 # =========================================================
 def load_price_data(tickers, start_date, end_date):
-    """
-    Clean, stable price loader.
-    Returns a DataFrame of Adjusted Close prices only.
-    Handles:
-    - single ticker
-    - multiple tickers
-    - MultiIndex Yahoo formats
-    - flat Yahoo formats
-    - missing tickers
-    - missing Adj Close
-    """
-
     tickers = clean_tickers(tickers)
     if len(tickers) == 0:
         return pd.DataFrame()
@@ -58,29 +55,18 @@ def load_price_data(tickers, start_date, end_date):
     if raw is None or raw.empty:
         return pd.DataFrame()
 
-    # =====================================================
-    # CASE 1 — MULTI-INDEX FORMAT (most common for multi-ticker)
-    # =====================================================
+    # MultiIndex (multi‑ticker)
     if isinstance(raw.columns, pd.MultiIndex):
-
-        # Level 0 contains fields (Adj Close, Close, etc.)
         if "Adj Close" in raw.columns.get_level_values(0):
             adj = raw["Adj Close"]
-
-        # Level 1 contains fields
         elif "Adj Close" in raw.columns.get_level_values(1):
             adj = raw.xs("Adj Close", level=1, axis=1)
-
-        # Fallback to Close
         elif "Close" in raw.columns.get_level_values(1):
             adj = raw.xs("Close", level=1, axis=1)
-
         else:
             return pd.DataFrame()
 
-    # =====================================================
-    # CASE 2 — FLAT FORMAT (single ticker)
-    # =====================================================
+    # Single ticker
     else:
         if "Adj Close" in raw.columns:
             adj = raw["Adj Close"]
@@ -89,33 +75,20 @@ def load_price_data(tickers, start_date, end_date):
         else:
             return pd.DataFrame()
 
-    # Ensure DataFrame
     if isinstance(adj, pd.Series):
         adj = adj.to_frame()
 
-    # Keep only requested tickers
     adj = adj[[t for t in tickers if t in adj.columns]]
-
-    # Drop all-NaN columns
     adj = adj.dropna(axis=1, how="all")
-
-    # Drop all-NaN rows
     adj = adj.dropna(how="all")
 
     return adj
 
 
 # =========================================================
-# LOAD FULL PRICE PANEL (OHLCV)
+# FULL OHLCV PANEL
 # =========================================================
 def load_full_price_panel(tickers, start_date, end_date):
-    """
-    Loads full OHLCV data for each ticker.
-    Returns a MultiIndex DataFrame:
-        level 0 = ticker
-        level 1 = field (Open, High, Low, Close, Adj Close, Volume)
-    """
-
     tickers = clean_tickers(tickers)
     if len(tickers) == 0:
         return pd.DataFrame()
@@ -136,22 +109,16 @@ def load_full_price_panel(tickers, start_date, end_date):
     if raw is None or raw.empty:
         return pd.DataFrame()
 
-    # MultiIndex expected
     if not isinstance(raw.columns, pd.MultiIndex):
-        # Wrap single ticker into MultiIndex
         raw = pd.concat({tickers[0]: raw}, axis=1)
 
     return raw
 
 
 # =========================================================
-# VALIDATE TICKERS (EXISTS + HAS DATA)
+# VALIDATE TICKERS
 # =========================================================
 def validate_tickers(tickers):
-    """
-    Returns only tickers that return valid price data.
-    """
-
     tickers = clean_tickers(tickers)
     valid = []
 
@@ -164,3 +131,61 @@ def validate_tickers(tickers):
             continue
 
     return valid
+
+
+# =========================================================
+# FUNDAMENTALS — SINGLE TICKER (YAHOO FINANCE)
+# =========================================================
+def load_single_fundamental_yahoo(ticker):
+    ticker = ticker.upper().strip()
+
+    for _ in range(3):  # retry
+        try:
+            stock = yf.Ticker(ticker)
+            info = stock.get_info()
+
+            if info and "sector" in info:
+                return ticker, {
+                    "PE": safe_float(info.get("trailingPE")),
+                    "PB": safe_float(info.get("priceToBook")),
+                    "EPS": safe_float(info.get("trailingEps")),
+                    "ROE": safe_float(info.get("returnOnEquity")),
+                    "DividendYield": safe_float(info.get("dividendYield")),
+                    "DebtToEquity": safe_float(info.get("debtToEquity")),
+                    "Beta": safe_float(info.get("beta")),
+                    "MarketCap": safe_float(info.get("marketCap")),
+                    "Sector": info.get("sector", "Unknown")
+                }
+        except:
+            pass
+
+    # fallback
+    return ticker, {
+        "PE": np.nan,
+        "PB": np.nan,
+        "EPS": np.nan,
+        "ROE": np.nan,
+        "DividendYield": np.nan,
+        "DebtToEquity": np.nan,
+        "Beta": np.nan,
+        "MarketCap": np.nan,
+        "Sector": "Unknown"
+    }
+
+
+# =========================================================
+# FUNDAMENTALS — MULTI‑TICKER
+# =========================================================
+def load_fundamentals_auto(tickers):
+    tickers = clean_tickers(tickers)
+    fundamentals = {}
+
+    with ThreadPoolExecutor(max_workers=3):  # Yahoo safe limit
+        for t, data in map(load_single_fundamental_yahoo, tickers):
+            fundamentals[t] = data
+
+    df = pd.DataFrame.from_dict(fundamentals, orient="index")
+
+    df["Sector"] = df["Sector"].fillna("Unknown").replace("", "Unknown")
+
+    return df

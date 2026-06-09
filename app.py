@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import yfinance as yf
 import plotly.graph_objects as go
 import requests
+
 from datetime import datetime, timedelta
 from scipy.optimize import minimize
 from concurrent.futures import ThreadPoolExecutor
@@ -189,10 +190,6 @@ global_weights = np.array([1 / len(valid_tickers)] * len(valid_tickers))
 # ---------------------------------------------------------
 # FUNDAMENTALS LOADER — FINAL FIXED VERSION
 # ---------------------------------------------------------
-import requests
-import pandas as pd
-import numpy as np
-from concurrent.futures import ThreadPoolExecutor
 
 FMP_API_KEY = "xxxxxxxxxxxxxxxxxxxx"
 
@@ -253,6 +250,9 @@ def load_single_fundamental(t):
             "Beta": np.nan, "MarketCap": np.nan,
             "Sector": SECTOR_OVERRIDE.get(t, "Unknown"),
         }
+st.write("PROFILE RAW:", p)
+st.write("KEY METRICS RAW:", km)
+st.write("RATIOS RAW:", rt)
 
 @st.cache_data
 def load_fundamentals_auto(tickers):

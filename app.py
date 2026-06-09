@@ -830,6 +830,10 @@ with tab4:
 with tab5:
     st.header("Fundamentals")
 
+    if fundamentals_df.isna().all().all():
+        st.error("No fundamentals returned. Check your FMP API key.")
+        st.stop()
+
     # ---------------------------------------------------------
     # SAFETY CHECK
     # ---------------------------------------------------------
@@ -1039,6 +1043,10 @@ with tab6:
 # ---------------------------------------------------------
 with tab7:
     st.header("AI Portfolio Commentary")
+
+    if fundamentals_df.isna().all().all():
+        st.info("AI commentary unavailable — fundamentals missing.")
+        st.stop()
 
     # ---------------------------------------------------------
     # SAFETY CHECKS

@@ -1,177 +1,206 @@
 import streamlit as st
-import datetime
-import sys
-import socket
-import ssl
-import yfinance as yf
+import pandas as pd
+import numpy as np
+from datetime import date
 
-from utils.data_loader import (
-    clean_ticker_input,
-    load_full_prices_from_raw,
-    extract_adj_close
+# ---------------------------------------------------------
+# Page Config
+# ---------------------------------------------------------
+st.set_page_config(
+    page_title="Portfolio Optimizer Dashboard",
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
-from utils.optimizer import (
-    compute_returns,
-    max_sharpe_portfolio,
-    min_vol_portfolio,
-    risk_parity_weights,
-    portfolio_performance,
-    compute_drawdown,
-    monte_carlo_simulation,
-    rebalancing_backtest,
-    compute_sector_exposure,
-    buy_score,
-    compute_frontier
+# ---------------------------------------------------------
+# FIXED STICKY TITLE BAR
+# ---------------------------------------------------------
+st.markdown("""
+<style>
+/* Hide Streamlit default header */
+header[data-testid="stHeader"] {
+    display: none;
+}
+
+/* Custom fixed title bar */
+.app-title {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 9999;
+    background-color: #0E1117;
+    padding: 16px 32px;
+    border-bottom: 1px solid #1F2937;
+}
+
+/* Push content down */
+div[data-testid="stAppViewContainer"] {
+    padding-top: 70px;
+}
+
+/* Title text */
+.app-title h1 {
+    color: #4DA8FF !important;
+    font-size: 28px;
+    font-weight: 700;
+    margin: 0;
+}
+</style>
+""", unsafe_allow_html=True)
+
+st.markdown(
+    '<div class="app-title"><h1>Portfolio Optimizer Dashboard</h1></div>',
+    unsafe_allow_html=True
 )
 
-from components.tab1_summary import render_tab1
-from components.tab2_frontier import render_tab2
-from components.tab3_weights import render_tab3
-from components.tab4_sector import render_tab4
-from components.tab5_drawdown import render_tab5
-from components.tab6_montecarlo import render_tab6
-from components.tab7_rebalancing import render_tab7
-from components.tab8_ai_commentary import render_tab8
-from components.tab9_buy_analysis import render_tab9
+# ---------------------------------------------------------
+# IMPORTS FOR TABS + DATA
+# ---------------------------------------------------------
+from utils.data_loader import load_price_data, load_returns_data
 
-# ---------------------------------------------------
-# DEBUG INFO
-# ---------------------------------------------------
-st.write("DEBUG optimizer loaded:", sys.executable)
+from components.tab1_summary import render_summary_tab
+from components.tab2_frontier import render_frontier_tab
+from components.tab3_weights import render_weights_tab
+from components.tab4_sector import render_sector_tab
+from components.tab5_drawdown import render_drawdown_tab
+from components.tab6_montecarlo import render_montecarlo_tab
+from components.tab7_rebalancing import render_rebalancing_tab
+from components.tab8_ai_commentary import render_ai_commentary_tab
+from components.tab9_buy_analysis import render_buy_analysis_tab
 
-st.title("Portfolio Optimizer Dashboard")
+# ---------------------------------------------------------
+# SIDEBAR INPUTS
+# ---------------------------------------------------------
+st.sidebar.header("Input Parameters")
 
-# ---------------------------------------------------
-# INPUTS
-# ---------------------------------------------------
-default_start = datetime.date(2020, 1, 1)
-default_end = datetime.date.today()
-
-tickers_raw = st.text_input(
-    "Tickers (comma separated)",
-    "AAPL, TSLA, NVDA, AMZN, GOOG, WFC,APP,SANA,PCG,PONY,BYDDF,GELHY"
+tickers_input = st.sidebar.text_input(
+    "Please enter your tickers (comma separated)",
+    value=""
 )
-start_date = st.date_input("Start Date", default_start)
-end_date = st.date_input("End Date", default_end)
 
-# ---------------------------------------------------
-# RUN OPTIMIZATION
-# ---------------------------------------------------
-if st.button("Run Optimization"):
+tickers = [t.strip().upper() for t in tickers_input.split(",") if t.strip()]
 
-    tickers = clean_ticker_input(tickers_raw)
+start_date = st.sidebar.date_input("Start Date", value=date(2021, 1, 1))
+end_date = st.sidebar.date_input("End Date", value=date.today())
 
-    # Network test
+investment_amount = st.sidebar.number_input(
+    "Investment Amount ($)",
+    min_value=1000,
+    value=100000,
+    step=1000
+)
+
+run_button = st.button("Run Analysis")
+
+if run_button:
+
+    if not tickers:
+        st.error("Please enter at least one ticker.")
+        st.stop()
+
     try:
-        socket.gethostbyname("query1.finance.yahoo.com")
-    except:
-        st.error("DNS failure")
+        # Load data — PASS LIST, NOT STRING
+        prices = load_price_data(tickers, start_date, end_date)
+        returns = load_returns_data(tickers, start_date, end_date)
+
+        # Filter valid tickers
+        if isinstance(prices.columns, pd.MultiIndex):
+            prices = prices.loc[:, prices.columns.get_level_values("Ticker").isin(tickers)]
+
+        if returns is not None and not returns.empty:
+            returns = returns[[t for t in tickers if t in returns.columns]]
+
+        # MUST BE HERE — BEFORE fundamentals
+        tickers_final = [t for t in tickers if t in returns.columns]
+
+        if not tickers_final:
+            st.error("No valid tickers found in the data.")
+            st.stop()
+
+        # Load fundamentals AFTER tickers_final exists
+        from utils.fundamentals_loader import load_fundamentals
+        fundamentals = load_fundamentals(tickers_final)
+
+        # Portfolio returns
+        w_series = pd.Series({t: 1 / len(tickers_final) for t in tickers_final})
+        portfolio_returns = (returns[tickers_final] * w_series).sum(axis=1)
+
+        if portfolio_returns.empty or portfolio_returns.isna().all():
+            st.error("No valid return data for these tickers. Try different dates.")
+            st.stop()
+
+        # Drawdown
+        cumulative = (1 + portfolio_returns).cumprod()
+        running_max = cumulative.cummax()
+        drawdown_df = ((cumulative - running_max) / running_max).to_frame("Drawdown")
+
+        # Monte Carlo
+        mu = portfolio_returns.mean()
+        sigma = portfolio_returns.std()
+        num_paths = 200
+        num_days = 252
+
+        sims = np.zeros((num_days, num_paths))
+        for p in range(num_paths):
+            daily = np.random.normal(mu, sigma, num_days)
+            sims[:, p] = np.cumprod(1 + daily)
+
+        mc_df = pd.DataFrame(sims, columns=[f"Path_{i}" for i in range(num_paths)])
+
+        # Performance
+        annual_return = portfolio_returns.mean() * 252
+        annual_vol = portfolio_returns.std() * np.sqrt(252)
+        sharpe = annual_return / annual_vol if annual_vol > 0 else 0
+
+        performance = {
+            "expected_return": annual_return,
+            "volatility": annual_vol,
+            "sharpe": sharpe,
+        }
+
+        # Model dictionary
+        model = {
+            "prices": prices,
+            "returns": returns,
+            "tickers": tickers_final,
+            "weights": w_series.to_dict(),
+            "investment_amount": investment_amount,
+            "drawdown": drawdown_df,
+            "monte_carlo": mc_df,
+            "performance": performance,
+            "fundamentals": fundamentals,
+        }
+
+        st.session_state["model"] = model
+        st.session_state["prices"] = prices
+
+        st.success("Data loaded successfully.")
+
+    except Exception as e:
+        st.error(f"Error loading data: {e}")
         st.stop()
-
-    # Download data
-    raw = yf.download(
-        tickers,
-        start=start_date,
-        end=end_date,
-        group_by="ticker",
-        auto_adjust=False,
-        progress=False,
-        threads=True
-    )
-
-    full_prices = load_full_prices_from_raw(raw, tickers)
-    if full_prices is None or full_prices.empty:
-        st.error("No valid price data found.")
-        st.stop()
-
-    prices = extract_adj_close(full_prices)
-    returns = compute_returns(prices)
-
-    # ---------------------------------------------------
-    # OPTIMIZER ENGINE
-    # ---------------------------------------------------
-    max_sharpe, w_sharpe = max_sharpe_portfolio(returns)
-    min_vol, w_minvol = min_vol_portfolio(returns)
-    w_rp = risk_parity_weights(returns)
-
-    perf = portfolio_performance(w_sharpe, returns)
-    dd = compute_drawdown(prices)
-    mc = monte_carlo_simulation(prices, weights=w_sharpe)
-    rb = rebalancing_backtest(prices, w_sharpe, freq="ME")
-    frontier = compute_frontier(returns, n=3000)
-
-    # Sector map
-    sector_map = {
-        "AAPL": "Technology",
-        "TSLA": "Consumer Discretionary",
-        "NVDA": "Technology",
-        "AMZN": "Consumer Discretionary",
-        "GOOG": "Communication Services",
-        "WFC": "Financials"
-    }
-    sector_weights = compute_sector_exposure(w_sharpe, sector_map)
-
-    # Shares
-    latest_prices = prices.iloc[-1]
-    portfolio_value = 25000
-    shares = {t: (portfolio_value * w_sharpe[t]) / latest_prices[t] for t in w_sharpe}
-
-    # Buy score
-    score = buy_score(prices)
-
-    # Save model
-    st.session_state["model"] = {
-        "weights": w_sharpe,
-        "minvol_weights": w_minvol,
-        "risk_parity": w_rp,
-        "performance": perf,
-        "frontier": frontier,
-        "drawdown": dd,
-        "montecarlo": mc,
-        "rebalancing": rb,
-        "shares": shares,
-        "sector_weights": sector_weights,
-        "buy_score": score
-    }
-
-    st.session_state["prices"] = prices
-    st.session_state["full_prices"] = full_prices
-
-    st.success("Optimization complete.")
-
-# ---------------------------------------------------
-# RENDER TABS
-# ---------------------------------------------------
-if "model" in st.session_state:
-
-    model = st.session_state["model"]
-    prices = st.session_state["prices"]
-    full_prices = st.session_state["full_prices"]
-
-    tabs = st.tabs([
-        "Summary",
-        "Efficient Frontier",
-        "Weights & Shares",
-        "Sector Exposure",
-        "Drawdown Analysis",
-        "Monte Carlo Simulation",
-        "Rebalancing Backtest",
-        "AI Commentary",
-        "Is This Stock a Good Buy?"
+    # ---------------------------------------------------------
+    # TABS
+    # ---------------------------------------------------------
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
+        " Summary",
+        " Efficient Frontier",
+        " Optimal Weights",
+        " Sector Exposure",
+        " Drawdowns",
+        " Monte Carlo",
+        " Rebalancing",
+        " AI Commentary",
+        " Buy Analysis"
     ])
 
-    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = tabs
-
-    render_tab1(tab1, model)
-    render_tab2(tab2, prices, model)
-    render_tab3(tab3, prices, model)
-    render_tab4(tab4, model["sector_weights"])
-    render_tab5(tab5, prices, model)
-    render_tab6(tab6, prices, model)
-    render_tab7(tab7, prices, model)
-    render_tab8(tab8, model, model["sector_weights"])
-    render_tab9(tab9, full_prices)
-
-else:
-    st.info("Enter tickers and click Run Optimization.")
+    render_summary_tab(tab1, prices, model)
+    render_frontier_tab(tab2, prices, model)
+    render_weights_tab(tab3, prices, model)
+    render_sector_tab(tab4, prices, model)
+    render_drawdown_tab(tab5, prices, model)
+    render_montecarlo_tab(tab6, prices, model)
+    render_rebalancing_tab(tab7, prices, model)
+    render_ai_commentary_tab(tab8, prices, model)
+    render_buy_analysis_tab(tab9, prices, model)

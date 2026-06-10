@@ -1,5 +1,6 @@
 def load_price_data(tickers, start_date, end_date):
-    print(">>> NEW PRICE LOADER ACTIVE <<<")
+    print(">>> DEBUG: USING THIS PRICE LOADER <<<")
+
     tickers = clean_tickers(tickers)
     if len(tickers) == 0:
         return pd.DataFrame()

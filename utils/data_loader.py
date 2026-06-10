@@ -1,8 +1,8 @@
 def load_price_data(tickers, start_date, end_date):
+    print(">>> NEW PRICE LOADER ACTIVE <<<")
     tickers = clean_tickers(tickers)
     if len(tickers) == 0:
         return pd.DataFrame()
-    print(">>> USING NEW PRICE LOADER <<<")
 
     try:
         raw = yf.download(

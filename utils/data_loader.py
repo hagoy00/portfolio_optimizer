@@ -1,20 +1,23 @@
+import pandas as pd
+import yfinance as yf
+
+# ---------------------------------------------------------
+# Clean tickers
+# ---------------------------------------------------------
 def clean_tickers(tickers):
-    """
-    Normalize and clean ticker symbols.
-    Removes blanks, duplicates, and whitespace.
-    """
     if not tickers:
         return []
-
     cleaned = []
     for t in tickers:
         if t and isinstance(t, str):
             t2 = t.strip().upper()
             if t2 != "" and t2 not in cleaned:
                 cleaned.append(t2)
-
     return cleaned
 
+# ---------------------------------------------------------
+# Bulletproof Price Loader
+# ---------------------------------------------------------
 def load_price_data(tickers, start_date, end_date):
     print(">>> DEBUG: USING BULLETPROOF PRICE LOADER <<<")
 

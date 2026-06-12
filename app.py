@@ -149,6 +149,11 @@ def load_price_data(tickers, start, end):
         st.error(f"Price load failed: {e}")
         return pd.DataFrame()
 
+# ---------------------------------------------------------
+# Load Price Data (use external utils loader)
+# ---------------------------------------------------------
+from utils.data_loader import load_price_data
+
 # Load user tickers
 prices = load_price_data(tickers, start_date, end_date)
 
@@ -157,36 +162,25 @@ if prices is None or prices.empty:
     st.error("Price data unavailable. Cannot compute portfolio metrics.")
     st.stop()
 
-if prices is None or prices.empty:
-    st.error("Price data could not be loaded.")
-    st.stop()
-
 # ---------------------------------------------------------
 # Ensure SPY exists for Beta calculation
 # ---------------------------------------------------------
-if "SPY" not in prices.columns:
+if "spy" not in prices.columns:
     spy_data = load_price_data(["SPY"], start_date, end_date)
     if spy_data is not None and not spy_data.empty:
-        prices["SPY"] = spy_data["SPY"]
+        prices["spy"] = spy_data.iloc[:, 0]
     else:
         st.warning("SPY could not be loaded. Beta vs SPY unavailable.")
 
 # ---------------------------------------------------------
-# Clean returns (keep SPY)
+# Compute returns
 # ---------------------------------------------------------
-returns_df = prices.pct_change()
-returns_df = returns_df.ffill().bfill()
-returns_df = returns_df.dropna(how="all")
+returns_df = prices.pct_change().ffill().bfill()
+returns = returns_df.dropna()
 
 # --- HARD GUARD: STOP IF RETURNS FAILED ---
 if returns.empty:
     st.error("Return series is empty. Cannot compute metrics.")
-    st.stop()
-
-valid_tickers = list(returns_df.columns)
-
-if len(valid_tickers) == 0:
-    st.error("No valid tickers after cleaning returns.")
     st.stop()
 
 # ---------------------------------------------------------

@@ -1,5 +1,5 @@
 def load_price_data(tickers, start_date, end_date):
-    print(">>> DEBUG: USING THIS PRICE LOADER <<<")
+    print(">>> DEBUG: USING BULLETPROOF PRICE LOADER <<<")
 
     tickers = clean_tickers(tickers)
     if len(tickers) == 0:
@@ -21,7 +21,7 @@ def load_price_data(tickers, start_date, end_date):
     if raw is None or raw.empty:
         return pd.DataFrame()
 
-    # Normalize column names to lowercase
+    # Normalize column names
     if isinstance(raw.columns, pd.MultiIndex):
         raw.columns = pd.MultiIndex.from_tuples(
             [(str(a).lower(), str(b).lower()) for a, b in raw.columns]
@@ -29,16 +29,34 @@ def load_price_data(tickers, start_date, end_date):
     else:
         raw.columns = [str(c).lower() for c in raw.columns]
 
-    # MULTI‑TICKER
+    # ---------------------------------------------------------
+    # MULTI‑TICKER HANDLING
+    # ---------------------------------------------------------
     if isinstance(raw.columns, pd.MultiIndex):
-        if "adj close" in raw.columns.get_level_values(1):
+
+        lvl0 = raw.columns.get_level_values(0)
+        lvl1 = raw.columns.get_level_values(1)
+
+        # Case 1: Level 1 contains price fields
+        if "adj close" in lvl1:
             adj = raw.xs("adj close", level=1, axis=1)
-        elif "close" in raw.columns.get_level_values(1):
+
+        elif "close" in lvl1:
             adj = raw.xs("close", level=1, axis=1)
+
+        # Case 2: Level 0 contains price fields (Yahoo alternate format)
+        elif "adj close" in lvl0:
+            adj = raw.xs("adj close", level=0, axis=1)
+
+        elif "close" in lvl0:
+            adj = raw.xs("close", level=0, axis=1)
+
         else:
             return pd.DataFrame()
 
-    # SINGLE‑TICKER
+    # ---------------------------------------------------------
+    # SINGLE‑TICKER HANDLING
+    # ---------------------------------------------------------
     else:
         if "adj close" in raw.columns:
             adj = raw["adj close"]
@@ -58,6 +76,7 @@ def load_price_data(tickers, start_date, end_date):
     # Keep only requested tickers
     adj = adj[[t for t in tickers_lower if t in adj.columns]]
 
+    # Drop empty columns/rows
     adj = adj.dropna(axis=1, how="all")
     adj = adj.dropna(how="all")
 

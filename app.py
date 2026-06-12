@@ -268,38 +268,45 @@ with tab1:
     # RISK CONTRIBUTION PIE CHART — CRASH‑PROOF VERSION
     # ---------------------------------------------------------
 
-    st.subheader("Risk Contribution Breakdown")
+    st.markdown("### Risk Contribution Breakdown")
 
-    if len(actual_tickers) == 0:
-        st.info("No valid tickers available.")
+if len(actual_tickers) == 0:
+    st.info("No valid tickers available for analysis.")
+else:
+    # Use returns aligned with actual_tickers
+    ret_for_rc = returns_df[actual_tickers]
+
+    # Covariance matrix
+    cov = ret_for_rc.cov().values
+
+    # Ensure weights aligned to actual_tickers
+    w = np.array([1 / len(actual_tickers)] * len(actual_tickers), dtype=float)
+
+    # Portfolio variance and volatility
+    port_var = float(w.T @ cov @ w)
+    if port_var <= 0 or np.isnan(port_var):
+        st.info("Cannot compute risk contribution (invalid variance).")
     else:
-        n = len(actual_tickers)
-        risk_contribution = np.array([1.0 / n] * n, dtype=float)
+        port_vol = np.sqrt(port_var)
 
-    # No trimming needed — remove the old actual_tickers line
+        # Marginal risk contribution: Σw
+        mrc = cov @ w
 
+        # Risk contribution per asset: w * MRC / σ_p
+        rc = (w * mrc) / port_vol
 
-        # Safety: ensure non-negative and normalized
-        risk_contribution = np.clip(risk_contribution, 0, None)
-        total = risk_contribution.sum()
-        if total == 0 or np.isnan(total):
-            risk_contribution = np.array([1.0 / n] * n, dtype=float)
-        else:
-            risk_contribution = risk_contribution / total
+        # Normalize to sum to 1
+        rc = rc / rc.sum()
 
-        # Force labels to match wedge count
-        actual_tickers = actual_tickers[:len(risk_contribution)]
-
-        # Render pie chart
-        fig, ax = plt.subplots()
-        ax.pie(
-            risk_contribution,
+        fig2, ax2 = plt.subplots()
+        ax2.pie(
+            rc,
             labels=actual_tickers,
             autopct="%1.1f%%",
             startangle=90
         )
-        ax.axis("equal")
-        st.pyplot(fig)
+        ax2.axis("equal")
+        st.pyplot(fig2)
 
 # ---------------------------------------------------------
 # Performance Tab

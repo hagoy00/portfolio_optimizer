@@ -140,6 +140,17 @@ if returns.empty:
     st.error("Return series is empty. Cannot compute metrics.")
     st.stop()
 
+# ---------------------------------------------------------
+# ALIGN RETURNS AND WEIGHTS (fix shape mismatch)
+# ---------------------------------------------------------
+
+# Remove SPY from portfolio returns (SPY is only for beta)
+if "spy" in returns_df.columns:
+    returns_df = returns_df.drop(columns=["spy"])
+
+# Rebuild weights to match actual tickers in returns_df
+actual_tickers = list(returns_df.columns)
+weights = np.array([1 / len(actual_tickers)] * len(actual_tickers), dtype=float)
 
 # ---------------------------------------------------------
 # Auto-detect Fundamentals (PE, PB, Beta, DivYield, MarketCap, Sector)

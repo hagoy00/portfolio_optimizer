@@ -179,7 +179,7 @@ sector_map = {t: fundamentals[t].get("Sector", "Unknown") for t in tickers}
 # ---------------------------------------------------------
 # PREP FOR METRICS
 # ---------------------------------------------------------
-weights = np.array([1 / len(valid_tickers)] * len(valid_tickers))
+weights = np.array([1 / len(tickers)] * len(tickers))
 
 # ---------------------------------------------------------
 # PORTFOLIO METRICS (GLOBAL)

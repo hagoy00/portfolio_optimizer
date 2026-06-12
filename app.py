@@ -266,12 +266,13 @@ with tab1:
     # ---------------------------------------------------------
     st.subheader("Risk Contribution Breakdown")
 
-    if len(valid_tickers) == 0:
+    if len(actual_tickers) == 0:
         st.info("No valid tickers available.")
     else:
-        # Equal contribution for each ticker (always valid)
-        n = len(valid_tickers)
-        risk_contribution = np.array([1.0 / n] * n, dtype=float)
+    # Equal contribution for each ticker (always valid)
+    n = len(actual_tickers)
+    risk_contribution = np.array([1.0 / n] * n, dtype=float)
+
 
         # Safety: ensure non-negative and normalized
         risk_contribution = np.clip(risk_contribution, 0, None)

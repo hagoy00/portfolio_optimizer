@@ -381,37 +381,49 @@ with tab2:
 # ---------------------------------------------------------
 # TAB 3 — RISK & DRAWDOWN ANALYSIS (CRASH-PROOF VERSION)
 # ---------------------------------------------------------
+# ---------------------------------------------------------
+# TAB 3 — RISK & DRAWDOWN ANALYSIS (CRASH‑PROOF VERSION)
+# ---------------------------------------------------------
 with tab3:
     st.subheader("Risk & Drawdown Analysis")
 
     # Use aligned portfolio returns
-    ret = pd.Series(portfolio_returns, name="Portfolio Return")
+    ret = pd.Series(portfolio_returns, name="Portfolio Return").dropna()
+
+    # --- HARD GUARD: Ensure returns exist ---
+    if ret.empty or len(ret) < 2:
+        st.error("Not enough return data to compute risk metrics. Check price history or selected tickers.")
+        st.stop()
 
     # === Drawdown ===
     cum_ret = (1 + ret).cumprod()
     running_max = cum_ret.cummax()
     drawdown = (cum_ret - running_max) / running_max
-    max_dd = drawdown.min()
+    max_dd = float(drawdown.min())
 
     # === Rolling Volatility ===
     rolling_vol = ret.rolling(30).std() * np.sqrt(252)
+    rolling_vol_last = rolling_vol.iloc[-1] if not rolling_vol.dropna().empty else 0.0
 
     # === Portfolio Beta (use global value) ===
-    # portfolio_beta already computed globally
     beta_value = portfolio_beta if not np.isnan(portfolio_beta) else 0.0
 
     # === Value at Risk (95%) ===
-    var_95 = np.percentile(ret.dropna(), 5)
-
-    # === Conditional VaR (CVaR) ===
-    cvar_95 = ret[ret <= var_95].mean() if len(ret[ret <= var_95]) > 0 else 0
+    ret_clean = ret.dropna()
+    if ret_clean.empty:
+        var_95 = None
+        cvar_95 = None
+    else:
+        var_95 = np.percentile(ret_clean, 5)
+        tail_losses = ret_clean[ret_clean <= var_95]
+        cvar_95 = tail_losses.mean() if not tail_losses.empty else 0.0
 
     # === Display Metrics ===
     colA, colB, colC, colD = st.columns(4)
     colA.metric("Max Drawdown", f"{max_dd:.2%}")
-    colB.metric("Rolling Vol (30d)", f"{rolling_vol.iloc[-1]:.2%}")
+    colB.metric("Rolling Vol (30d)", f"{rolling_vol_last:.2%}")
     colC.metric("Beta vs SPY", f"{beta_value:.2f}")
-    colD.metric("CVaR (95%)", f"{cvar_95:.2%}")
+    colD.metric("CVaR (95%)", f"{cvar_95:.2%}" if cvar_95 is not None else "N/A")
 
     # === Drawdown Chart ===
     st.markdown("### Drawdown")
@@ -422,13 +434,16 @@ with tab3:
     st.line_chart(rolling_vol)
 
     # === VaR Distribution Chart ===
-    st.markdown("### Distribution of Daily Returns (for VaR)")
-    fig, ax = plt.subplots()
-    ax.hist(ret.dropna(), bins=40, alpha=0.7)
-    ax.axvline(var_95, color="red", linestyle="--", label=f"VaR 95%: {var_95:.2%}")
-    ax.set_title("Return Distribution with VaR")
-    ax.legend()
-    st.pyplot(fig)
+    if var_95 is not None:
+        st.markdown("### Distribution of Daily Returns (for VaR)")
+        fig, ax = plt.subplots()
+        ax.hist(ret_clean, bins=40, alpha=0.7)
+        ax.axvline(var_95, color="red", linestyle="--", label=f"VaR 95%: {var_95:.2%}")
+        ax.set_title("Return Distribution with VaR")
+        ax.legend()
+        st.pyplot(fig)
+    else:
+        st.info("Not enough data to compute VaR distribution.")
 
     # ---------------------------------------------------------
     # RISK CONTRIBUTION — CRASH‑PROOF VERSION
@@ -459,6 +474,11 @@ with tab3:
         )
         ax2.axis("equal")
         st.pyplot(fig2)
+        
+# ---------------------------------------------------------
+# Tab 4 - Sector Exposure Tab
+# ---------------------------------------------------------
+
 with tab4:
     st.subheader("Sector Exposure")
 

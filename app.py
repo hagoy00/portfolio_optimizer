@@ -185,7 +185,10 @@ fundamentals = load_fundamentals_auto(tickers)
 # ---------------------------------------------------------
 # Auto Sector Detection (no manual map needed)
 # ---------------------------------------------------------
-sector_map = {t: fundamentals[t].get("Sector", "Unknown") for t in tickers}
+sector_map = {
+    t: fundamentals.get(t, {}).get("Sector", "Unknown")
+    for t in actual_tickers
+}
 
 # ---------------------------------------------------------
 # PREP FOR METRICS
@@ -467,7 +470,10 @@ with tab4:
         st.stop()
 
     # Auto sector detection from fundamentals
-    sector_map = {t: fundamentals[t].get("Sector", "Unknown") for t in actual_tickers}
+    sector_map = {
+        t: fundamentals.get(t, {}).get("Sector", "Unknown")
+        for t in actual_tickers
+    }
 
     # Equal weights for now
     w = np.array([1 / len(actual_tickers)] * len(actual_tickers))

@@ -273,7 +273,7 @@ with tab1:
         n = len(actual_tickers)
         risk_contribution = np.array([1.0 / n] * n, dtype=float)
 
-    # No trimming needed — remove the old valid_tickers line
+    # No trimming needed — remove the old actual_tickers line
 
 
         # Safety: ensure non-negative and normalized
@@ -355,9 +355,7 @@ with tab2:
     ax.set_title("Histogram of Daily Returns")
     st.pyplot(fig)
 
-# ---------------------------------------------------------
-# TAB 3 — RISK & DRAWDOWN ANALYSIS (CRASH-PROOF VERSION)
-# ---------------------------------------------------------
+
 # ---------------------------------------------------------
 # TAB 3 — RISK & DRAWDOWN ANALYSIS (CRASH‑PROOF VERSION)
 # ---------------------------------------------------------
@@ -421,37 +419,41 @@ with tab3:
         st.pyplot(fig)
     else:
         st.info("Not enough data to compute VaR distribution.")
-
-    # ---------------------------------------------------------
-    # RISK CONTRIBUTION — CRASH‑PROOF VERSION
-    # ---------------------------------------------------------
-    st.markdown("### Risk Contribution Breakdown")
-
-    if len(valid_tickers) == 0:
-        st.info("No valid tickers available.")
-    else:
-        n = len(valid_tickers)
-        risk_contribution = np.array([1.0 / n] * n, dtype=float)
-
-        risk_contribution = np.clip(risk_contribution, 0, None)
-        total = risk_contribution.sum()
-        if total == 0 or np.isnan(total):
-            risk_contribution = np.array([1.0 / n] * n, dtype=float)
-        else:
-            risk_contribution = risk_contribution / total
-
-        valid_tickers = valid_tickers[:len(risk_contribution)]
-
-        fig2, ax2 = plt.subplots()
-        ax2.pie(
-            risk_contribution,
-            labels=valid_tickers,
-            autopct="%1.1f%%",
-            startangle=90
-        )
-        ax2.axis("equal")
-        st.pyplot(fig2)
         
+# ---------------------------------------------------------
+# RISK CONTRIBUTION — CRASH‑PROOF VERSION
+# ---------------------------------------------------------
+st.markdown("### Risk Contribution Breakdown")
+
+if len(actual_tickers) == 0:
+    st.info("No valid tickers available for analysis.")
+    st.stop()
+
+else:
+    # Equal contribution for each ticker
+    n = len(actual_tickers)
+    risk_contribution = np.array([1.0 / n] * n, dtype=float)
+
+    # Normalize (safety)
+    risk_contribution = np.clip(risk_contribution, 0, None)
+    total = risk_contribution.sum()
+    if total == 0 or np.isnan(total):
+        risk_contribution = np.array([1.0 / n] * n, dtype=float)
+    else:
+        risk_contribution = risk_contribution / total
+
+    # Pie chart
+    fig2, ax2 = plt.subplots()
+    ax2.pie(
+        risk_contribution,
+        labels=actual_tickers,
+        autopct="%1.1f%%",
+        startangle=90
+    )
+    ax2.axis("equal")
+    st.pyplot(fig2)
+
+
 # ---------------------------------------------------------
 # Tab 4 - Sector Exposure Tab
 # ---------------------------------------------------------
@@ -465,11 +467,11 @@ with tab4:
         st.stop()
 
     # Auto sector detection from fundamentals
-    sector_map = {t: fundamentals[t].get("Sector", "Unknown") for t in valid_tickers}
-    
-    # Equal weights for now (optimizer will override later)
-    w = np.array([1 / len(valid_tickers)] * len(valid_tickers))
-    w_series = pd.Series(w, index=valid_tickers)
+    sector_map = {t: fundamentals[t].get("Sector", "Unknown") for t in actual_tickers}
+
+    # Equal weights for now
+    w = np.array([1 / len(actual_tickers)] * len(actual_tickers))
+    w_series = pd.Series(w, index=actual_tickers)
 
     # Compute sector weights
     sector_weights = w_series.groupby(sector_map).sum().sort_values(ascending=False)
@@ -487,6 +489,7 @@ with tab4:
     ))
     fig.update_layout(height=400)
     st.plotly_chart(fig, use_container_width=True)
+
 # ---------------------------------------------------------
 # Fundamentals
 # ---------------------------------------------------------
@@ -583,21 +586,21 @@ with tab5:
 with tab6:
     st.header("Portfolio Weights")
 
-    if len(valid_tickers) == 0:
+    if len(actual_tickers) == 0:
         st.warning("No valid tickers available to assign weights.")
         st.stop()
 
     # ---------------------------------------------------------
     # DEFAULT WEIGHTS (equal weight for all valid tickers)
     # ---------------------------------------------------------
-    weights_dict = {t: 1/len(valid_tickers) for t in valid_tickers}
+    weights_dict = {t: 1/len(actual_tickers) for t in actual_tickers}
 
     st.subheader("Adjust Weights")
 
     # ---------------------------------------------------------
     # SLIDERS — USER-ADJUSTABLE WEIGHTS
     # ---------------------------------------------------------
-    for t in valid_tickers:
+    for t in actual_tickers:
         weights_dict[t] = st.slider(
             f"{t} Weight",
             min_value=0.0,
@@ -616,15 +619,15 @@ with tab6:
     # ---------------------------------------------------------
     # CONVERT TO NUMPY ARRAY (for portfolio math)
     # ---------------------------------------------------------
-    w = np.array([weights_dict[t] for t in valid_tickers])
+    w = np.array([weights_dict[t] for t in actual_tickers])
 
     # ---------------------------------------------------------
     # DISPLAY WEIGHTS TABLE
     # ---------------------------------------------------------
     st.subheader("Final Normalized Weights")
     weights_df = pd.DataFrame({
-        "Ticker": valid_tickers,
-        "Weight": [weights_dict[t] for t in valid_tickers]
+        "Ticker": actual_tickers,
+        "Weight": [weights_dict[t] for t in actual_tickers]
     })
     st.dataframe(weights_df, use_container_width=True)
 # ---------------------------------------------------------

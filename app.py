@@ -152,6 +152,11 @@ def load_price_data(tickers, start, end):
 # Load user tickers
 prices = load_price_data(tickers, start_date, end_date)
 
+# --- HARD GUARD: STOP IF PRICES FAILED ---
+if prices is None or prices.empty:
+    st.error("Price data unavailable. Cannot compute portfolio metrics.")
+    st.stop()
+
 if prices is None or prices.empty:
     st.error("Price data could not be loaded.")
     st.stop()
@@ -172,6 +177,11 @@ if "SPY" not in prices.columns:
 returns_df = prices.pct_change()
 returns_df = returns_df.ffill().bfill()
 returns_df = returns_df.dropna(how="all")
+
+# --- HARD GUARD: STOP IF RETURNS FAILED ---
+if returns.empty:
+    st.error("Return series is empty. Cannot compute metrics.")
+    st.stop()
 
 valid_tickers = list(returns_df.columns)
 

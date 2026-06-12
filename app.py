@@ -264,7 +264,6 @@ with tab1:
     # ---------------------------------------------------------
     # RISK CONTRIBUTION PIE CHART — CRASH‑PROOF VERSION
     # ---------------------------------------------------------
-    st.subheader("Risk Contribution Breakdown")
 
     st.subheader("Risk Contribution Breakdown")
 
@@ -273,6 +272,8 @@ with tab1:
     else:
         n = len(actual_tickers)
         risk_contribution = np.array([1.0 / n] * n, dtype=float)
+
+    # No trimming needed — remove the old valid_tickers line
 
 
         # Safety: ensure non-negative and normalized
@@ -284,7 +285,7 @@ with tab1:
             risk_contribution = risk_contribution / total
 
         # Force labels to match wedge count
-        valid_tickers = valid_tickers[:len(risk_contribution)]
+        actual_tickers = actual_tickers[:len(risk_contribution)]
 
         # Render pie chart
         fig, ax = plt.subplots(figsize=(6, 6))

@@ -107,49 +107,6 @@ mc_horizon = st.sidebar.slider("Monte Carlo Horizon (days)", 50, 500, 252)
 import yfinance as yf
 
 # ---------------------------------------------------------
-# Load Price Data (robust loader + SPY auto-include)
-# ---------------------------------------------------------
-def load_price_data(tickers, start, end):
-    try:
-        raw = yf.download(tickers, start=start, end=end)
-
-        if raw is None or raw.empty:
-            return pd.DataFrame()
-
-        # MultiIndex case
-        if isinstance(raw.columns, pd.MultiIndex):
-            # Case: ('Adj Close', 'AAPL')
-            if "Adj Close" in raw.columns.get_level_values(0):
-                adj = raw["Adj Close"]
-
-            # Case: ('AAPL', 'Adj Close')
-            elif "Adj Close" in raw.columns.get_level_values(1):
-                adj = raw.xs("Adj Close", level=1, axis=1)
-
-            # Fallback to Close
-            else:
-                adj = raw.xs("Close", level=1, axis=1)
-
-        else:
-            # Single-level columns
-            if "Adj Close" in raw.columns:
-                adj = raw["Adj Close"]
-            elif "Close" in raw.columns:
-                adj = raw["Close"]
-            else:
-                return pd.DataFrame()
-
-        # Ensure DataFrame
-        if isinstance(adj, pd.Series):
-            adj = adj.to_frame()
-
-        return adj
-
-    except Exception as e:
-        st.error(f"Price load failed: {e}")
-        return pd.DataFrame()
-
-# ---------------------------------------------------------
 # Load Price Data (use external utils loader)
 # ---------------------------------------------------------
 from utils.data_loader import load_price_data
@@ -182,6 +139,7 @@ returns = returns_df.dropna()
 if returns.empty:
     st.error("Return series is empty. Cannot compute metrics.")
     st.stop()
+
 
 # ---------------------------------------------------------
 # Auto-detect Fundamentals (PE, PB, Beta, DivYield, MarketCap, Sector)

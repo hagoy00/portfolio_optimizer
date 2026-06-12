@@ -288,15 +288,16 @@ with tab1:
         actual_tickers = actual_tickers[:len(risk_contribution)]
 
         # Render pie chart
-        fig, ax = plt.subplots(figsize=(6, 6))
+        fig, ax = plt.subplots()
         ax.pie(
             risk_contribution,
-            labels=valid_tickers,
+            labels=actual_tickers,
             autopct="%1.1f%%",
             startangle=90
         )
         ax.axis("equal")
         st.pyplot(fig)
+
 # ---------------------------------------------------------
 # Performance Tab
 # ---------------------------------------------------------
